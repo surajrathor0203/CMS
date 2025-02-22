@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useLocation } from "react-router-dom"
 import {
   Box,
   Button,
@@ -17,7 +18,7 @@ import {
   DialogActions,
   useMediaQuery
 } from "@mui/material"
-import { Book, Eye, EyeOff, Check } from "lucide-react"
+import { Book, Eye, EyeOff, Check, ArrowLeft } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { login } from "../services/api"
 import { getUserFromCookie } from '../utils/cookies'
@@ -65,6 +66,9 @@ const theme = createTheme({
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const searchParams = new URLSearchParams(location.search)
+  const userType = searchParams.get('userType')
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
   const [formData, setFormData] = useState({
     identifier: "",
@@ -143,11 +147,32 @@ export default function Login() {
           width: '100%',
           background: 'radial-gradient(circle at center, #2E7D32 0%, #4CAF50 40%, #A5D6A7 75%, #ffffff 100%)',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           py: 2,
+          position: 'relative',
         }}
       >
+        <Button
+          startIcon={<ArrowLeft size={isMobile ? 16 : 20} />}
+          onClick={() => navigate('/')}
+          sx={{
+            position: 'absolute',
+            left: { xs: 10, sm: 20, md: 40 },
+            top: { xs: 10, sm: 20, md: 40 },
+            color: "white",
+            backgroundColor: "primary.main",
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            py: { xs: 1, sm: 1.5 },
+            px: { xs: 2, sm: 3 },
+            '&:hover': {
+              backgroundColor: '#1B5E20',
+            },
+          }}
+        >
+          Back to Home
+        </Button>
         <Container component="main" maxWidth="sm">
           <Box
             sx={{
@@ -161,6 +186,7 @@ export default function Login() {
               width: "100%",
               maxWidth: "600px",
               margin: "0 auto",
+              position: "relative",
             }}
           >
             <Box
@@ -229,19 +255,33 @@ export default function Login() {
               >
                 {isLoading ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Login'}
               </Button>
-              <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 2 }}>
-                Don't have an account?{" "}
+              <Typography variant="body2" align="center">
                 <Link 
-                  href="/signup" 
+                  href="/forgot-password"
                   onClick={(e) => {
-                    e.preventDefault()
-                    navigate('/signup')
+                    e.preventDefault();
+                    navigate('/forgot-password');
                   }}
-                  sx={{ color: "primary.main", textDecoration: "none", fontWeight: "medium" }}
+                  sx={{ color: "primary.main", textDecoration: "none" }}
                 >
-                  Sign up
+                  Forgot password?
                 </Link>
               </Typography>
+              {userType === 'teacher' && (
+                <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 2 }}>
+                  Don't have an account?{" "}
+                  <Link 
+                    href="/signup" 
+                    onClick={(e) => {
+                      e.preventDefault()
+                      navigate('/signup')
+                    }}
+                    sx={{ color: "primary.main", textDecoration: "none", fontWeight: "medium" }}
+                  >
+                    Sign up
+                  </Link>
+                </Typography>
+              )}
             </Box>
           </Box>
         </Container>

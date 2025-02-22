@@ -1,10 +1,12 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { isAuthenticated, getUserRole } from './utils/auth';
+import Landing from './pages/landing';
 import SignUp from './pages/signUp';
 import Login from './pages/login';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import ForgotPassword from './pages/forgot-password';
 import './App.css';
 
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -30,6 +32,7 @@ function App() {
     <Router>
       <div className="App">
         <Routes>
+          <Route path="/" element={<Landing />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/login" element={<Login />} />
           <Route 
@@ -59,7 +62,8 @@ function App() {
               />
             } 
           />
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </Router>

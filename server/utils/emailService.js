@@ -43,3 +43,35 @@ exports.sendWelcomeEmail = async (user, plainPassword) => {
     throw new Error('Failed to send welcome email');
   }
 };
+
+exports.sendOTPEmail = async (email, otp) => {
+  const mailOptions = {
+    from: process.env.gmail_id,
+    to: email,
+    subject: 'Password Reset OTP - CMS',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2E7D32;">Password Reset OTP</h2>
+        <p>You have requested to reset your password. Here is your OTP:</p>
+        
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <h1 style="color: #2E7D32; text-align: center; letter-spacing: 5px;">${otp}</h1>
+        </div>
+
+        <p>This OTP will expire in 10 minutes.</p>
+        <p>If you didn't request this, please ignore this email.</p>
+        
+        <p style="margin-top: 20px;">Best regards,</p>
+        <p>The CMS Team</p>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('OTP email sent successfully');
+  } catch (error) {
+    console.error('Error sending OTP email:', error);
+    throw new Error('Failed to send OTP email');
+  }
+};

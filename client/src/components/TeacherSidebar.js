@@ -10,6 +10,7 @@ import {
   ListItemIcon,
   ListItemText,
   Toolbar,
+  Avatar,
 } from '@mui/material';
 import {
   Users,
@@ -20,7 +21,10 @@ import {
   BookOpen,
   BarChart,
   MessageCircle,
+  User,
 } from 'lucide-react';
+import { getUserFromCookie } from '../utils/cookies';
+import { logout } from '../utils/auth';
 
 const drawerWidth = 240;
 
@@ -28,6 +32,17 @@ export default function TeacherSidebar({ mobileOpen, handleDrawerToggle }) {
   const navigate = useNavigate();
   const location = useLocation();
   
+  // Get user data from cookie
+  const userData = getUserFromCookie();
+  const userName = userData?.user?.name || 'Teacher';
+
+  // Define a green color theme
+const theme = {
+  primary: '#2e7d32', // dark green
+  light: '#81c784',   // light green
+  background: '#e8f5e9' // very light green background
+};
+
   const menuItems = [
     { text: 'Dashboard', icon: <BookOpen size={24} />, path: '/teacher-dashboard' },
     { text: 'Students', icon: <Users size={24} />, path: '/teacher/students' },
@@ -40,10 +55,37 @@ export default function TeacherSidebar({ mobileOpen, handleDrawerToggle }) {
 
   const drawer = (
     <Box>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div">
-          Teacher Portal
-        </Typography>
+      <Toolbar 
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1.5,
+          minHeight: '49px !important', // Reduce default height
+          py: 1 // Reduce padding
+        }}
+      >
+        <Avatar 
+          sx={{ 
+            bgcolor: 'primary.main',
+            width: 32, // Reduced from 40
+            height: 32, // Reduced from 40
+          }}
+        >
+          <User size={20} /> {/* Reduced from 24 */}
+        </Avatar>
+        <Box>
+          <Typography 
+            variant="subtitle2" // Changed from subtitle1
+            noWrap 
+            component="div" 
+            sx={{ 
+              fontWeight: 'medium',
+              color: 'primary.main'
+            }}
+          >
+            {userName}
+          </Typography>
+        </Box>
       </Toolbar>
       <Divider />
       <List>
@@ -54,9 +96,9 @@ export default function TeacherSidebar({ mobileOpen, handleDrawerToggle }) {
               onClick={() => navigate(item.path)}
               sx={{
                 '&.Mui-selected': {
-                  backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                  backgroundColor: theme.primary,
                   '&:hover': {
-                    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                    backgroundColor: 'rgba(76, 175, 80, 0.8)',
                   },
                 },
               }}
@@ -70,7 +112,10 @@ export default function TeacherSidebar({ mobileOpen, handleDrawerToggle }) {
       <Divider />
       <List>
         <ListItem disablePadding>
-          <ListItemButton onClick={() => navigate('/login')}>
+          <ListItemButton onClick={() => {
+            logout();
+            navigate('/login');
+          }}>
             <ListItemIcon>
               <LogOut size={24} />
             </ListItemIcon>

@@ -20,3 +20,10 @@ export const getUserRole = () => {
   const user = getUserFromCookie();
   return user?.user.role || null;
 };
+
+export const logout = () => {
+  // Clear all cookies
+  document.cookie.split(";").forEach(function(c) { 
+    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+  });
+};

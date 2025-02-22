@@ -21,9 +21,11 @@ app.use(cors({
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
+const batchRoutes = require('./routes/batchRoutes');
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/batch', batchRoutes);
 
 // MongoDB connection
 const connectDB = async () => {

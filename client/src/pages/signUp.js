@@ -22,7 +22,7 @@ import {
   CircularProgress,
   useMediaQuery
 } from "@mui/material"
-import { Book, Eye, EyeOff, Check } from "lucide-react"
+import { Book, Eye, EyeOff, Check, ArrowLeft } from "lucide-react"
 import { signup } from '../services/api';
 
 const countryCodes = [
@@ -219,12 +219,35 @@ export default function SignUp() {
           width: '100%',
           background: 'radial-gradient(circle at center, #2E7D32 0%, #4CAF50 40%, #A5D6A7 75%, #ffffff 100%)',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          py: 2, // Reduced padding for mobile
+          py: 2,
+          position: 'relative',
         }}
       >
-        <Container component="main" maxWidth="sm" sx={{ px: isMobile ? 2 : 3 }}>
+        <Button
+          startIcon={<ArrowLeft size={isMobile ? 16 : 20} />}
+          onClick={() => navigate('/')}
+          sx={{
+            position: 'absolute',
+            left: { xs: 16, sm: 30, md: 50 },
+            top: { xs: 16, sm: 30, md: 50 },
+            color: "white",
+            backgroundColor: "primary.main",
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            py: { xs: 1, sm: 1.5 },
+            px: { xs: 2, sm: 3 },
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            '&:hover': {
+              backgroundColor: '#1B5E20',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+            },
+          }}
+        >
+          Back to Home
+        </Button>
+        <Container component="main" maxWidth="sm" sx={{ px: isMobile ? 2 : 3, mt: { xs: 5, sm: 6, md: 7 } }}>
           <Box
             sx={{
               display: "flex",
@@ -401,19 +424,28 @@ export default function SignUp() {
                   'Sign Up'
                 )}
               </Button>
-              <Typography variant={isMobile ? "caption" : "body2"} color="text.secondary" align="center" sx={{ mt: 1 }}>
-                Already have an account?{" "}
-                <Link 
-                  href="/login" 
-                  onClick={(e) => {
-                    e.preventDefault()
-                    navigate('/login')
-                  }}
-                  sx={{ color: "primary.main", textDecoration: "none", fontWeight: "medium" }}
-                >
-                  Log in
-                </Link>
-              </Typography>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 1,
+                mt: 1 
+              }}>
+                <Typography variant={isMobile ? "caption" : "body2"} color="text.secondary" align="center">
+                  Already have an account?{" "}
+                  <Link 
+                    href="/login" 
+                    onClick={(e) => {
+                      e.preventDefault()
+                      navigate('/login')
+                    }}
+                    sx={{ color: "primary.main", textDecoration: "none", fontWeight: "medium" }}
+                  >
+                    Log in
+                  </Link>
+                </Typography>
+                {/* Remove or comment out the old "Go to Home" button inside the form */}
+              </Box>
             </Box>
           </Box>
         </Container>

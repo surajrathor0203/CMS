@@ -21,6 +21,7 @@ import {
   MessageCircle,
   Award,
 } from 'lucide-react';
+import { logout } from '../utils/auth';
 
 const drawerWidth = 240;
 
@@ -54,9 +55,9 @@ export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
               onClick={() => navigate(item.path)}
               sx={{
                 '&.Mui-selected': {
-                  backgroundColor: 'rgba(80, 210, 43, 0.4)',
+                  backgroundColor: 'rgba(76, 175, 80, 1)',
                   '&:hover': {
-                    backgroundColor: 'rgba(80, 210, 43, 0.4)',
+                    backgroundColor: 'rgba(76, 175, 80, 0.5)',
                   },
                 },
               }}
@@ -70,7 +71,10 @@ export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
       <Divider />
       <List>
         <ListItem disablePadding>
-          <ListItemButton onClick={() => navigate('/login')}>
+          <ListItemButton onClick={() => {
+            logout();
+            navigate('/login');
+          }}>
             <ListItemIcon>
               <LogOut size={24} />
             </ListItemIcon>
