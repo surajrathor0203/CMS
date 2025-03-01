@@ -11,7 +11,8 @@ const api = axios.create({
 export const login = async (identifier, password) => {
   try {
     const response = await api.post('/auth/login', { identifier, password });
-    if (response.data.success) {
+    if (response.data.success && response.data.user) {
+      // Store the complete user data
       setUserCookie(response.data);
     }
     return response.data;
@@ -103,6 +104,15 @@ export const getBatches = async () => {
   }
 };
 
+export const getBatchById = async (batchId) => {
+  try {
+    const response = await api.get(`/batch/${batchId}`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const updateBatch = async (batchId, batchData) => {
   try {
     const response = await api.put(`/batch/${batchId}`, batchData);
@@ -118,5 +128,43 @@ export const deleteBatch = async (batchId) => {
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : error;
+  }
+};
+
+export const addStudent = async (batchId, studentData) => {
+  const response = await axios.post(`/api/batches/${batchId}/students`, studentData);
+  return response.data;
+};
+
+export const uploadFiles = async (batchId, files) => {
+  const formData = new FormData();
+  files.forEach(file => {
+    formData.append('files', file);
+  });
+  const response = await axios.post(`/api/batches/${batchId}/files`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+  return response.data;
+};
+
+export const createMultipleStudents = async (students) => {
+  try {
+    const response = await api.post('/students/create-multiple', { students });
+    return response.data;
+  } catch (error) {
+    throw error.response ? error.response.data : error;
+  }
+};
+
+export const checkStudentEmail = async (email, teacherId) => {
+  try {
+    const response = await api.get(`/students/check-email/${email}`, {
+      params: { teacherId }
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
   }
 };

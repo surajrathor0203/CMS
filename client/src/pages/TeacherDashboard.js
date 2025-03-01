@@ -34,6 +34,8 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import TeacherLayout from '../components/TeacherLayout';
 import { createBatch, getBatches, updateBatch, deleteBatch } from '../services/api';
 import dayjs from 'dayjs';
+import { useNavigate } from 'react-router-dom';
+import { getUserFromCookie } from '../utils/cookies'; // Import the function to get user data from cookies
 
 // Define a green color theme
 const theme = {
@@ -49,8 +51,11 @@ export default function TeacherDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const userData = getUserFromCookie();
+  const teacherSubject = userData?.user?.subject || 'N/A';
   const [newBatch, setNewBatch] = useState({
     name: '',
+    subject: teacherSubject,
     startTime: null,
     endTime: null,
     openingDate: null
@@ -67,11 +72,13 @@ export default function TeacherDashboard() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [editBatch, setEditBatch] = useState({
     name: '',
+    subject: teacherSubject,
     startTime: null,
     endTime: null,
     openingDate: null
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchBatches();
@@ -184,6 +191,7 @@ export default function TeacherDashboard() {
     try {
       const formattedBatch = {
         name: newBatch.name.trim(),
+        subject: teacherSubject,
         startTime: formatTime(newBatch.startTime),
         endTime: formatTime(newBatch.endTime),
         openingDate: newBatch.openingDate.toDate().toISOString()
@@ -195,6 +203,7 @@ export default function TeacherDashboard() {
         handleClose();
         setNewBatch({
           name: '',
+          subject: teacherSubject,
           startTime: null,
           endTime: null,
           openingDate: null
@@ -249,6 +258,7 @@ export default function TeacherDashboard() {
   const handleEditClick = () => {
     setEditBatch({
       name: selectedBatch.name,
+      subject: selectedBatch.subject || teacherSubject,
       startTime: dayjs(selectedBatch.startTime),
       endTime: dayjs(selectedBatch.endTime),
       openingDate: dayjs(selectedBatch.openingDate)
@@ -292,6 +302,7 @@ export default function TeacherDashboard() {
     try {
       const formattedBatch = {
         name: editBatch.name.trim(),
+        subject: teacherSubject,
         startTime: formatTime(editBatch.startTime),
         endTime: formatTime(editBatch.endTime),
         openingDate: editBatch.openingDate.toDate().toISOString()
@@ -341,6 +352,10 @@ export default function TeacherDashboard() {
     }
   };
 
+  const handleBatchClick = (batchId) => {
+    navigate(`/teacher-dashboard/batch/${batchId}`);
+  };
+
   return (
     <TeacherLayout title="Dashboard">
       <Box>
@@ -384,9 +399,11 @@ export default function TeacherDashboard() {
                     transition: 'transform 0.3s ease-in-out', // Add smooth transition
                     '&:hover': {
                       transform: 'translateY(-8px)',
+                      cursor: 'pointer'
                     },
                     position: 'relative', // Add this
                   }}
+                  onClick={() => handleBatchClick(batch._id)}
                 >
                   {isUpcomingBatch(batch.openingDate) && (
                     <Box
@@ -413,8 +430,16 @@ export default function TeacherDashboard() {
                       color: 'white',
                       py: 1.5
                     }}
-                    title={batch.name}
-                    titleTypographyProps={{ variant: 'subtitle1' }}
+                    title={
+                      <Box>
+                        <Typography variant="subtitle1">
+                          {batch.name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                          {batch.subject || teacherSubject}
+                        </Typography>
+                      </Box>
+                    }
                   />
                   <CardContent sx={{ pt: 2, pb: 1.5 }}>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -443,7 +468,13 @@ export default function TeacherDashboard() {
                         Opens: {formatDisplayDate(batch.openingDate)}
                       </Typography>
                       
-                      <IconButton size="small" onClick={(e) => handleMenuClick(e, batch)}>
+                      <IconButton 
+                        size="small" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMenuClick(e, batch);
+                        }}
+                      >
                         <MoreVertIcon />
                       </IconButton>
                     </Box>

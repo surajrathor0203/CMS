@@ -26,8 +26,9 @@ export default function TeacherLayout({ children, title }) {
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
-          bgcolor: 'white',
-          color: 'black',
+          bgcolor: '#2e7d32', // Changed to dark green
+          color: 'white',     // Changed to white for better contrast
+          boxShadow: 1
         }}
       >
         <Toolbar>

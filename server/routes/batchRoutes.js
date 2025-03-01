@@ -1,79 +1,88 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
-const batchController = require('../controllers/batchController');
 const Batch = require('../models/Batch');
 const auth = require('../middleware/auth');
-const { validateBatch } = require('../middleware/validateBatch');
 
-// Get all batches
+// Get all batches for the logged-in teacher
 router.get('/', auth, async (req, res) => {
   try {
-    const batches = await Batch.find({ teacher: req.user._id });
+    const batches = await Batch.find({ teacher: req.user._id })
+      .populate('students', 'name email')
+      .sort({ createdAt: -1 });
+    
     res.json({ success: true, data: batches });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Error fetching batches:', error);
+    res.status(500).json({ success: false, message: 'Error fetching batches' });
   }
 });
 
-// Create batch route
-router.post('/create', protect, batchController.createBatch);
-
-// Update batch route
-router.put('/:id', protect, validateBatch, async (req, res) => {
+// Create a new batch
+router.post('/create', auth, async (req, res) => {
   try {
-    const { id } = req.params;
-    const { name, startTime, endTime, openingDate } = req.body;
+    const { name, subject, startTime, endTime, openingDate } = req.body;
 
-    // Check if batch exists
-    const batch = await Batch.findById(id);
-    if (!batch) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Batch not found' 
-      });
-    }
-
-    // Check if another batch exists with the same name (excluding current batch)
-    const existingBatch = await Batch.findOne({ 
-      name, 
-      _id: { $ne: id } 
-    });
-    
+    // Check if batch with same name exists
+    const existingBatch = await Batch.findOne({ name });
     if (existingBatch) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Batch name already exists' 
+        message: 'Batch with this name already exists' 
       });
     }
 
-    // Update batch
-    const updatedBatch = await Batch.findByIdAndUpdate(
-      id,
-      { name, startTime, endTime, openingDate },
-      { new: true, runValidators: true }
-    );
+    const batch = new Batch({
+      name,
+      subject,
+      teacher: req.user._id,
+      startTime,
+      endTime,
+      openingDate
+    });
 
-    res.status(200).json({
+    await batch.save();
+    res.status(201).json({ success: true, data: batch });
+  } catch (error) {
+    console.error('Error creating batch:', error);
+    res.status(500).json({ success: false, message: 'Error creating batch' });
+  }
+});
+
+// Get a single batch by ID
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const batch = await Batch.findOne({
+      _id: req.params.id,
+      teacher: req.user._id
+    }).populate('students');
+
+    if (!batch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Batch not found'
+      });
+    }
+
+    res.json({
       success: true,
-      message: 'Batch updated successfully',
-      data: updatedBatch
+      data: batch
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error fetching batch'
     });
   }
 });
 
-// Delete batch route
-router.delete('/:id', protect, async (req, res) => {
+// Update a batch
+router.put('/:id', auth, async (req, res) => {
   try {
-    const { id } = req.params;
-    
-    // Check if batch exists
-    const batch = await Batch.findById(id);
+    const batch = await Batch.findOne({ 
+      _id: req.params.id, 
+      teacher: req.user._id 
+    });
+
     if (!batch) {
       return res.status(404).json({ 
         success: false, 
@@ -81,26 +90,38 @@ router.delete('/:id', protect, async (req, res) => {
       });
     }
 
-    // Check if user owns the batch
-    if (batch.teacher.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'Not authorized to delete this batch'
+    const updates = req.body;
+    Object.keys(updates).forEach(key => {
+      batch[key] = updates[key];
+    });
+
+    await batch.save();
+    res.json({ success: true, data: batch });
+  } catch (error) {
+    console.error('Error updating batch:', error);
+    res.status(500).json({ success: false, message: 'Error updating batch' });
+  }
+});
+
+// Delete a batch
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const batch = await Batch.findOneAndDelete({ 
+      _id: req.params.id, 
+      teacher: req.user._id 
+    });
+
+    if (!batch) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Batch not found' 
       });
     }
 
-    // Delete the batch
-    await Batch.findByIdAndDelete(id);
-
-    res.status(200).json({
-      success: true,
-      message: 'Batch deleted successfully'
-    });
+    res.json({ success: true, message: 'Batch deleted successfully' });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
-    });
+    console.error('Error deleting batch:', error);
+    res.status(500).json({ success: false, message: 'Error deleting batch' });
   }
 });
 

@@ -13,7 +13,18 @@ export const removeCookie = (name) => {
 };
 
 export const setUserCookie = (userData) => {
-  setCookie('user', JSON.stringify(userData));
+  // Make sure we preserve all user fields from the response
+  const userToStore = {
+    ...userData,
+    user: {
+      ...userData.user,
+      // Only set default values if fields are undefined/null
+      username: userData.user.username || userData.user.username,
+      subject: userData.user.subject || userData.user.subject,
+      address: userData.user.address || userData.user.address
+    }
+  };
+  setCookie('user', JSON.stringify(userToStore));
   setCookie('token', userData.token);
 };
 
@@ -21,8 +32,6 @@ export const getUserFromCookie = () => {
   const userCookie = getCookie('user');
   return userCookie ? JSON.parse(userCookie) : null;
 };
-
-// console.log(getUserFromCookie());
 
 export const clearUserCookies = () => {
   removeCookie('user');
