@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -11,15 +11,11 @@ import {
   CircularProgress,
   Alert,
   Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import TeacherLayout from '../components/TeacherLayout';
-import { getBatchById } from '../services/api';
+import { getBatchById, getStudentsByBatch } from '../services/api';
 import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -33,24 +29,32 @@ const theme = {
 
 export default function BatchPage() {
   const { batchId } = useParams();
+  const navigate = useNavigate();
   const [batch, setBatch] = useState(null);
+  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [openDialog, setOpenDialog] = useState(false);
-  const [newStudent, setNewStudent] = useState({ name: '', email: '' });
 
   useEffect(() => {
-    fetchBatchDetails();
+    fetchData();
   }, [batchId]);
 
-  const fetchBatchDetails = async () => {
+  const fetchData = async () => {
     try {
-      const response = await getBatchById(batchId);
-      if (response.data) {
-        setBatch(response.data);
+      setLoading(true);
+      const [batchResponse, studentsResponse] = await Promise.all([
+        getBatchById(batchId),
+        getStudentsByBatch(batchId)
+      ]);
+
+      if (batchResponse.data) {
+        setBatch(batchResponse.data);
+      }
+      if (studentsResponse.data) {
+        setStudents(studentsResponse.data);
       }
     } catch (err) {
-      setError('Failed to fetch batch details');
+      setError('Failed to fetch data');
     } finally {
       setLoading(false);
     }
@@ -74,11 +78,8 @@ export default function BatchPage() {
     });
   };
 
-  const handleAddStudent = () => {
-    // TODO: Implement API call to add student
-    console.log('Adding student:', newStudent);
-    setOpenDialog(false);
-    setNewStudent({ name: '', email: '' });
+  const handleAddStudentClick = () => {
+    navigate(`/teacher-dashboard/batch/${batchId}/add-student`);
   };
 
   if (loading) {
@@ -108,11 +109,18 @@ export default function BatchPage() {
   }
 
   return (
-    <TeacherLayout>
+    <TeacherLayout title={batch.name}>
       <Box sx={{ p: 3 }}>
-        <Typography variant="h4" gutterBottom fontWeight="bold" color={theme.primary}>
-          {batch.name}
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleAddStudentClick}
+            sx={{ bgcolor: theme.primary }}
+          >
+            Add New Student
+          </Button>
+        </Box>
 
         <Grid container spacing={3}>
           {/* Batch Information Card */}
@@ -163,21 +171,13 @@ export default function BatchPage() {
                   <Typography variant="h6" color={theme.primary}>
                     Enrolled Students
                   </Typography>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => setOpenDialog(true)}
-                    sx={{ bgcolor: theme.primary }}
-                  >
-                    Add Student
-                  </Button>
                 </Box>
                 <Divider sx={{ mb: 2 }} />
                 
-                {batch.students && batch.students.length > 0 ? (
+                {students && students.length > 0 ? (
                   <Grid container spacing={2}>
-                    {batch.students.map((student, index) => (
-                      <Grid item xs={12} sm={6} key={student._id || index}>
+                    {students.map((student) => (
+                      <Grid item xs={12} sm={6} key={student._id}>
                         <Box sx={{ 
                           display: 'flex', 
                           alignItems: 'center',
@@ -193,7 +193,10 @@ export default function BatchPage() {
                               {student.name}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              {student.email}
+                              {student.email} • {student.phone}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {student.subject}
                             </Typography>
                           </Box>
                         </Box>
@@ -210,35 +213,6 @@ export default function BatchPage() {
           </Grid>
         </Grid>
       </Box>
-
-      {/* Add Student Dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-        <DialogTitle>Add New Student</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Student Name"
-            fullWidth
-            value={newStudent.name}
-            onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
-          />
-          <TextField
-            margin="dense"
-            label="Student Email"
-            type="email"
-            fullWidth
-            value={newStudent.email}
-            onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button onClick={handleAddStudent} variant="contained" sx={{ bgcolor: theme.primary }}>
-            Add
-          </Button>
-        </DialogActions>
-      </Dialog>
     </TeacherLayout>
   );
 }

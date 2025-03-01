@@ -8,6 +8,7 @@ import StudentDashboard from './pages/StudentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import ForgotPassword from './pages/forgot-password';
 import BatchPage from './pages/BatchPage';
+import AddStudent from './pages/AddStudent';
 import './App.css';
 
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -59,6 +60,15 @@ function App() {
             element={
               <ProtectedRoute 
                 element={<BatchPage />} 
+                allowedRoles={['teacher']} 
+              />
+            } 
+          />
+          <Route 
+            path="/teacher-dashboard/batch/:batchId/add-student" 
+            element={
+              <ProtectedRoute 
+                element={<AddStudent />} 
                 allowedRoles={['teacher']} 
               />
             } 

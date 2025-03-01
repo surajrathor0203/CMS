@@ -45,6 +45,8 @@ const theme = {
   upcoming: '#ff9800', // orange color for upcoming badge
 };
 
+
+
 export default function TeacherDashboard() {
   const [batches, setBatches] = useState([]);
   const [open, setOpen] = useState(false);
@@ -53,6 +55,7 @@ export default function TeacherDashboard() {
   const [success, setSuccess] = useState(false);
   const userData = getUserFromCookie();
   const teacherSubject = userData?.user?.subject || 'N/A';
+  
   const [newBatch, setNewBatch] = useState({
     name: '',
     subject: teacherSubject,
@@ -86,9 +89,10 @@ export default function TeacherDashboard() {
 
   const fetchBatches = async () => {
     try {
-      const response = await getBatches();
+      const userData = getUserFromCookie();
+      const response = await getBatches(userData.user.id);
       if (response.data) {
-        setBatches(response.data);
+        setBatches(response.data.data);
       }
     } catch (err) {
       setError('Failed to fetch batches');
@@ -168,6 +172,7 @@ export default function TeacherDashboard() {
       isValid = false;
     }
 
+
     setErrors(newErrors);
     return isValid;
   };
@@ -189,12 +194,14 @@ export default function TeacherDashboard() {
 
     setLoading(true);
     try {
+      const userData = getUserFromCookie();
       const formattedBatch = {
         name: newBatch.name.trim(),
         subject: teacherSubject,
         startTime: formatTime(newBatch.startTime),
         endTime: formatTime(newBatch.endTime),
-        openingDate: newBatch.openingDate.toDate().toISOString()
+        openingDate: newBatch.openingDate.toDate().toISOString(),
+        teacher: userData.user.id // Add the teacher ID from cookies
       };
       
       const result = await createBatch(formattedBatch);

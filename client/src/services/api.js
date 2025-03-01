@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { setUserCookie } from '../utils/cookies';
+import { setUserCookie, getUserFromCookie } from '../utils/cookies';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
@@ -95,18 +95,14 @@ export const createBatch = async (batchData) => {
   }
 };
 
-export const getBatches = async () => {
-  try {
-    const response = await api.get('/batch');
-    return response.data;
-  } catch (error) {
-    throw error.response ? error.response.data : error;
-  }
+export const getBatches = (teacherId) => {
+  return api.get(`/batch?teacherId=${teacherId}`);
 };
 
 export const getBatchById = async (batchId) => {
   try {
-    const response = await api.get(`/batch/${batchId}`);
+    const userData = getUserFromCookie();
+    const response = await api.get(`/batch/${batchId}?teacherId=${userData.user.id}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -151,10 +147,23 @@ export const uploadFiles = async (batchId, files) => {
 
 export const createMultipleStudents = async (students) => {
   try {
-    const response = await api.post('/students/create-multiple', { students });
+    const response = await api.post('/students/create-multiple', 
+      { students },
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to create students');
+    }
+    
     return response.data;
   } catch (error) {
-    throw error.response ? error.response.data : error;
+    console.error('API Error:', error);
+    throw error.response?.data || error;
   }
 };
 
@@ -166,5 +175,14 @@ export const checkStudentEmail = async (email, teacherId) => {
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
+  }
+};
+
+export const getStudentsByBatch = async (batchId) => {
+  try {
+    const response = await api.get(`/students/batch/${batchId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
   }
 };
