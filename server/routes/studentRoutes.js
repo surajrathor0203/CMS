@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Student = require('../models/Student');
-const { checkEmail, getStudentsByBatch } = require('../controllers/studentController');
+const Batch = require('../models/Batch');
+const { checkEmail, getStudentsByBatch, deleteFromBatch } = require('../controllers/studentController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.post('/create-multiple', async (req, res) => {
@@ -151,30 +152,7 @@ router.put('/update-teacher-info/:email', async (req, res) => {
   }
 });
 
-router.delete('/:studentId/batch/:batchId', async (req, res) => {
-  try {
-      const { studentId, batchId } = req.params;
-      const student = await Student.findById(studentId);
-
-      if (!student) {
-          return res.status(404).json({ message: 'Student not found' });
-      }
-
-      if (student.teachersInfo.length === 1) {
-          // If student is enrolled in only one batch, delete the whole student
-          await Student.findByIdAndDelete(studentId);
-          return res.json({ message: 'Student deleted successfully' });
-      } else {
-          // Remove only the specific batch info
-          await Student.findByIdAndUpdate(studentId, {
-              $pull: { teachersInfo: { batchId: batchId } }
-          });
-          return res.json({ message: 'Student removed from batch successfully' });
-      }
-  } catch (error) {
-      res.status(500).json({ message: error.message });
-  }
-});
+router.delete('/:studentId/batch/:batchId', deleteFromBatch);
 
 router.get('/check-email/:email', protect, checkEmail);
 router.get('/batch/:batchId', protect, getStudentsByBatch);

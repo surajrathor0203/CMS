@@ -1,4 +1,5 @@
 const Student = require('../models/Student');
+const Batch = require('../models/Batch');  // Add this line
 
 exports.createStudents = async (req, res) => {
   try {
@@ -113,4 +114,48 @@ exports.getStudentsByBatch = async (req, res) => {
       message: 'Failed to fetch students'
     });
   }
+};
+
+exports.deleteFromBatch = async (req, res) => {
+    try {
+        const { studentId, batchId } = req.params;
+        const student = await Student.findById(studentId);
+
+        if (!student) {
+            return res.status(404).json({ message: 'Student not found' });
+        }
+
+        // Check how many teachersInfo objects exist
+        if (student.teachersInfo.length <= 1) {
+            // If only one batch or less, delete the entire student
+            await Student.findByIdAndDelete(studentId);
+            // Also remove from the batch
+            await Batch.findByIdAndUpdate(batchId, {
+                $pull: { students: studentId }
+            });
+            return res.json({ 
+                message: 'Student deleted completely',
+                type: 'full_delete'
+            });
+        } else {
+            // Remove only the specific batch info
+            student.teachersInfo = student.teachersInfo.filter(
+                info => info.batchId.toString() !== batchId
+            );
+            await student.save();
+            
+            // Also remove from the batch
+            await Batch.findByIdAndUpdate(batchId, {
+                $pull: { students: studentId }
+            });
+            
+            return res.json({ 
+                message: 'Student removed from batch only',
+                type: 'batch_remove'
+            });
+        }
+    } catch (error) {
+        console.error('Error in deleteFromBatch:', error);
+        res.status(500).json({ message: 'Error removing student from batch' });
+    }
 };

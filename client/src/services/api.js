@@ -198,6 +198,7 @@ export const updateStudentTeacherInfo = async (email, teacherInfo) => {
   }
 };
 
-export const deleteStudentFromBatch = (studentId, batchId) => {
-  return api.delete(`/students/${studentId}/batch/${batchId}`);
+export const deleteStudentFromBatch = async (studentId, batchId) => {
+  const response = await api.delete(`/students/${studentId}/batch/${batchId}`);
+  return response.data;
 };

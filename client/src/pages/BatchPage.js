@@ -56,7 +56,10 @@ export default function BatchPage() {
   const [studentToDelete, setStudentToDelete] = useState(null);
 
   useEffect(() => {
-    fetchData();
+    const loadData = async () => {
+      await fetchData();
+    };
+    loadData();
   }, [batchId]);
 
   const fetchData = async () => {
@@ -220,7 +223,7 @@ export default function BatchPage() {
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <PersonIcon sx={{ color: theme.primary, mr: 1 }} />
                       <Typography variant="body1">
-                        Students: {batch.students?.length || 0}
+                        Students: {filteredStudents.length}
                       </Typography>
                     </Box>
                   </Grid>

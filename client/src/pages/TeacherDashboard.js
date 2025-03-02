@@ -23,7 +23,6 @@ import {
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PersonIcon from '@mui/icons-material/Person';
 import AssignmentIcon from '@mui/icons-material/Assignment';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -32,7 +31,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import TeacherLayout from '../components/TeacherLayout';
-import { createBatch, getBatches, updateBatch, deleteBatch } from '../services/api';
+import { createBatch, getBatches, updateBatch, deleteBatch, getStudentsByBatch } from '../services/api';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { getUserFromCookie } from '../utils/cookies'; // Import the function to get user data from cookies
@@ -82,6 +81,7 @@ export default function TeacherDashboard() {
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const navigate = useNavigate();
+  const [batchStudentCounts, setBatchStudentCounts] = useState({});
 
   useEffect(() => {
     fetchBatches();
@@ -92,7 +92,16 @@ export default function TeacherDashboard() {
       const userData = getUserFromCookie();
       const response = await getBatches(userData.user.id);
       if (response.data) {
-        setBatches(response.data.data);
+        const batchesData = response.data.data;
+        setBatches(batchesData);
+
+        // Fetch student counts for each batch
+        const counts = {};
+        for (const batch of batchesData) {
+          const studentsResponse = await getStudentsByBatch(batch._id);
+          counts[batch._id] = studentsResponse.data?.length || 0;
+        }
+        setBatchStudentCounts(counts);
       }
     } catch (err) {
       setError('Failed to fetch batches');
@@ -467,7 +476,7 @@ export default function TeacherDashboard() {
                           <PersonIcon fontSize="small" />
                         </Avatar>
                         <Typography variant="body2" color="text.primary">
-                          {batch.students?.length || 0}
+                          {batchStudentCounts[batch._id] || 0}
                         </Typography>
                       </Box>
 
