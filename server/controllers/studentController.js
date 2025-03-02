@@ -98,19 +98,19 @@ exports.getStudentsByBatch = async (req, res) => {
   try {
     const { batchId } = req.params;
     
-    const students = await Student.find({ batchId })
-      .select('name email phone subject')
-      .sort({ name: 1 });
-    
+    const students = await Student.find({
+      'teachersInfo.batchId': batchId
+    });
+
     res.json({
       success: true,
-      data: students,
-      message: 'Students fetched successfully'
+      data: students
     });
   } catch (error) {
+    console.error('Error fetching students:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Error fetching students'
+      message: 'Failed to fetch students'
     });
   }
 };

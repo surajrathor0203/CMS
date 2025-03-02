@@ -28,25 +28,27 @@ const studentSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  batchId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Batch',
-    required: true
-  },
-  teacherId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
+  teachersInfo: [{
+    batchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Batch',
+      required: true
+    },
+    teacherId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    subject: {
+      type: String,
+      required: true,
+      trim: true
+    }
+  }],
   role: {
     type: String,
     required: true,
     default: 'student',
-    trim: true
-  },
-  subject: {
-    type: String,
-    required: true,
     trim: true
   },
   createdAt: {
@@ -57,9 +59,9 @@ const studentSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Add index for better query performance
+// Add indexes for better query performance
 studentSchema.index({ email: 1 }, { unique: true });
-studentSchema.index({ teacherId: 1 });
-studentSchema.index({ batchId: 1 });
+studentSchema.index({ 'teachersInfo.teacherId': 1 });
+studentSchema.index({ 'teachersInfo.batchId': 1 });
 
 module.exports = mongoose.model('Student', studentSchema);

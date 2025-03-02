@@ -12,6 +12,14 @@ import {
   Alert,
   Button,
   TextField,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  Paper,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import TeacherLayout from '../components/TeacherLayout';
@@ -34,6 +42,9 @@ export default function BatchPage() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -82,6 +93,25 @@ export default function BatchPage() {
     navigate(`/teacher-dashboard/batch/${batchId}/add-student`);
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const filteredStudents = students.filter(student => {
+    const teacherInfo = student.teachersInfo?.find(info => info.batchId === batchId);
+    return (
+      student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      teacherInfo?.subject?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+
   if (loading) {
     return (
       <TeacherLayout>
@@ -123,48 +153,58 @@ export default function BatchPage() {
         </Box>
 
         <Grid container spacing={3}>
-          {/* Batch Information Card */}
-          <Grid item xs={12} md={4}>
-            <Card elevation={2} sx={{ height: '100%' }}>
+          {/* Batch Information Card - Full Width */}
+          <Grid item xs={12}>
+            <Card elevation={2}>
               <CardContent>
                 <Typography variant="h6" gutterBottom color={theme.primary}>
                   Batch Information
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <SubjectIcon sx={{ color: theme.primary, mr: 1 }} />
-                  <Typography variant="body1">
-                    Subject: {batch.subject}
-                  </Typography>
-                </Box>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <SubjectIcon sx={{ color: theme.primary, mr: 1 }} />
+                      <Typography variant="body1">
+                        Subject: {batch.subject}
+                      </Typography>
+                    </Box>
+                  </Grid>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <AccessTimeIcon sx={{ color: theme.primary, mr: 1 }} />
-                  <Typography variant="body1">
-                    Time: {formatTime(batch.startTime)} - {formatTime(batch.endTime)}
-                  </Typography>
-                </Box>
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <AccessTimeIcon sx={{ color: theme.primary, mr: 1 }} />
+                      <Typography variant="body1">
+                        Time: {formatTime(batch.startTime)} - {formatTime(batch.endTime)}
+                      </Typography>
+                    </Box>
+                  </Grid>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <CalendarTodayIcon sx={{ color: theme.primary, mr: 1 }} />
-                  <Typography variant="body1">
-                    Opening Date: {formatDate(batch.openingDate)}
-                  </Typography>
-                </Box>
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <CalendarTodayIcon sx={{ color: theme.primary, mr: 1 }} />
+                      <Typography variant="body1">
+                        Opening Date: {formatDate(batch.openingDate)}
+                      </Typography>
+                    </Box>
+                  </Grid>
 
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <PersonIcon sx={{ color: theme.primary, mr: 1 }} />
-                  <Typography variant="body1">
-                    Students: {batch.students?.length || 0}
-                  </Typography>
-                </Box>
+                  <Grid item xs={12} md={4}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <PersonIcon sx={{ color: theme.primary, mr: 1 }} />
+                      <Typography variant="body1">
+                        Students: {batch.students?.length || 0}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
               </CardContent>
             </Card>
           </Grid>
 
-          {/* Students List Card */}
-          <Grid item xs={12} md={8}>
+          {/* Students List Card - New Row */}
+          <Grid item xs={12}>
             <Card elevation={2}>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -173,36 +213,78 @@ export default function BatchPage() {
                   </Typography>
                 </Box>
                 <Divider sx={{ mb: 2 }} />
+
+                {/* Add Search Box */}
+                <Box sx={{ mb: 2 }}>
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    placeholder="Search students by name, email, phone or subject..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    size="small"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: theme.light,
+                        },
+                        '&:hover fieldset': {
+                          borderColor: theme.primary,
+                        },
+                      },
+                    }}
+                  />
+                </Box>
                 
                 {students && students.length > 0 ? (
-                  <Grid container spacing={2}>
-                    {students.map((student) => (
-                      <Grid item xs={12} sm={6} key={student._id}>
-                        <Box sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center',
-                          p: 1,
-                          borderRadius: 1,
-                          '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.04)' }
-                        }}>
-                          <Avatar sx={{ bgcolor: theme.primary, mr: 2 }}>
-                            {student.name?.[0]?.toUpperCase() || 'S'}
-                          </Avatar>
-                          <Box>
-                            <Typography variant="subtitle1">
-                              {student.name}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {student.email} • {student.phone}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {student.subject}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </Grid>
-                    ))}
-                  </Grid>
+                  <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+                    <TableContainer>
+                      <Table stickyHeader aria-label="students table">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Name</TableCell>
+                            <TableCell>Email</TableCell>
+                            <TableCell>Phone</TableCell>
+                            <TableCell>Subject</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {filteredStudents
+                            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                            .map((student) => {
+                              const teacherInfo = student.teachersInfo?.find(info => info.batchId === batchId);
+                              return (
+                                <TableRow
+                                  key={student._id}
+                                  sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                                >
+                                  <TableCell component="th" scope="row">
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Avatar sx={{ bgcolor: theme.primary, width: 32, height: 32 }}>
+                                        {student.name?.[0]?.toUpperCase() || 'S'}
+                                      </Avatar>
+                                      {student.name}
+                                    </Box>
+                                  </TableCell>
+                                  <TableCell>{student.email}</TableCell>
+                                  <TableCell>{student.phone}</TableCell>
+                                  <TableCell>{teacherInfo?.subject || 'N/A'}</TableCell>
+                                </TableRow>
+                          );
+                        })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                    <TablePagination
+                      rowsPerPageOptions={[5, 10, 25]}
+                      component="div"
+                      count={filteredStudents.length}
+                      rowsPerPage={rowsPerPage}
+                      page={page}
+                      onPageChange={handleChangePage}
+                      onRowsPerPageChange={handleChangeRowsPerPage}
+                    />
+                  </Paper>
                 ) : (
                   <Typography variant="body1" color="text.secondary" textAlign="center">
                     No students enrolled yet

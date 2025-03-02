@@ -11,12 +11,13 @@ import {
   Alert,
 } from '@mui/material';
 import TeacherLayout from '../components/TeacherLayout';
-import { createMultipleStudents } from '../services/api';
+import { createMultipleStudents, checkStudentEmail } from '../services/api';
 
 const AddStudent = () => {
   const navigate = useNavigate();
   const { batchId } = useParams();
   const [emailVerified, setEmailVerified] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const userData = getUserFromCookie(); // Add this line to get user data
   const [studentData, setStudentData] = useState({
     email: '',
@@ -28,20 +29,44 @@ const AddStudent = () => {
     subject: userData?.user?.subject || '' // Get subject from teacher's data
   });
   const [error, setError] = useState('');
+  const [studentExists, setStudentExists] = useState(false);
 
   const handleVerifyEmail = async () => {
-    // Add your email verification logic here
+    setIsVerifying(true);
+    setError('');
+    
     try {
-      // Example verification check
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (emailRegex.test(studentData.email)) {
-        setEmailVerified(true);
-        setError('');
-      } else {
+      if (!emailRegex.test(studentData.email)) {
         setError('Invalid email format');
+        return;
+      }
+
+      const response = await checkStudentEmail(studentData.email, userData.user.id);
+      
+      setEmailVerified(true);
+      
+      if (response.exists) {
+        setStudentExists(true);
+        setError('Student already exists in the system');
+        // Assuming the response includes student data
+        if (response.data) {
+          setStudentData({
+            ...studentData,
+            name: response.data.name || '',
+            phone: response.data.phone || '',
+            parentPhone: response.data.parentPhone || '',
+            address: response.data.address || '',
+          });
+        }
+      } else {
+        setStudentExists(false);
       }
     } catch (err) {
-      setError('Email verification failed');
+      setError(err.message || 'Email verification failed');
+      setEmailVerified(false);
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -52,23 +77,22 @@ const AddStudent = () => {
       return;
     }
     try {
-      // Check if user data exists
       if (!userData || !userData.user || !userData.user.id) {
         setError('Teacher authentication required');
         return;
       }
 
-      console.log('User Data:', userData); // For debugging
-      
       const students = [{
         ...studentData,
-        batchId,
-        teacherId: userData.user.id,
-        role: 'student',
-        subject: userData.user.subject // Ensure subject is included
+        teachersInfo: [{
+          batchId: batchId,
+          teacherId: userData.user.id,
+          subject: userData.user.subject
+        }],
+        role: 'student'
       }];
-
-      console.log('Sending student data:', students); // For debugging
+      
+      console.log('Sending student data:', students);
       
       const response = await createMultipleStudents(students);
       if (response.success) {
@@ -88,7 +112,14 @@ const AddStudent = () => {
         <Card>
           <CardContent>
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-            {emailVerified && <Alert severity="success" sx={{ mb: 2 }}>Email verified successfully!</Alert>}
+            {emailVerified && !studentExists && (
+              <Alert severity="success" sx={{ mb: 2 }}>Email verified. You can proceed with adding the student.</Alert>
+            )}
+            {studentExists && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                This student is already registered. Please use a different email address.
+              </Alert>
+            )}
             <form onSubmit={handleSubmit}>
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                 <TextField
@@ -97,17 +128,22 @@ const AddStudent = () => {
                   type="email"
                   margin="normal"
                   value={studentData.email}
-                  onChange={(e) => setStudentData({...studentData, email: e.target.value})}
+                  onChange={(e) => {
+                    setStudentData({...studentData, email: e.target.value});
+                    setEmailVerified(false);
+                    setStudentExists(false);
+                    setError('');
+                  }}
                   required
-                  disabled={emailVerified}
+                  disabled={emailVerified || isVerifying}
                 />
                 <Button
                   variant="contained"
                   onClick={handleVerifyEmail}
-                  disabled={emailVerified || !studentData.email}
+                  disabled={emailVerified || !studentData.email || isVerifying}
                   sx={{ mt: 1, height: 56 }}
                 >
-                  Verify
+                  {isVerifying ? 'Verifying...' : emailVerified ? 'Verified' : 'Verify'}
                 </Button>
               </Box>
               <TextField
@@ -117,6 +153,7 @@ const AddStudent = () => {
                 value={studentData.name}
                 onChange={(e) => setStudentData({...studentData, name: e.target.value})}
                 required
+                disabled={!emailVerified || studentExists}
               />
               <TextField
                 fullWidth
@@ -125,6 +162,7 @@ const AddStudent = () => {
                 value={studentData.phone}
                 onChange={(e) => setStudentData({...studentData, phone: e.target.value})}
                 required
+                disabled={!emailVerified || studentExists}
               />
               <TextField
                 fullWidth
@@ -133,6 +171,7 @@ const AddStudent = () => {
                 value={studentData.parentPhone}
                 onChange={(e) => setStudentData({...studentData, parentPhone: e.target.value})}
                 required
+                disabled={!emailVerified || studentExists}
               />
               <TextField
                 fullWidth
@@ -143,12 +182,14 @@ const AddStudent = () => {
                 value={studentData.address}
                 onChange={(e) => setStudentData({...studentData, address: e.target.value})}
                 required
+                disabled={!emailVerified || studentExists}
               />
               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
                 <Button
                   variant="contained"
                   color="primary"
                   type="submit"
+                  disabled={!emailVerified || studentExists}
                 >
                   Add Student
                 </Button>

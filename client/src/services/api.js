@@ -170,12 +170,16 @@ export const createMultipleStudents = async (students) => {
 
 export const checkStudentEmail = async (email, teacherId) => {
   try {
-    const response = await api.get(`/students/check-email/${email}`, {
+    const response = await api.get(`/students/check-email/${encodeURIComponent(email)}`, {
       params: { teacherId }
     });
-    return response.data;
+    return {
+      exists: response.data.exists,
+      data: response.data.data,
+      message: response.data.message
+    };
   } catch (error) {
-    throw error.response?.data || error.message;
+    throw error.response?.data || { message: 'Failed to check email' };
   }
 };
 
