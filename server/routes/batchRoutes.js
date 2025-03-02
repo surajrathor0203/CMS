@@ -82,31 +82,34 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // Update a batch
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
-    const teacherId = req.body.teacher;
-    const batch = await Batch.findOne({ 
-      _id: req.params.id, 
-      teacher: teacherId 
-    });
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    const updatedBatch = await Batch.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    );
 
-    if (!batch) {
+    if (!updatedBatch) {
       return res.status(404).json({ 
         success: false, 
         message: 'Batch not found' 
       });
     }
 
-    const updates = req.body;
-    Object.keys(updates).forEach(key => {
-      batch[key] = updates[key];
+    res.json({
+      success: true,
+      data: updatedBatch,
+      message: 'Batch updated successfully'
     });
-
-    await batch.save();
-    res.json({ success: true, data: batch });
   } catch (error) {
-    console.error('Error updating batch:', error);
-    res.status(500).json({ success: false, message: 'Error updating batch' });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
   }
 });
 

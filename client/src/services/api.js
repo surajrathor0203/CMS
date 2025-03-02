@@ -114,13 +114,14 @@ export const updateBatch = async (batchId, batchData) => {
     const response = await api.put(`/batch/${batchId}`, batchData);
     return response.data;
   } catch (error) {
-    throw error.response ? error.response.data : error;
+    throw error.response?.data || error;
   }
 };
 
 export const deleteBatch = async (batchId) => {
   try {
-    const response = await api.delete(`/batch/${batchId}`);
+    const userData = getUserFromCookie();
+    const response = await api.delete(`/batch/${batchId}?teacherId=${userData.user.id}`);
     return response.data;
   } catch (error) {
     throw error.response ? error.response.data : error;
