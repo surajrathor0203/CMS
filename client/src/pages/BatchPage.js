@@ -20,10 +20,17 @@ import {
   TableRow,
   TablePagination,
   Paper,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  IconButton
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import TeacherLayout from '../components/TeacherLayout';
-import { getBatchById, getStudentsByBatch } from '../services/api';
+import { getBatchById, getStudentsByBatch, deleteStudentFromBatch } from '../services/api';
 import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -45,6 +52,8 @@ export default function BatchPage() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -100,6 +109,23 @@ export default function BatchPage() {
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
+  };
+
+  const handleDeleteClick = (student) => {
+    setStudentToDelete(student);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteStudentFromBatch(studentToDelete._id, batchId);
+      // Refresh the students list
+      const studentsResponse = await getStudentsByBatch(batchId);
+      setStudents(studentsResponse.data);
+      setDeleteDialogOpen(false);
+    } catch (err) {
+      setError('Failed to delete student');
+    }
   };
 
   const filteredStudents = students.filter(student => {
@@ -246,6 +272,7 @@ export default function BatchPage() {
                             <TableCell>Email</TableCell>
                             <TableCell>Phone</TableCell>
                             <TableCell>Subject</TableCell>
+                            <TableCell>Actions</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
@@ -269,6 +296,15 @@ export default function BatchPage() {
                                   <TableCell>{student.email}</TableCell>
                                   <TableCell>{student.phone}</TableCell>
                                   <TableCell>{teacherInfo?.subject || 'N/A'}</TableCell>
+                                  <TableCell>
+                                    <IconButton
+                                      onClick={() => handleDeleteClick(student)}
+                                      color="error"
+                                      size="small"
+                                    >
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  </TableCell>
                                 </TableRow>
                           );
                         })}
@@ -295,6 +331,25 @@ export default function BatchPage() {
           </Grid>
         </Grid>
       </Box>
+
+      {/* Add Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to remove {studentToDelete?.name} from this batch?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} color="error" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </TeacherLayout>
   );
 }

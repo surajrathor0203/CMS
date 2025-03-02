@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { getUserFromCookie } from '../utils/cookies';
 import {
   Box,
-  Typography,
   TextField,
   Button,
   Card,
@@ -11,7 +10,7 @@ import {
   Alert,
 } from '@mui/material';
 import TeacherLayout from '../components/TeacherLayout';
-import { createMultipleStudents, checkStudentEmail } from '../services/api';
+import { createMultipleStudents, checkStudentEmail, updateStudentTeacherInfo } from '../services/api';
 
 const AddStudent = () => {
   const navigate = useNavigate();
@@ -82,32 +81,43 @@ const AddStudent = () => {
         return;
       }
 
-      const students = [{
-        ...studentData,
-        teachersInfo: [{
-          batchId: batchId,
-          teacherId: userData.user.id,
-          subject: userData.user.subject
-        }],
-        role: 'student'
-      }];
-      
-      console.log('Sending student data:', students);
-      
-      const response = await createMultipleStudents(students);
-      if (response.success) {
-        navigate(`/teacher-dashboard/batch/${batchId}`);
+      const teacherInfo = {
+        batchId: batchId,
+        teacherId: userData.user.id,
+        subject: userData.user.subject
+      };
+
+      if (studentExists) {
+        // Update existing student
+        const response = await updateStudentTeacherInfo(studentData.email, teacherInfo);
+        if (response.success) {
+          navigate(`/teacher-dashboard/batch/${batchId}`);
+        } else {
+          setError(response.message || 'Failed to update student');
+        }
       } else {
-        setError(response.message || 'Failed to add student');
+        // Create new student
+        const students = [{
+          ...studentData,
+          teachersInfo: [teacherInfo],
+          role: 'student'
+        }];
+        
+        const response = await createMultipleStudents(students);
+        if (response.success) {
+          navigate(`/teacher-dashboard/batch/${batchId}`);
+        } else {
+          setError(response.message || 'Failed to add student');
+        }
       }
     } catch (err) {
-      console.error('Error adding student:', err);
-      setError(err.message || 'Failed to add student');
+      console.error('Error adding/updating student:', err);
+      setError(err.message || 'Failed to add/update student');
     }
   };
 
   return (
-    <TeacherLayout title={"Add New Student"}>
+    <TeacherLayout title={studentExists ? "Update Student" : "Add New Student"}>
       <Box sx={{ p: 3 }}>
         <Card>
           <CardContent>
@@ -189,9 +199,9 @@ const AddStudent = () => {
                   variant="contained"
                   color="primary"
                   type="submit"
-                  disabled={!emailVerified || studentExists}
+                  disabled={!emailVerified}
                 >
-                  Add Student
+                  {studentExists ? 'Update Student' : 'Add Student'}
                 </Button>
                 <Button
                   variant="outlined"

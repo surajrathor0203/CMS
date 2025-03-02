@@ -71,6 +71,111 @@ router.post('/create-multiple', async (req, res) => {
   }
 });
 
+router.post('/check-email', async (req, res) => {
+    try {
+        const { email, teacherId } = req.body;
+        const student = await Student.findOne({ email });
+        
+        if (student) {
+            // Check if student is already associated with this teacher
+            const isAssociated = student.teachersInfo.some(info => 
+                info.teacherId.toString() === teacherId
+            );
+
+            return res.json({
+                exists: true,
+                isAssociated,
+                data: {
+                    name: student.name,
+                    phone: student.phone,
+                    parentPhone: student.parentPhone,
+                    address: student.address
+                }
+            });
+        }
+        
+        return res.json({ exists: false });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+router.put('/update-teacher-info/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const { teacherInfo } = req.body;
+
+    if (!teacherInfo || !teacherInfo.batchId || !teacherInfo.teacherId || !teacherInfo.subject) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid teacher info provided'
+      });
+    }
+
+    const student = await Student.findOne({ email });
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+
+    // Check if this teacher is already associated with this student in this batch
+    const existingTeacherInfo = student.teachersInfo.find(
+      info => info.teacherId.toString() === teacherInfo.teacherId &&
+              info.batchId.toString() === teacherInfo.batchId
+    );
+
+    if (existingTeacherInfo) {
+      return res.status(400).json({
+        success: false,
+        message: 'Student is already associated with this teacher in this batch'
+      });
+    }
+
+    // Add new teacher info
+    student.teachersInfo.push(teacherInfo);
+    await student.save();
+
+    res.json({
+      success: true,
+      message: 'Student updated successfully',
+      data: student
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+router.delete('/:studentId/batch/:batchId', async (req, res) => {
+  try {
+      const { studentId, batchId } = req.params;
+      const student = await Student.findById(studentId);
+
+      if (!student) {
+          return res.status(404).json({ message: 'Student not found' });
+      }
+
+      if (student.teachersInfo.length === 1) {
+          // If student is enrolled in only one batch, delete the whole student
+          await Student.findByIdAndDelete(studentId);
+          return res.json({ message: 'Student deleted successfully' });
+      } else {
+          // Remove only the specific batch info
+          await Student.findByIdAndUpdate(studentId, {
+              $pull: { teachersInfo: { batchId: batchId } }
+          });
+          return res.json({ message: 'Student removed from batch successfully' });
+      }
+  } catch (error) {
+      res.status(500).json({ message: error.message });
+  }
+});
+
 router.get('/check-email/:email', protect, checkEmail);
 router.get('/batch/:batchId', protect, getStudentsByBatch);
 

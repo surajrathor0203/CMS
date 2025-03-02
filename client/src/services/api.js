@@ -168,21 +168,6 @@ export const createMultipleStudents = async (students) => {
   }
 };
 
-export const checkStudentEmail = async (email, teacherId) => {
-  try {
-    const response = await api.get(`/students/check-email/${encodeURIComponent(email)}`, {
-      params: { teacherId }
-    });
-    return {
-      exists: response.data.exists,
-      data: response.data.data,
-      message: response.data.message
-    };
-  } catch (error) {
-    throw error.response?.data || { message: 'Failed to check email' };
-  }
-};
-
 export const getStudentsByBatch = async (batchId) => {
   try {
     const response = await api.get(`/students/batch/${batchId}`);
@@ -190,4 +175,29 @@ export const getStudentsByBatch = async (batchId) => {
   } catch (error) {
     throw error.response?.data || error;
   }
+};
+
+export const checkStudentEmail = async (email, teacherId) => {
+  try {
+    const response = await api.post(`/students/check-email`, {
+      email,
+      teacherId
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Email verification failed');
+  }
+};
+
+export const updateStudentTeacherInfo = async (email, teacherInfo) => {
+  try {
+    const response = await api.put(`/students/update-teacher-info/${email}`, { teacherInfo });
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to update student');
+  }
+};
+
+export const deleteStudentFromBatch = (studentId, batchId) => {
+  return api.delete(`/students/${studentId}/batch/${batchId}`);
 };
