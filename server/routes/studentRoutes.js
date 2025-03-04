@@ -16,58 +16,50 @@ router.post('/create-multiple', async (req, res) => {
       });
     }
 
-    // Validate each student object
+    const results = [];
+    const errors = [];
+
+    // Process each student
     for (let student of students) {
-      if (!student.teachersInfo || !Array.isArray(student.teachersInfo) || student.teachersInfo.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Each student must have teachersInfo array'
-        });
-      }
+      try {
+        if (student.exists) {
+          // If student exists, just update their teachersInfo
+          const existingStudent = await Student.findOne({ email: student.email });
+          
+          // Check if teacher is already associated with this student in this batch
+          const alreadyAssociated = existingStudent.teachersInfo.some(
+            info => info.batchId.toString() === student.teachersInfo[0].batchId &&
+                   info.teacherId.toString() === student.teachersInfo[0].teacherId
+          );
 
-      // Validate required fields
-      const requiredFields = ['name', 'email', 'phone', 'parentPhone', 'address'];
-      const missingFields = requiredFields.filter(field => !student[field]);
-      
-      if (missingFields.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: `Missing required fields: ${missingFields.join(', ')}`
-        });
-      }
-
-      // Validate teachersInfo fields
-      for (let teacherInfo of student.teachersInfo) {
-        if (!teacherInfo.batchId || !teacherInfo.teacherId || !teacherInfo.subject) {
-          return res.status(400).json({
-            success: false,
-            message: 'Each teacherInfo must have batchId, teacherId, and subject'
-          });
+          if (!alreadyAssociated) {
+            existingStudent.teachersInfo.push(student.teachersInfo[0]);
+            await existingStudent.save();
+            results.push(existingStudent);
+          } else {
+            errors.push(`Student ${student.email} is already in this batch`);
+          }
+        } else {
+          // Create new student
+          const newStudent = await Student.create(student);
+          results.push(newStudent);
         }
+      } catch (error) {
+        errors.push(`Error processing student ${student.email}: ${error.message}`);
       }
     }
 
-    const result = await Student.create(students);
-    
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      data: result,
-      message: 'Students created successfully'
+      data: results,
+      errors: errors.length > 0 ? errors : undefined,
+      message: errors.length > 0 ? 'Some students were not processed' : 'All students processed successfully'
     });
   } catch (error) {
     console.error('Error in create-multiple students:', error);
-    
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email already exists'
-      });
-    }
-
     res.status(500).json({
       success: false,
-      message: 'Error creating students',
-      error: error.message
+      message: error.message || 'Error creating students'
     });
   }
 });

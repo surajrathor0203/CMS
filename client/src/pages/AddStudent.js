@@ -8,200 +8,232 @@ import {
   Card,
   CardContent,
   Alert,
+  IconButton,
+  Typography,
+  Divider,
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import TeacherLayout from '../components/TeacherLayout';
-import { createMultipleStudents, checkStudentEmail, updateStudentTeacherInfo } from '../services/api';
+import { createMultipleStudents, checkStudentEmail } from '../services/api';
+
+const emptyStudent = {
+  email: '',
+  name: '',
+  phone: '',
+  parentPhone: '',
+  address: '',
+  role: 'student',
+  isVerified: false,
+  exists: false,
+};
 
 const AddStudent = () => {
   const navigate = useNavigate();
   const { batchId } = useParams();
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const userData = getUserFromCookie(); // Add this line to get user data
-  const [studentData, setStudentData] = useState({
-    email: '',
-    name: '',
-    phone: '',
-    parentPhone: '',
-    address: '',
-    role: 'student',
-    subject: userData?.user?.subject || '' // Get subject from teacher's data
-  });
+  const userData = getUserFromCookie();
+  const [students, setStudents] = useState([{ ...emptyStudent }]);
   const [error, setError] = useState('');
-  const [studentExists, setStudentExists] = useState(false);
+  const [isVerifying, setIsVerifying] = useState({});
 
-  const handleVerifyEmail = async () => {
-    setIsVerifying(true);
+  const handleVerifyEmail = async (index) => {
+    setIsVerifying(prev => ({ ...prev, [index]: true }));
     setError('');
     
     try {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(studentData.email)) {
+      if (!emailRegex.test(students[index].email)) {
         setError('Invalid email format');
         return;
       }
 
-      const response = await checkStudentEmail(studentData.email, userData.user.id);
+      const response = await checkStudentEmail(students[index].email, userData.user.id);
       
-      setEmailVerified(true);
-      
-      if (response.exists) {
-        setStudentExists(true);
-        setError('Student already exists in the system');
-        // Assuming the response includes student data
-        if (response.data) {
-          setStudentData({
-            ...studentData,
-            name: response.data.name || '',
-            phone: response.data.phone || '',
-            parentPhone: response.data.parentPhone || '',
-            address: response.data.address || '',
-          });
-        }
-      } else {
-        setStudentExists(false);
+      const updatedStudents = [...students];
+      updatedStudents[index] = {
+        ...updatedStudents[index],
+        isVerified: true,
+        exists: response.exists,
+      };
+
+      if (response.exists && response.data) {
+        updatedStudents[index] = {
+          ...updatedStudents[index],
+          name: response.data.name || '',
+          phone: response.data.phone || '',
+          parentPhone: response.data.parentPhone || '',
+          address: response.data.address || '',
+        };
       }
+
+      setStudents(updatedStudents);
     } catch (err) {
       setError(err.message || 'Email verification failed');
-      setEmailVerified(false);
     } finally {
-      setIsVerifying(false);
+      setIsVerifying(prev => ({ ...prev, [index]: false }));
     }
+  };
+
+  const handleStudentChange = (index, field, value) => {
+    const updatedStudents = [...students];
+    updatedStudents[index] = {
+      ...updatedStudents[index],
+      [field]: value,
+      isVerified: field === 'email' ? false : updatedStudents[index].isVerified,
+    };
+    setStudents(updatedStudents);
+  };
+
+  const addMoreStudent = () => {
+    setStudents([...students, { ...emptyStudent }]);
+  };
+
+  const removeStudent = (index) => {
+    const updatedStudents = students.filter((_, i) => i !== index);
+    setStudents(updatedStudents);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!emailVerified) {
-      setError('Please verify email first');
+    
+    // Validate all entries
+    const unverifiedStudents = students.filter(s => !s.isVerified);
+    if (unverifiedStudents.length > 0) {
+      setError('Please verify all email addresses');
       return;
     }
+
     try {
-      if (!userData || !userData.user || !userData.user.id) {
-        setError('Teacher authentication required');
-        return;
-      }
+      const studentsData = students.map(student => ({
+        ...student,
+        teachersInfo: [{
+          batchId: batchId,
+          teacherId: userData.user.id,
+          subject: userData.user.subject
+        }]
+      }));
 
-      const teacherInfo = {
-        batchId: batchId,
-        teacherId: userData.user.id,
-        subject: userData.user.subject
-      };
-
-      if (studentExists) {
-        // Update existing student
-        const response = await updateStudentTeacherInfo(studentData.email, teacherInfo);
-        if (response.success) {
-          navigate(`/teacher-dashboard/batch/${batchId}`);
+      const response = await createMultipleStudents(studentsData);
+      
+      if (response.success) {
+        if (response.partialSuccess) {
+          // Show warning for partial success
+          setError(`Some students were added successfully, but there were issues: ${response.errors.join('; ')}`);
+          // Optional: You can add a delay before navigation
+          setTimeout(() => {
+            navigate(`/teacher-dashboard/batch/${batchId}`);
+          }, 3000);
         } else {
-          setError(response.message || 'Failed to update student');
+          // All successful
+          navigate(`/teacher-dashboard/batch/${batchId}`);
         }
       } else {
-        // Create new student
-        const students = [{
-          ...studentData,
-          teachersInfo: [teacherInfo],
-          role: 'student'
-        }];
-        
-        const response = await createMultipleStudents(students);
-        if (response.success) {
-          navigate(`/teacher-dashboard/batch/${batchId}`);
-        } else {
-          setError(response.message || 'Failed to add student');
-        }
+        setError(response.message || 'Failed to add students');
       }
     } catch (err) {
-      console.error('Error adding/updating student:', err);
-      setError(err.message || 'Failed to add/update student');
+      console.error('Error adding students:', err);
+      setError(err.message || 'Failed to add students');
     }
   };
 
   return (
-    <TeacherLayout title={studentExists ? "Update Student" : "Add New Student"}>
+    <TeacherLayout title="Add Students">
       <Box sx={{ p: 3 }}>
         <Card>
           <CardContent>
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-            {emailVerified && !studentExists && (
-              <Alert severity="success" sx={{ mb: 2 }}>Email verified. You can proceed with adding the student.</Alert>
-            )}
-            {studentExists && (
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                This student is already registered. Please use a different email address.
-              </Alert>
-            )}
             <form onSubmit={handleSubmit}>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  type="email"
-                  margin="normal"
-                  value={studentData.email}
-                  onChange={(e) => {
-                    setStudentData({...studentData, email: e.target.value});
-                    setEmailVerified(false);
-                    setStudentExists(false);
-                    setError('');
-                  }}
-                  required
-                  disabled={emailVerified || isVerifying}
-                />
-                <Button
-                  variant="contained"
-                  onClick={handleVerifyEmail}
-                  disabled={emailVerified || !studentData.email || isVerifying}
-                  sx={{ mt: 1, height: 56 }}
-                >
-                  {isVerifying ? 'Verifying...' : emailVerified ? 'Verified' : 'Verify'}
-                </Button>
-              </Box>
-              <TextField
-                fullWidth
-                label="Student Name"
-                margin="normal"
-                value={studentData.name}
-                onChange={(e) => setStudentData({...studentData, name: e.target.value})}
-                required
-                disabled={!emailVerified || studentExists}
-              />
-              <TextField
-                fullWidth
-                label="Student Phone Number"
-                margin="normal"
-                value={studentData.phone}
-                onChange={(e) => setStudentData({...studentData, phone: e.target.value})}
-                required
-                disabled={!emailVerified || studentExists}
-              />
-              <TextField
-                fullWidth
-                label="Parent's Phone Number"
-                margin="normal"
-                value={studentData.parentPhone}
-                onChange={(e) => setStudentData({...studentData, parentPhone: e.target.value})}
-                required
-                disabled={!emailVerified || studentExists}
-              />
-              <TextField
-                fullWidth
-                label="Address"
-                margin="normal"
-                multiline
-                rows={3}
-                value={studentData.address}
-                onChange={(e) => setStudentData({...studentData, address: e.target.value})}
-                required
-                disabled={!emailVerified || studentExists}
-              />
+              {students.map((student, index) => (
+                <Box key={index}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6">Student {index + 1}</Typography>
+                    {students.length > 1 && (
+                      <IconButton onClick={() => removeStudent(index)} color="error">
+                        <DeleteIcon />
+                      </IconButton>
+                    )}
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <TextField
+                      fullWidth
+                      label="Email"
+                      type="email"
+                      value={student.email}
+                      onChange={(e) => handleStudentChange(index, 'email', e.target.value)}
+                      required
+                      disabled={student.isVerified}
+                    />
+                    <Button
+                      variant="contained"
+                      onClick={() => handleVerifyEmail(index)}
+                      disabled={student.isVerified || !student.email || isVerifying[index]}
+                      sx={{ height: 56 }}
+                    >
+                      {isVerifying[index] ? 'Verifying...' : student.isVerified ? 'Verified' : 'Verify'}
+                    </Button>
+                  </Box>
+
+                  <TextField
+                    fullWidth
+                    label="Student Name"
+                    margin="normal"
+                    value={student.name}
+                    onChange={(e) => handleStudentChange(index, 'name', e.target.value)}
+                    required
+                    disabled={!student.isVerified || student.exists}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Student Phone Number"
+                    margin="normal"
+                    value={student.phone}
+                    onChange={(e) => handleStudentChange(index, 'phone', e.target.value)}
+                    required
+                    disabled={!student.isVerified || student.exists}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Parent's Phone Number"
+                    margin="normal"
+                    value={student.parentPhone}
+                    onChange={(e) => handleStudentChange(index, 'parentPhone', e.target.value)}
+                    required
+                    disabled={!student.isVerified || student.exists}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Address"
+                    margin="normal"
+                    multiline
+                    rows={3}
+                    value={student.address}
+                    onChange={(e) => handleStudentChange(index, 'address', e.target.value)}
+                    required
+                    disabled={!student.isVerified || student.exists}
+                  />
+                  
+                  {index < students.length - 1 && (
+                    <Divider sx={{ my: 3 }} />
+                  )}
+                </Box>
+              ))}
+
               <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<AddCircleOutlineIcon />}
+                  onClick={addMoreStudent}
+                >
+                  Add Another Student
+                </Button>
                 <Button
                   variant="contained"
                   color="primary"
                   type="submit"
-                  disabled={!emailVerified}
+                  disabled={students.some(s => !s.isVerified)}
                 >
-                  {studentExists ? 'Update Student' : 'Add Student'}
+                  Submit All
                 </Button>
                 <Button
                   variant="outlined"

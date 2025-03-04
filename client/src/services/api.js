@@ -157,8 +157,15 @@ export const createMultipleStudents = async (students) => {
       }
     );
     
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Failed to create students');
+    if (response.data.errors?.length > 0) {
+      // If there are some errors but the request was successful
+      return {
+        success: true,
+        partialSuccess: true,
+        data: response.data.data,
+        errors: response.data.errors,
+        message: response.data.message
+      };
     }
     
     return response.data;
