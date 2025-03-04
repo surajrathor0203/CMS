@@ -102,7 +102,8 @@ export default function BatchPage() {
   };
 
   const handleAddStudentClick = () => {
-    navigate(`/teacher-dashboard/batch/${batchId}/add-student`);
+    const encodedBatchName = encodeURIComponent(batch.name);
+    navigate(`/teacher-dashboard/batch/${batchId}/add-student?name=${encodedBatchName}`);
   };
 
   const handleChangePage = (event, newPage) => {

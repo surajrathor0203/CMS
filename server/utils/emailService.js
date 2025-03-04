@@ -44,25 +44,25 @@ exports.sendWelcomeEmail = async (user, plainPassword) => {
   }
 };
 
-exports.sendStudentWelcomeEmail = async (student, plainPassword, batchDetails) => {
+exports.sendStudentWelcomeEmail = async (student, plainPassword, batchDetails, isNewAccount = true) => {
   const mailOptions = {
     from: process.env.gmail_id,
     to: student.email,
-    subject: 'Welcome to CMS - Student Account Created',
+    subject: isNewAccount ? 'Welcome to CMS - Student Account Created' : 'CMS - Batch Enrollment Update',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #2E7D32;">Welcome to CMS!</h2>
         <p>Dear ${student.name},</p>
-        <p>Your student account has been successfully created. Here are your account details:</p>
+        <p>${isNewAccount ? 'Your student account has been successfully created.' : 'You have been enrolled in a new batch.'} Here are your account details:</p>
         
         <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
           <p><strong>Email:</strong> ${student.email}</p>
-          <p><strong>Password:</strong> ${plainPassword}</p>
+          <p><strong>Password:</strong> ${plainPassword || 'Use your existing password'}</p>
           <p><strong>Batch:</strong> ${batchDetails.name}</p>
           <p><strong>Subject:</strong> ${batchDetails.subject}</p>
         </div>
 
-        <p>Please keep these credentials safe and change your password after your first login.</p>
+        ${isNewAccount ? '<p>Please keep these credentials safe and change your password after your first login.</p>' : ''}
         <p>You can login at: <a href="http://localhost:3000/login">CMS Login</a></p>
         
         <p style="color: #666; font-size: 14px;">Note: This is an automated email. Please do not reply.</p>
@@ -75,10 +75,10 @@ exports.sendStudentWelcomeEmail = async (student, plainPassword, batchDetails) =
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log('Student welcome email sent successfully');
+    console.log('Student email sent successfully');
   } catch (error) {
-    console.error('Error sending student welcome email:', error);
-    throw new Error('Failed to send welcome email');
+    console.error('Error sending student email:', error);
+    throw new Error('Failed to send email');
   }
 };
 

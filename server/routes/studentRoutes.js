@@ -2,59 +2,27 @@ const express = require('express');
 const router = express.Router();
 const Student = require('../models/Student');
 const Batch = require('../models/Batch');
-const { checkEmail, getStudentsByBatch, deleteFromBatch } = require('../controllers/studentController');
+const { 
+  checkEmail, 
+  getStudentsByBatch, 
+  deleteFromBatch,
+  createStudents     // Add this import
+} = require('../controllers/studentController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.post('/create-multiple', async (req, res) => {
   try {
-    const { students } = req.body;
+    const { students, batchDetails } = req.body;
     
-    if (!students || !Array.isArray(students)) {
+    if (!students || !Array.isArray(students) || !batchDetails) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid request format: students array is required'
+        message: 'Invalid request format: students array and batch details are required'
       });
     }
 
-    const results = [];
-    const errors = [];
-
-    // Process each student
-    for (let student of students) {
-      try {
-        if (student.exists) {
-          // If student exists, just update their teachersInfo
-          const existingStudent = await Student.findOne({ email: student.email });
-          
-          // Check if teacher is already associated with this student in this batch
-          const alreadyAssociated = existingStudent.teachersInfo.some(
-            info => info.batchId.toString() === student.teachersInfo[0].batchId &&
-                   info.teacherId.toString() === student.teachersInfo[0].teacherId
-          );
-
-          if (!alreadyAssociated) {
-            existingStudent.teachersInfo.push(student.teachersInfo[0]);
-            await existingStudent.save();
-            results.push(existingStudent);
-          } else {
-            errors.push(`Student ${student.email} is already in this batch`);
-          }
-        } else {
-          // Create new student
-          const newStudent = await Student.create(student);
-          results.push(newStudent);
-        }
-      } catch (error) {
-        errors.push(`Error processing student ${student.email}: ${error.message}`);
-      }
-    }
-
-    res.status(200).json({
-      success: true,
-      data: results,
-      errors: errors.length > 0 ? errors : undefined,
-      message: errors.length > 0 ? 'Some students were not processed' : 'All students processed successfully'
-    });
+    const result = await createStudents(students, batchDetails);
+    res.status(200).json(result);
   } catch (error) {
     console.error('Error in create-multiple students:', error);
     res.status(500).json({

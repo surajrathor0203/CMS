@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const studentSchema = new mongoose.Schema({
   name: {
@@ -27,6 +28,10 @@ const studentSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true
+  },
+  password: {
+    type: String,
+    required: true,
   },
   teachersInfo: [{
     batchId: {
@@ -57,6 +62,14 @@ const studentSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
+});
+
+// Add password hashing middleware
+studentSchema.pre('save', async function(next) {
+  if (this.isModified('password')) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+  next();
 });
 
 // Add indexes for better query performance

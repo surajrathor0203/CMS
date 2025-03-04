@@ -1,75 +1,61 @@
 const Student = require('../models/Student');
 const Batch = require('../models/Batch');  // Add this line
+const { generatePassword } = require('../utils/passwordGenerator');
+const { sendStudentWelcomeEmail } = require('../utils/emailService');
 
-exports.createStudents = async (req, res) => {
-  try {
-    const { students } = req.body;
+exports.createStudents = async (students, batchDetails) => {
+  const results = [];
+  const errors = [];
 
-    console.log('Received student data:', students); // Debug log
+  for (let student of students) {
+    try {
+      if (student.exists) {
+        // Handle existing student
+        const existingStudent = await Student.findOne({ email: student.email });
+        
+        if (!existingStudent.teachersInfo.some(
+          info => info.batchId.toString() === student.teachersInfo[0].batchId &&
+                 info.teacherId.toString() === student.teachersInfo[0].teacherId
+        )) {
+          existingStudent.teachersInfo.push({
+            ...student.teachersInfo[0],
+            batchName: batchDetails.name
+          });
+          await existingStudent.save();
+          
+          // Send email reminder
+          await sendStudentWelcomeEmail(existingStudent, null, batchDetails);
+          results.push(existingStudent);
+        } else {
+          errors.push(`Student ${student.email} is already in this batch`);
+        }
+      } else {
+        // Create new student
+        const plainPassword = generatePassword();
+        const newStudent = await Student.create({
+          ...student,
+          password: plainPassword,
+          teachersInfo: [{
+            ...student.teachersInfo[0],
+            batchName: batchDetails.name
+          }]
+        });
 
-    // Validate request
-    if (!students || !Array.isArray(students)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Please provide valid student data' 
-      });
+        // Send welcome email with credentials
+        await sendStudentWelcomeEmail(newStudent, plainPassword, batchDetails);
+        results.push(newStudent);
+      }
+    } catch (error) {
+      errors.push(`Error processing student ${student.email}: ${error.message}`);
     }
-
-    // Validate required fields
-    const requiredFields = ['name', 'email', 'phone', 'parentPhone', 'address', 'batchId', 'teacherId', 'role', 'subject'];
-    const missingFields = students.some(student => 
-      requiredFields.some(field => !student[field])
-    );
-
-    if (missingFields) {
-      return res.status(400).json({
-        success: false,
-        message: `All fields are required: ${requiredFields.join(', ')}`
-      });
-    }
-
-    // Check for duplicate emails
-    const emails = students.map(student => student.email);
-    const existingStudents = await Student.find({ email: { $in: emails } });
-    
-    if (existingStudents.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'One or more email addresses are already registered'
-      });
-    }
-
-    // Create students with explicit field mapping
-    const studentsToCreate = students.map(student => ({
-      name: student.name,
-      email: student.email,
-      phone: student.phone,
-      parentPhone: student.parentPhone,
-      address: student.address,
-      batchId: student.batchId,
-      teacherId: student.teacherId,
-      role: student.role,
-      subject: student.subject
-    }));
-
-    console.log('Creating students with data:', studentsToCreate); // Debug log
-
-    const createdStudents = await Student.insertMany(studentsToCreate);
-
-    console.log('Created students:', createdStudents); // Debug log
-
-    res.status(201).json({
-      success: true,
-      data: createdStudents,
-      message: 'Students created successfully'
-    });
-  } catch (error) {
-    console.error('Error creating students:', error); // Debug log
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Error creating students'
-    });
   }
+
+  return {
+    success: true,
+    data: results,
+    errors: errors.length > 0 ? errors : undefined,
+    message: errors.length > 0 ? 'Some students were not processed' : 'All students processed successfully'
+  };
 };
 
 exports.checkEmail = async (req, res) => {

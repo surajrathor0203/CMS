@@ -368,8 +368,9 @@ export default function TeacherDashboard() {
     }
   };
 
-  const handleBatchClick = (batchId) => {
-    navigate(`/teacher-dashboard/batch/${batchId}`);
+  const handleBatchClick = (batch) => {
+    const encodedBatchName = encodeURIComponent(batch.name);
+    navigate(`/teacher-dashboard/batch/${batch._id}?name=${encodedBatchName}`);
   };
 
   return (
@@ -419,7 +420,7 @@ export default function TeacherDashboard() {
                     },
                     position: 'relative', // Add this
                   }}
-                  onClick={() => handleBatchClick(batch._id)}
+                  onClick={() => handleBatchClick(batch)}
                 >
                   {isUpcomingBatch(batch.openingDate) && (
                     <Box

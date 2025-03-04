@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { getUserFromCookie } from '../utils/cookies';
 import {
   Box,
@@ -31,6 +31,8 @@ const emptyStudent = {
 const AddStudent = () => {
   const navigate = useNavigate();
   const { batchId } = useParams();
+  const [searchParams] = useSearchParams();
+  const batchName = searchParams.get('name');
   const userData = getUserFromCookie();
   const [students, setStudents] = useState([{ ...emptyStudent }]);
   const [error, setError] = useState('');
@@ -96,7 +98,6 @@ const AddStudent = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate all entries
     const unverifiedStudents = students.filter(s => !s.isVerified);
     if (unverifiedStudents.length > 0) {
       setError('Please verify all email addresses');
@@ -111,20 +112,24 @@ const AddStudent = () => {
           teacherId: userData.user.id,
           subject: userData.user.subject
         }]
-      }));
 
-      const response = await createMultipleStudents(studentsData);
+      }));
+    
+
+      const batchDetails = {
+        name: batchName || 'New Batch',
+        subject: userData.user.subject
+      };
+
+      const response = await createMultipleStudents(studentsData, batchDetails);
       
       if (response.success) {
         if (response.partialSuccess) {
-          // Show warning for partial success
           setError(`Some students were added successfully, but there were issues: ${response.errors.join('; ')}`);
-          // Optional: You can add a delay before navigation
           setTimeout(() => {
             navigate(`/teacher-dashboard/batch/${batchId}`);
           }, 3000);
         } else {
-          // All successful
           navigate(`/teacher-dashboard/batch/${batchId}`);
         }
       } else {

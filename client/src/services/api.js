@@ -146,19 +146,14 @@ export const uploadFiles = async (batchId, files) => {
   return response.data;
 };
 
-export const createMultipleStudents = async (students) => {
+export const createMultipleStudents = async (students, batchDetails) => {
   try {
-    const response = await api.post('/students/create-multiple', 
-      { students },
-      {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    const response = await api.post('/students/create-multiple', {
+      students,
+      batchDetails
+    });
     
     if (response.data.errors?.length > 0) {
-      // If there are some errors but the request was successful
       return {
         success: true,
         partialSuccess: true,
