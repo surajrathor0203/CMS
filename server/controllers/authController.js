@@ -1,7 +1,9 @@
 const User = require('../models/User');
+const Student = require('../models/Student');
 const { sendWelcomeEmail, sendOTPEmail } = require('../utils/emailService');
 const { generateUsername } = require('../utils/usernameGenerator');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 // Store OTPs with expiry (in memory - consider using Redis in production)
 const otpStore = new Map();
@@ -64,59 +66,83 @@ exports.signup = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  try {
-    const { identifier, password } = req.body;
+    try {
+        const { identifier, password, userType } = req.body;
 
-    // Check if identifier is email or username
-    const user = await User.findOne({
-      $or: [
-        { email: identifier.toLowerCase() },
-        { username: identifier }
-      ]
-    });
+        let user;
+        let Model = userType === 'student' ? Student : User;
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
+        // Find user by email or username
+        user = await Model.findOne({
+            $or: [
+                { email: identifier.toLowerCase() },
+                { username: identifier.toLowerCase() }
+            ]
+        });
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid credentials'
+            });
+        }
+
+        // Check password
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid credentials'
+            });
+        }
+
+        // Create token
+        const token = jwt.sign(
+            { id: user._id, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '1d' }
+        );
+
+        // Create user info object
+        const userInfo = {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            username: user.username,
+            subject: user.subject,
+            address: user.address
+        };
+
+        // Set token cookie
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 24 * 60 * 60 * 1000 // 1 day
+        });
+
+        // Set user info cookie
+        res.cookie('userInfo', JSON.stringify(userInfo), {
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 24 * 60 * 60 * 1000 // 1 day
+        });
+
+        // Send response
+        res.json({
+            success: true,
+            user: userInfo,
+            token
+        });
+
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred during login'
+        });
     }
-
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    // Generate JWT token
-    const token = generateToken(user._id);
-
-    // Set cookie
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
-    });
-
-    res.json({
-      success: true,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      },
-      token
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
-  }
 };
 
 exports.forgotPassword = async (req, res) => {

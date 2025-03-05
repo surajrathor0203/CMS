@@ -8,9 +8,13 @@ const api = axios.create({
   withCredentials: true,
 });
 
-export const login = async (identifier, password) => {
+export const login = async (identifier, password, userType) => {
   try {
-    const response = await api.post('/auth/login', { identifier, password });
+    const response = await api.post('/auth/login', { 
+      identifier, 
+      password,
+      userType
+    });
     if (response.data.success && response.data.user) {
       // Store the complete user data
       setUserCookie(response.data);

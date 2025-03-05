@@ -19,6 +19,7 @@ import { createMultipleStudents, checkStudentEmail } from '../services/api';
 
 const emptyStudent = {
   email: '',
+  username: '',  // Add username field
   name: '',
   phone: '',
   parentPhone: '',
@@ -61,6 +62,7 @@ const AddStudent = () => {
       if (response.exists && response.data) {
         updatedStudents[index] = {
           ...updatedStudents[index],
+          username: response.data.username || '',  // Add username from existing data
           name: response.data.name || '',
           phone: response.data.phone || '',
           parentPhone: response.data.parentPhone || '',
@@ -178,6 +180,18 @@ const AddStudent = () => {
                       {isVerifying[index] ? 'Verifying...' : student.isVerified ? 'Verified' : 'Verify'}
                     </Button>
                   </Box>
+
+                  {/* <TextField
+                    fullWidth
+                    label="Username"
+                    margin="normal"
+                    value={student.username}
+                    disabled
+                    InputProps={{
+                      readOnly: true,
+                    }}
+                    helperText="Username will be auto-generated"
+                  /> */}
 
                   <TextField
                     fullWidth

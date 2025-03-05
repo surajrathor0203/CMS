@@ -2,6 +2,7 @@ const Student = require('../models/Student');
 const Batch = require('../models/Batch');  // Add this line
 const { generatePassword } = require('../utils/passwordGenerator');
 const { sendStudentWelcomeEmail } = require('../utils/emailService');
+const { generateUsername } = require('../utils/usernameGenerator');
 
 exports.createStudents = async (students, batchDetails) => {
   const results = [];
@@ -30,10 +31,14 @@ exports.createStudents = async (students, batchDetails) => {
           errors.push(`Student ${student.email} is already in this batch`);
         }
       } else {
-        // Create new student
+        // Generate username from name for new students
+        const username = await generateUsername(student.name);
+        
+        // Create new student with generated username
         const plainPassword = generatePassword();
         const newStudent = await Student.create({
           ...student,
+          username,
           password: plainPassword,
           teachersInfo: [{
             ...student.teachersInfo[0],

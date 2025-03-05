@@ -200,7 +200,7 @@ export default function SignUp() {
 
   const handleGoToLogin = () => {
     setOpenSuccessDialog(false);
-    navigate('/login');
+    navigate('/login?userType=teacher');
   };
 
   const handleCloseErrorDialog = () => {
@@ -437,7 +437,7 @@ export default function SignUp() {
                     href="/login" 
                     onClick={(e) => {
                       e.preventDefault()
-                      navigate('/login')
+                      navigate('/login?userType=teacher')
                     }}
                     sx={{ color: "primary.main", textDecoration: "none", fontWeight: "medium" }}
                   >

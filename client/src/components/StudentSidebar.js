@@ -73,7 +73,7 @@ export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
         <ListItem disablePadding>
           <ListItemButton onClick={() => {
             logout();
-            navigate('/login');
+            navigate('/login?userType=student');
           }}>
             <ListItemIcon>
               <LogOut size={24} />

@@ -101,7 +101,12 @@ export default function Login() {
     setProcessingDialog(true);
 
     try {
-      const response = await login(formData.identifier, formData.password);
+      const response = await login(
+        formData.identifier, 
+        formData.password,
+        userType || 'teacher' // Default to 'teacher' if userType is not provided
+      );
+      
       if (response.success) {
         const user = getUserFromCookie();
         setProcessingDialog(false);
@@ -257,10 +262,10 @@ export default function Login() {
               </Button>
               <Typography variant="body2" align="center">
                 <Link 
-                  href="/forgot-password"
+                  href={`/forgot-password?userType=${userType}`}
                   onClick={(e) => {
                     e.preventDefault();
-                    navigate('/forgot-password');
+                    navigate(`/forgot-password?userType=${userType}`);
                   }}
                   sx={{ color: "primary.main", textDecoration: "none" }}
                 >
@@ -271,10 +276,10 @@ export default function Login() {
                 <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 2 }}>
                   Don't have an account?{" "}
                   <Link 
-                    href="/signup" 
+                    href={`/signup?userType=${userType}`} 
                     onClick={(e) => {
                       e.preventDefault()
-                      navigate('/signup')
+                      navigate(`/signup?userType=${userType}`)
                     }}
                     sx={{ color: "primary.main", textDecoration: "none", fontWeight: "medium" }}
                   >

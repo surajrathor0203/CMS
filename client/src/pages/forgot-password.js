@@ -59,7 +59,8 @@ const theme = createTheme({
 export default function ForgotPassword() {
   const navigate = useNavigate();
   const location = useLocation();
-  const userType = location.state?.userType || 'teacher';
+  const searchParams = new URLSearchParams(location.search)
+  const userType = searchParams.get('userType')
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [step, setStep] = useState(1); // 1: email, 2: OTP, 3: new password
   const [email, setEmail] = useState("");
@@ -111,7 +112,7 @@ export default function ForgotPassword() {
       await resetPassword(email, otp, newPassword);
       setSuccessDialog(true);
       setTimeout(() => {
-        navigate('/login');
+        navigate(`/login?userType=${userType}`);
       }, 2000);
     } catch (err) {
       setError(err.message);
@@ -120,7 +121,7 @@ export default function ForgotPassword() {
   };
 
   const handleBackToLogin = () => {
-    navigate('/login', { state: { userType } });
+    navigate(`/login?userType=${userType}`);
   };
 
   return (

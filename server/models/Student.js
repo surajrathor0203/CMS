@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const studentSchema = new mongoose.Schema({
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
   name: {
     type: String,
     required: true,
@@ -76,5 +82,6 @@ studentSchema.pre('save', async function(next) {
 studentSchema.index({ email: 1 }, { unique: true });
 studentSchema.index({ 'teachersInfo.teacherId': 1 });
 studentSchema.index({ 'teachersInfo.batchId': 1 });
+studentSchema.index({ username: 1 }, { unique: true });
 
 module.exports = mongoose.model('Student', studentSchema);

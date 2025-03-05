@@ -114,7 +114,7 @@ const theme = {
         <ListItem disablePadding>
           <ListItemButton onClick={() => {
             logout();
-            navigate('/login');
+            navigate('/login?userType=teacher');
           }}>
             <ListItemIcon>
               <LogOut size={24} />

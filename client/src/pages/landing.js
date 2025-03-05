@@ -104,7 +104,7 @@ export default function Landing() {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Button
                   variant="contained"
-                  onClick={() => navigate('/signup')}
+                  onClick={() => navigate('/signup?userType=teacher')}
                   sx={{
                     backgroundColor: "#2E7D32",
                     '&:hover': { backgroundColor: '#1B5E20' },
@@ -114,7 +114,7 @@ export default function Landing() {
                 </Button>
                 <Button
                   variant="outlined"
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/login?userType=teacher')}
                   sx={{
                     borderColor: "#2E7D32",
                     color: "#2E7D32",
@@ -157,7 +157,7 @@ export default function Landing() {
               </Typography>
               <Button
                 variant="contained"
-                onClick={() => navigate('/login', { state: { userType: 'student' } })}
+                onClick={() => navigate('/login?userType=student')}
                 sx={{
                   backgroundColor: "#2E7D32",
                   '&:hover': { backgroundColor: '#1B5E20' },
