@@ -208,7 +208,7 @@ export default function Login() {
               <Book size={32} color="white" />
             </Box>
             <Typography component="h1" variant="h5" sx={{ mb: 1, fontWeight: "bold" }}>
-              Welcome Back
+              Welcome Back {userType}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: "center" }}>
               Please login to your account

@@ -10,6 +10,7 @@ import {
   ListItemIcon,
   ListItemText,
   Toolbar,
+  Avatar,
 } from '@mui/material';
 import {
   BookOpen,
@@ -20,7 +21,9 @@ import {
   GraduationCap,
   MessageCircle,
   Award,
+  User,
 } from 'lucide-react';
+import { getUserFromCookie } from '../utils/cookies';
 import { logout } from '../utils/auth';
 
 const drawerWidth = 240;
@@ -28,6 +31,10 @@ const drawerWidth = 240;
 export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Get user data from cookie
+  const userData = getUserFromCookie();
+  const userName = userData?.user?.name || 'Student';
 
   const menuItems = [
     { text: 'Dashboard', icon: <BookOpen size={24} />, path: '/student-dashboard' },
@@ -41,10 +48,37 @@ export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
 
   const drawer = (
     <Box>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div">
-          Student Portal
-        </Typography>
+      <Toolbar 
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1.5,
+          minHeight: '49px !important', // Reduce default height
+          py: 1 // Reduce padding
+        }}
+      >
+        <Avatar 
+          sx={{ 
+            bgcolor: 'primary.main',
+            width: 32, // Reduced from 40
+            height: 32, // Reduced from 40
+          }}
+        >
+          <User size={20} /> {/* Reduced from 24 */}
+        </Avatar>
+        <Box>
+          <Typography 
+            variant="subtitle2" // Changed from subtitle1
+            noWrap 
+            component="div" 
+            sx={{ 
+              fontWeight: 'medium',
+              color: 'primary.main'
+            }}
+          >
+            {userName}
+          </Typography>
+        </Box>
       </Toolbar>
       <Divider />
       <List>

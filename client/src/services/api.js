@@ -34,54 +34,42 @@ export const signup = async (userData) => {
   }
 };
 
-export const sendResetOTP = async (email) => {
+export const sendResetOTP = async (email, userType) => {
   try {
-    const response = await fetch(`${API_URL}/auth/forgot-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email }),
+    const response = await api.post('/auth/forgot-password', {
+      email,
+      userType
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message);
-    return data;
+    return response.data;
   } catch (error) {
-    throw new Error(error.message || 'Failed to send OTP');
+    throw new Error(error.response?.data?.message || 'Failed to send OTP');
   }
 };
 
-export const verifyResetOTP = async (email, otp) => {
+export const verifyResetOTP = async (email, otp, userType) => {
   try {
-    const response = await fetch(`${API_URL}/auth/verify-otp`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, otp }),
+    const response = await api.post('/auth/verify-otp', {
+      email,
+      otp,
+      userType
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message);
-    return data;
+    return response.data;
   } catch (error) {
-    throw new Error(error.message || 'Invalid OTP');
+    throw new Error(error.response?.data?.message || 'Invalid OTP');
   }
 };
 
-export const resetPassword = async (email, otp, newPassword) => {
+export const resetPassword = async (email, otp, newPassword, userType) => {
   try {
-    const response = await fetch(`${API_URL}/auth/reset-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, otp, newPassword }),
+    const response = await api.post('/auth/reset-password', {
+      email,
+      otp,
+      newPassword,
+      userType
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message);
-    return data;
+    return response.data;
   } catch (error) {
-    throw new Error(error.message || 'Failed to reset password');
+    throw new Error(error.response?.data?.message || 'Failed to reset password');
   }
 };
 

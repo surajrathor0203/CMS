@@ -75,7 +75,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await sendResetOTP(email);
+      await sendResetOTP(email, userType);
       setStep(2);
       setError("");
     } catch (err) {
@@ -88,7 +88,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await verifyResetOTP(email, otp);
+      await verifyResetOTP(email, otp, userType);
       setStep(3);
       setError("");
     } catch (err) {
@@ -109,7 +109,7 @@ export default function ForgotPassword() {
     }
     setIsLoading(true);
     try {
-      await resetPassword(email, otp, newPassword);
+      await resetPassword(email, otp, newPassword, userType);
       setSuccessDialog(true);
       setTimeout(() => {
         navigate(`/login?userType=${userType}`);

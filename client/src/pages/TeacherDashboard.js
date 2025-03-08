@@ -35,6 +35,7 @@ import { createBatch, getBatches, updateBatch, deleteBatch, getStudentsByBatch }
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { getUserFromCookie } from '../utils/cookies'; // Import the function to get user data from cookies
+import Loading from '../components/Loading';
 
 // Define a green color theme
 const theme = {
@@ -82,9 +83,10 @@ export default function TeacherDashboard() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const navigate = useNavigate();
   const [batchStudentCounts, setBatchStudentCounts] = useState({});
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
-    fetchBatches();
+    fetchBatches().finally(() => setInitialLoading(false));
   }, []);
 
   const fetchBatches = async () => {
@@ -375,392 +377,396 @@ export default function TeacherDashboard() {
 
   return (
     <TeacherLayout title="Dashboard">
-      <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" fontWeight="bold" color="text.primary">
-            My Batches
-          </Typography>
-          {/* <Button 
-            variant="text" 
-            endIcon={<ArrowForwardIcon />}
-            sx={{ color: theme.primary }}
-          >
-            BATCH ARCHIVE
-          </Button> */}
-        </Box>
-
-        {batches.length === 0 ? (
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center', 
-              height: '50vh',
-              flexDirection: 'column',
-              gap: 2
-            }}
-          >
-            <AssignmentIcon sx={{ fontSize: 60, color: 'text.secondary' }} />
-            <Typography variant="h6" color="text.secondary">
-              No batches created yet
+      {initialLoading ? (
+        <Loading message="Loading batches..." />
+      ) : (
+        <Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" fontWeight="bold" color="text.primary">
+              My Batches
             </Typography>
+            {/* <Button 
+              variant="text" 
+              endIcon={<ArrowForwardIcon />}
+              sx={{ color: theme.primary }}
+            >
+              BATCH ARCHIVE
+            </Button> */}
           </Box>
-        ) : (
-          <Grid container spacing={3}>
-            {batches.map((batch) => (
-              <Grid item xs={12} sm={6} md={4} key={batch._id}>
-                <Card 
-                  elevation={1} 
-                  sx={{ 
-                    borderRadius: 2,
-                    transition: 'transform 0.3s ease-in-out', // Add smooth transition
-                    '&:hover': {
-                      transform: 'translateY(-8px)',
-                      cursor: 'pointer'
-                    },
-                    position: 'relative', // Add this
-                  }}
-                  onClick={() => handleBatchClick(batch)}
-                >
-                  {isUpcomingBatch(batch.openingDate) && (
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: 15,
-                        right: -30,
-                        transform: 'rotate(45deg)',
-                        backgroundColor: theme.upcoming,
-                        color: 'white',
-                        padding: '5px 30px',
-                        zIndex: 1,
-                        fontSize: '0.5rem',
-                        fontWeight: 'bold',
-                        boxShadow: 2,
-                      }}
-                    >
-                      COMING SOON
-                    </Box>
-                  )}
-                  <CardHeader
-                    sx={{ 
-                      backgroundColor: theme.primary,
-                      color: 'white',
-                      py: 1.5
-                    }}
-                    title={
-                      <Box>
-                        <Typography variant="subtitle1">
-                          {batch.name}
-                        </Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                          {batch.subject || teacherSubject}
-                        </Typography>
-                      </Box>
-                    }
-                  />
-                  <CardContent sx={{ pt: 2, pb: 1.5 }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      Timing: {`${formatDisplayTime(batch.startTime)} - ${formatDisplayTime(batch.endTime)}`}
-                    </Typography>
-                    
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar 
-                          sx={{ 
-                            bgcolor: 'transparent', 
-                            color: theme.primary,
-                            width: 30, 
-                            height: 30,
-                            mr: 0.5
-                          }}
-                        >
-                          <PersonIcon fontSize="small" />
-                        </Avatar>
-                        <Typography variant="body2" color="text.primary">
-                          {batchStudentCounts[batch._id] || 0}
-                        </Typography>
-                      </Box>
 
-                      <Typography variant="body2" color="text.secondary">
-                        Opens: {formatDisplayDate(batch.openingDate)}
-                      </Typography>
-                      
-                      <IconButton 
-                        size="small" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMenuClick(e, batch);
+          {batches.length === 0 ? (
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                height: '50vh',
+                flexDirection: 'column',
+                gap: 2
+              }}
+            >
+              <AssignmentIcon sx={{ fontSize: 60, color: 'text.secondary' }} />
+              <Typography variant="h6" color="text.secondary">
+                No batches created yet
+              </Typography>
+            </Box>
+          ) : (
+            <Grid container spacing={3}>
+              {batches.map((batch) => (
+                <Grid item xs={12} sm={6} md={4} key={batch._id}>
+                  <Card 
+                    elevation={1} 
+                    sx={{ 
+                      borderRadius: 2,
+                      transition: 'transform 0.3s ease-in-out', // Add smooth transition
+                      '&:hover': {
+                        transform: 'translateY(-8px)',
+                        cursor: 'pointer'
+                      },
+                      position: 'relative', // Add this
+                    }}
+                    onClick={() => handleBatchClick(batch)}
+                  >
+                    {isUpcomingBatch(batch.openingDate) && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 15,
+                          right: -30,
+                          transform: 'rotate(45deg)',
+                          backgroundColor: theme.upcoming,
+                          color: 'white',
+                          padding: '5px 30px',
+                          zIndex: 1,
+                          fontSize: '0.5rem',
+                          fontWeight: 'bold',
+                          boxShadow: 2,
                         }}
                       >
-                        <MoreVertIcon />
-                      </IconButton>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        )}
-        
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />} 
-            onClick={handleOpen}
-            sx={{ 
-              backgroundColor: theme.primary, 
-              // '&:hover': { backgroundColor: '#c62828' },
-              borderRadius: 1,
-              textTransform: 'none'
-            }}
+                        COMING SOON
+                      </Box>
+                    )}
+                    <CardHeader
+                      sx={{ 
+                        backgroundColor: theme.primary,
+                        color: 'white',
+                        py: 1.5
+                      }}
+                      title={
+                        <Box>
+                          <Typography variant="subtitle1">
+                            {batch.name}
+                          </Typography>
+                          <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                            {batch.subject || teacherSubject}
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                    <CardContent sx={{ pt: 2, pb: 1.5 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Timing: {`${formatDisplayTime(batch.startTime)} - ${formatDisplayTime(batch.endTime)}`}
+                      </Typography>
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Avatar 
+                            sx={{ 
+                              bgcolor: 'transparent', 
+                              color: theme.primary,
+                              width: 30, 
+                              height: 30,
+                              mr: 0.5
+                            }}
+                          >
+                            <PersonIcon fontSize="small" />
+                          </Avatar>
+                          <Typography variant="body2" color="text.primary">
+                            {batchStudentCounts[batch._id] || 0}
+                          </Typography>
+                        </Box>
+
+                        <Typography variant="body2" color="text.secondary">
+                          Opens: {formatDisplayDate(batch.openingDate)}
+                        </Typography>
+                        
+                        <IconButton 
+                          size="small" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMenuClick(e, batch);
+                          }}
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+          
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+            <Button 
+              variant="contained" 
+              startIcon={<AddIcon />} 
+              onClick={handleOpen}
+              sx={{ 
+                backgroundColor: theme.primary, 
+                // '&:hover': { backgroundColor: '#c62828' },
+                borderRadius: 1,
+                textTransform: 'none'
+              }}
+            >
+              CREATE BATCH
+            </Button>
+          </Box>
+
+          {/* Create Batch Dialog */}
+          <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+            <DialogTitle sx={{ 
+                        backgroundColor: theme.primary,
+                        color: 'white',
+                        py: 1.5
+                      }}>Create New Batch</DialogTitle>
+            <DialogContent>
+              <Box sx={{ mt: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Batch Name"
+                  name="name"
+                  value={newBatch.name}
+                  onChange={handleChange}
+                  margin="normal"
+                  error={!!errors.name}
+                  helperText={errors.name}
+                />
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                  <DatePicker
+                    label="Opening Date"
+                    value={newBatch.openingDate}
+                    onChange={(newValue) => handleTimeChange('openingDate', newValue)}
+                    sx={{ mt: 2, width: '100%' }}
+                    slotProps={{
+                      textField: {
+                        error: !!errors.openingDate,
+                        helperText: errors.openingDate,
+                        fullWidth: true
+                      }
+                    }}
+                  />
+                  <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                    <TimePicker
+                      label="Start Time"
+                      value={newBatch.startTime}
+                      onChange={(newValue) => handleTimeChange('startTime', newValue)}
+                      sx={{ flex: 1 }}
+                      slotProps={{
+                        textField: {
+                          error: !!errors.startTime,
+                          helperText: errors.startTime,
+                          fullWidth: true
+                        }
+                      }}
+                      views={['hours', 'minutes']}
+                      format="HH:mm"
+                    />
+                    <TimePicker
+                      label="End Time"
+                      value={newBatch.endTime}
+                      onChange={(newValue) => handleTimeChange('endTime', newValue)}
+                      sx={{ flex: 1 }}
+                      slotProps={{
+                        textField: {
+                          error: !!errors.endTime,
+                          helperText: errors.endTime,
+                          fullWidth: true
+                        }
+                      }}
+                      views={['hours', 'minutes']}
+                      format="HH:mm"
+                    />
+                  </Box>
+                </LocalizationProvider>
+                {errors.general && (
+                  <Alert severity="error" sx={{ mt: 2 }}>
+                    {errors.general}
+                  </Alert>
+                )}
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleClose} color="primary" disabled={loading}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSubmit} 
+                variant="contained" 
+                disabled={loading}
+                sx={{ 
+                  bgcolor: theme.primary,
+                  '&:hover': { bgcolor: theme.primary }
+                }}
+              >
+                {loading ? <CircularProgress size={24} color="inherit" /> : 'Create'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Add Menu component */}
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleMenuClose}
           >
-            CREATE BATCH
-          </Button>
+            <MenuItem onClick={handleEditClick}>
+              <EditIcon sx={{ mr: 1, fontSize: 20 }} />
+              Edit Batch
+            </MenuItem>
+            <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
+              <DeleteIcon sx={{ mr: 1, fontSize: 20 }} />
+              Delete Batch
+            </MenuItem>
+          </Menu>
+
+          {/* Add Edit Batch Dialog */}
+          <Dialog open={editDialogOpen} onClose={handleEditClose} maxWidth="sm" fullWidth>
+            <DialogTitle sx={{ 
+                        backgroundColor: theme.primary,
+                        color: 'white',
+                        py: 1.5
+                      }}>Edit Batch</DialogTitle>
+            <DialogContent>
+              <Box sx={{ mt: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Batch Name"
+                  name="name"
+                  value={editBatch.name}
+                  onChange={handleEditChange}
+                  margin="normal"
+                  error={!!errors.name}
+                  helperText={errors.name}
+                />
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                  <DatePicker
+                    label="Opening Date"
+                    value={editBatch.openingDate}
+                    onChange={(newValue) => handleEditTimeChange('openingDate', newValue)}
+                    sx={{ mt: 2, width: '100%' }}
+                    slotProps={{
+                      textField: {
+                        error: !!errors.openingDate,
+                        helperText: errors.openingDate,
+                        fullWidth: true
+                      }
+                    }}
+                  />
+                  <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                    <TimePicker
+                      label="Start Time"
+                      value={editBatch.startTime}
+                      onChange={(newValue) => handleEditTimeChange('startTime', newValue)}
+                      sx={{ flex: 1 }}
+                      slotProps={{
+                        textField: {
+                          error: !!errors.startTime,
+                          helperText: errors.startTime,
+                          fullWidth: true
+                        }
+                      }}
+                      views={['hours', 'minutes']}
+                      format="HH:mm"
+                    />
+                    <TimePicker
+                      label="End Time"
+                      value={editBatch.endTime}
+                      onChange={(newValue) => handleEditTimeChange('endTime', newValue)}
+                      sx={{ flex: 1 }}
+                      slotProps={{
+                        textField: {
+                          error: !!errors.endTime,
+                          helperText: errors.endTime,
+                          fullWidth: true
+                        }
+                      }}
+                      views={['hours', 'minutes']}
+                      format="HH:mm"
+                    />
+                  </Box>
+                </LocalizationProvider>
+                {errors.general && (
+                  <Alert severity="error" sx={{ mt: 2 }}>
+                    {errors.general}
+                  </Alert>
+                )}
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleEditClose} color="primary" disabled={loading}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleEditSubmit} 
+                variant="contained" 
+                disabled={loading}
+                sx={{ 
+                  bgcolor: theme.primary,
+                  '&:hover': { bgcolor: theme.primary }
+                }}
+              >
+                {loading ? <CircularProgress size={24} color="inherit" /> : 'Update'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Add Delete Confirmation Dialog */}
+          <Dialog
+            open={deleteDialogOpen}
+            onClose={handleDeleteClose}
+            maxWidth="xs"
+            fullWidth
+          >
+            <DialogTitle sx={{ 
+                        backgroundColor: 'error.main',
+                        color: 'white',
+                        py: 1.5
+                      }}>Delete Batch</DialogTitle>
+            <DialogContent>
+              <Typography>
+                Are you sure you want to delete batch "{selectedBatch?.name}"? This action cannot be undone.
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleDeleteClose} color="primary" disabled={loading}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDeleteConfirm}
+                color="error"
+                variant="contained"
+                disabled={loading}
+              >
+                {loading ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Add Snackbar for notifications */}
+          <Snackbar open={!!error} autoHideDuration={6000} onClose={handleCloseAlert}>
+            <Alert onClose={handleCloseAlert} severity="error" sx={{ width: '100%' }}>
+              {error}
+            </Alert>
+          </Snackbar>
+          
+          <Snackbar open={success} autoHideDuration={6000} onClose={handleCloseAlert}>
+            <Alert onClose={handleCloseAlert} severity="success" sx={{ width: '100%' }}>
+              Batch created successfully!
+            </Alert>
+          </Snackbar>
         </Box>
-
-        {/* Create Batch Dialog */}
-        <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-          <DialogTitle sx={{ 
-                      backgroundColor: theme.primary,
-                      color: 'white',
-                      py: 1.5
-                    }}>Create New Batch</DialogTitle>
-          <DialogContent>
-            <Box sx={{ mt: 2 }}>
-              <TextField
-                fullWidth
-                label="Batch Name"
-                name="name"
-                value={newBatch.name}
-                onChange={handleChange}
-                margin="normal"
-                error={!!errors.name}
-                helperText={errors.name}
-              />
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  label="Opening Date"
-                  value={newBatch.openingDate}
-                  onChange={(newValue) => handleTimeChange('openingDate', newValue)}
-                  sx={{ mt: 2, width: '100%' }}
-                  slotProps={{
-                    textField: {
-                      error: !!errors.openingDate,
-                      helperText: errors.openingDate,
-                      fullWidth: true
-                    }
-                  }}
-                />
-                <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                  <TimePicker
-                    label="Start Time"
-                    value={newBatch.startTime}
-                    onChange={(newValue) => handleTimeChange('startTime', newValue)}
-                    sx={{ flex: 1 }}
-                    slotProps={{
-                      textField: {
-                        error: !!errors.startTime,
-                        helperText: errors.startTime,
-                        fullWidth: true
-                      }
-                    }}
-                    views={['hours', 'minutes']}
-                    format="HH:mm"
-                  />
-                  <TimePicker
-                    label="End Time"
-                    value={newBatch.endTime}
-                    onChange={(newValue) => handleTimeChange('endTime', newValue)}
-                    sx={{ flex: 1 }}
-                    slotProps={{
-                      textField: {
-                        error: !!errors.endTime,
-                        helperText: errors.endTime,
-                        fullWidth: true
-                      }
-                    }}
-                    views={['hours', 'minutes']}
-                    format="HH:mm"
-                  />
-                </Box>
-              </LocalizationProvider>
-              {errors.general && (
-                <Alert severity="error" sx={{ mt: 2 }}>
-                  {errors.general}
-                </Alert>
-              )}
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleClose} color="primary" disabled={loading}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSubmit} 
-              variant="contained" 
-              disabled={loading}
-              sx={{ 
-                bgcolor: theme.primary,
-                '&:hover': { bgcolor: theme.primary }
-              }}
-            >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Create'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Add Menu component */}
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
-        >
-          <MenuItem onClick={handleEditClick}>
-            <EditIcon sx={{ mr: 1, fontSize: 20 }} />
-            Edit Batch
-          </MenuItem>
-          <MenuItem onClick={handleDeleteClick} sx={{ color: 'error.main' }}>
-            <DeleteIcon sx={{ mr: 1, fontSize: 20 }} />
-            Delete Batch
-          </MenuItem>
-        </Menu>
-
-        {/* Add Edit Batch Dialog */}
-        <Dialog open={editDialogOpen} onClose={handleEditClose} maxWidth="sm" fullWidth>
-          <DialogTitle sx={{ 
-                      backgroundColor: theme.primary,
-                      color: 'white',
-                      py: 1.5
-                    }}>Edit Batch</DialogTitle>
-          <DialogContent>
-            <Box sx={{ mt: 2 }}>
-              <TextField
-                fullWidth
-                label="Batch Name"
-                name="name"
-                value={editBatch.name}
-                onChange={handleEditChange}
-                margin="normal"
-                error={!!errors.name}
-                helperText={errors.name}
-              />
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  label="Opening Date"
-                  value={editBatch.openingDate}
-                  onChange={(newValue) => handleEditTimeChange('openingDate', newValue)}
-                  sx={{ mt: 2, width: '100%' }}
-                  slotProps={{
-                    textField: {
-                      error: !!errors.openingDate,
-                      helperText: errors.openingDate,
-                      fullWidth: true
-                    }
-                  }}
-                />
-                <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                  <TimePicker
-                    label="Start Time"
-                    value={editBatch.startTime}
-                    onChange={(newValue) => handleEditTimeChange('startTime', newValue)}
-                    sx={{ flex: 1 }}
-                    slotProps={{
-                      textField: {
-                        error: !!errors.startTime,
-                        helperText: errors.startTime,
-                        fullWidth: true
-                      }
-                    }}
-                    views={['hours', 'minutes']}
-                    format="HH:mm"
-                  />
-                  <TimePicker
-                    label="End Time"
-                    value={editBatch.endTime}
-                    onChange={(newValue) => handleEditTimeChange('endTime', newValue)}
-                    sx={{ flex: 1 }}
-                    slotProps={{
-                      textField: {
-                        error: !!errors.endTime,
-                        helperText: errors.endTime,
-                        fullWidth: true
-                      }
-                    }}
-                    views={['hours', 'minutes']}
-                    format="HH:mm"
-                  />
-                </Box>
-              </LocalizationProvider>
-              {errors.general && (
-                <Alert severity="error" sx={{ mt: 2 }}>
-                  {errors.general}
-                </Alert>
-              )}
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleEditClose} color="primary" disabled={loading}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleEditSubmit} 
-              variant="contained" 
-              disabled={loading}
-              sx={{ 
-                bgcolor: theme.primary,
-                '&:hover': { bgcolor: theme.primary }
-              }}
-            >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Update'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Add Delete Confirmation Dialog */}
-        <Dialog
-          open={deleteDialogOpen}
-          onClose={handleDeleteClose}
-          maxWidth="xs"
-          fullWidth
-        >
-          <DialogTitle sx={{ 
-                      backgroundColor: 'error.main',
-                      color: 'white',
-                      py: 1.5
-                    }}>Delete Batch</DialogTitle>
-          <DialogContent>
-            <Typography>
-              Are you sure you want to delete batch "{selectedBatch?.name}"? This action cannot be undone.
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleDeleteClose} color="primary" disabled={loading}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleDeleteConfirm}
-              color="error"
-              variant="contained"
-              disabled={loading}
-            >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Add Snackbar for notifications */}
-        <Snackbar open={!!error} autoHideDuration={6000} onClose={handleCloseAlert}>
-          <Alert onClose={handleCloseAlert} severity="error" sx={{ width: '100%' }}>
-            {error}
-          </Alert>
-        </Snackbar>
-        
-        <Snackbar open={success} autoHideDuration={6000} onClose={handleCloseAlert}>
-          <Alert onClose={handleCloseAlert} severity="success" sx={{ width: '100%' }}>
-            Batch created successfully!
-          </Alert>
-        </Snackbar>
-      </Box>
+      )}
     </TeacherLayout>
   );
 }

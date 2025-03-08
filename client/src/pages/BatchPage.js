@@ -8,7 +8,6 @@ import {
   Grid,
   Avatar,
   Divider,
-  CircularProgress,
   Alert,
   Button,
   TextField,
@@ -35,6 +34,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import SubjectIcon from '@mui/icons-material/Subject';
+import Loading from '../components/Loading';
 
 const theme = {
   primary: '#2e7d32',
@@ -56,10 +56,7 @@ export default function BatchPage() {
   const [studentToDelete, setStudentToDelete] = useState(null);
 
   useEffect(() => {
-    const loadData = async () => {
-      await fetchData();
-    };
-    loadData();
+    fetchData();
   }, [batchId]);
 
   const fetchData = async () => {
@@ -145,9 +142,7 @@ export default function BatchPage() {
   if (loading) {
     return (
       <TeacherLayout>
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
-          <CircularProgress />
-        </Box>
+        <Loading message="Loading batch details..." />
       </TeacherLayout>
     );
   }
