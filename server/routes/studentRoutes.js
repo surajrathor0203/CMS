@@ -6,7 +6,8 @@ const {
   checkEmail, 
   getStudentsByBatch, 
   deleteFromBatch,
-  createStudents     // Add this import
+  createStudents,
+  getStudentBatches     // Add this import
 } = require('../controllers/studentController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -116,5 +117,6 @@ router.delete('/:studentId/batch/:batchId', deleteFromBatch);
 
 router.get('/check-email/:email', protect, checkEmail);
 router.get('/batch/:batchId', protect, getStudentsByBatch);
+router.get('/:studentId/batches', protect, getStudentBatches);
 
 module.exports = router;

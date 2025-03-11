@@ -196,3 +196,12 @@ export const deleteStudentFromBatch = async (studentId, batchId) => {
   const response = await api.delete(`/students/${studentId}/batch/${batchId}`);
   return response.data;
 };
+
+export const getStudentBatches = async (studentId) => {
+  try {
+    const response = await api.get(`/students/${studentId}/batches`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
