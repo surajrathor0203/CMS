@@ -1,14 +1,17 @@
 const mongoose = require('mongoose');
 
-const noteSchema = new mongoose.Schema({
+const noteItemSchema = new mongoose.Schema({
   title: {
-    type: String,
-    // required: true
+    type: String
   },
   fileUrl: {
     type: String,
     required: true
-  },
+  }
+});
+
+const noteSchema = new mongoose.Schema({
+  notes: [noteItemSchema],
   batchId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Batch',

@@ -37,12 +37,21 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
     // Upload to S3
     const s3Upload = await s3.upload(params).promise();
 
-    // Create note in database
-    const note = new Note({
+    // Find existing note document for this batch or create new one
+    let note = await Note.findOne({ batchId });
+    
+    if (!note) {
+      note = new Note({
+        notes: [],
+        batchId,
+        uploadedBy: req.user._id
+      });
+    }
+
+    // Add new note item to the notes array
+    note.notes.push({
       title: file.originalname,
-      fileUrl: s3Upload.Location,
-      batchId: batchId,
-      uploadedBy: req.user._id
+      fileUrl: s3Upload.Location
     });
 
     await note.save();
@@ -61,11 +70,10 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
 // Get notes by batch
 router.get('/batch/:batchId', auth, async (req, res) => {
   try {
-    const notes = await Note.find({ batchId: req.params.batchId })
-      .sort({ createdAt: -1 })
+    const note = await Note.findOne({ batchId: req.params.batchId })
       .populate('uploadedBy', 'name');
     
-    res.json(notes);
+    res.json({ data: note ? note.notes : [] });
   } catch (error) {
     console.error('Error fetching notes:', error);
     res.status(500).json({ message: 'Error fetching notes' });
