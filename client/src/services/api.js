@@ -125,18 +125,18 @@ export const addStudent = async (batchId, studentData) => {
   return response.data;
 };
 
-export const uploadFiles = async (batchId, files) => {
-  const formData = new FormData();
-  files.forEach(file => {
-    formData.append('files', file);
-  });
-  const response = await axios.post(`/api/batches/${batchId}/files`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  });
-  return response.data;
-};
+// export const uploadFiles = async (batchId, files) => {
+//   const formData = new FormData();
+//   files.forEach(file => {
+//     formData.append('files', file);
+//   });
+//   const response = await axios.post(`/api/batches/${batchId}/files`, formData, {
+//     headers: {
+//       'Content-Type': 'multipart/form-data'
+//     }
+//   });
+//   return response.data;
+// };
 
 export const createMultipleStudents = async (students, batchDetails) => {
   try {
@@ -257,5 +257,19 @@ export const updateTeacherPassword = async (teacherId, passwordData) => {
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
+  }
+};
+
+export const uploadBatchNotes = async (batchId, formData) => {
+  try {
+    const response = await axios.post(`${API_URL}/api/batches/${batchId}/notes`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+       
+      }
+    });
+    return response;
+  } catch (error) {
+    throw error;
   }
 };
