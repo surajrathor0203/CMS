@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -23,18 +24,39 @@ import {
   Award,
   User,
 } from 'lucide-react';
-import { getUserFromCookie } from '../utils/cookies';
+import { getUserFromCookie, clearUserCookies } from '../utils/cookies';
 import { logout } from '../utils/auth';
+import { getStudentProfile } from '../services/api';
 
 const drawerWidth = 240;
 
 export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
   
-  // Get user data from cookie
-  const userData = getUserFromCookie();
-  const userName = userData?.user?.name || 'Student';
+  // Get user ID from cookie
+  const user = getUserFromCookie()?.user;
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (user?.id) {
+        try {
+          const response = await getStudentProfile(user.id);
+          if (response.success) {
+            setUserData(response.data);
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchUserData();
+  }, [user?.id]);
 
   const menuItems = [
     { text: 'Dashboard', icon: <BookOpen size={24} />, path: '/student-dashboard' },
@@ -43,8 +65,17 @@ export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
     { text: 'Assignments', icon: <FileText size={24} />, path: '/student/assignments' },
     { text: 'Grades', icon: <Award size={24} />, path: '/student/grades' },
     { text: 'Messages', icon: <MessageCircle size={24} />, path: '/student/messages' },
-    { text: 'Settings', icon: <Settings size={24} />, path: '/student/settings' },
+    { text: 'Settings', icon: <Settings size={24} />, path: '/student-dashboard/settings' },
   ];
+
+  const handleNavigation = (path) => {
+    if (path === '/logout') {
+      clearUserCookies();
+      navigate('/login');
+      return;
+    }
+    navigate(path);
+  };
 
   const drawer = (
     <Box>
@@ -76,7 +107,7 @@ export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
               color: 'primary.main'
             }}
           >
-            {userName}
+            {loading ? 'Loading...' : userData?.name || 'Student'}
           </Typography>
         </Box>
       </Toolbar>
@@ -86,7 +117,7 @@ export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
           <ListItem key={item.text} disablePadding>
             <ListItemButton
               selected={location.pathname === item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => handleNavigation(item.path)}
               sx={{
                 '&.Mui-selected': {
                   backgroundColor: 'rgba(76, 175, 80, 1)',

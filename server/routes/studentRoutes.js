@@ -7,7 +7,10 @@ const {
   getStudentsByBatch, 
   deleteFromBatch,
   createStudents,
-  getStudentBatches     // Add this import
+  getStudentBatches,
+  getStudentProfile,
+  updateStudentProfile,
+  updateStudentPassword  // Add this import
 } = require('../controllers/studentController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -118,5 +121,10 @@ router.delete('/:studentId/batch/:batchId', deleteFromBatch);
 router.get('/check-email/:email', protect, checkEmail);
 router.get('/batch/:batchId', protect, getStudentsByBatch);
 router.get('/:studentId/batches', protect, getStudentBatches);
+
+// Add these new routes before module.exports
+router.get('/profile/:id', protect, getStudentProfile);
+router.put('/profile/:id', protect, updateStudentProfile);
+router.put('/profile/:id/password', protect, updateStudentPassword); // Add this line
 
 module.exports = router;

@@ -9,6 +9,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import ForgotPassword from './pages/forgot-password';
 import BatchPage from './pages/BatchPage';
 import AddStudent from './pages/AddStudent';
+import StudentProfile from './pages/StudentProfile';
 import './App.css';
 
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -78,6 +79,15 @@ function App() {
             element={
               <ProtectedRoute 
                 element={<StudentDashboard />} 
+                allowedRoles={['student']} 
+              />
+            } 
+          />
+          <Route 
+            path="/student-dashboard/settings" 
+            element={
+              <ProtectedRoute 
+                element={<StudentProfile />} 
                 allowedRoles={['student']} 
               />
             } 

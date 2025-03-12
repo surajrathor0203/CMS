@@ -205,3 +205,30 @@ export const getStudentBatches = async (studentId) => {
     throw error.response?.data || error;
   }
 };
+
+export const getStudentProfile = async (studentId) => {
+  try {
+    const response = await api.get(`/students/profile/${studentId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const updateStudentProfile = async (studentId, profileData) => {
+  try {
+    const response = await api.put(`/students/profile/${studentId}`, profileData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const updateStudentPassword = async (studentId, passwordData) => {
+  try {
+    const response = await api.put(`/students/profile/${studentId}/password`, passwordData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

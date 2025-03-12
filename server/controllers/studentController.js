@@ -1,5 +1,6 @@
 const Student = require('../models/Student');
 const Batch = require('../models/Batch');
+const bcrypt = require('bcryptjs');  // Add this import
 const { generatePassword } = require('../utils/passwordGenerator');
 const { sendStudentWelcomeEmail } = require('../utils/emailService');
 const { generateUsername } = require('../utils/usernameGenerator');
@@ -181,11 +182,104 @@ const getStudentBatches = async (req, res) => {
     }
 };
 
+const getStudentProfile = async (req, res) => {
+    try {
+        const student = await Student.findById(req.params.id);
+        if (!student) {
+            return res.status(404).json({
+                success: false,
+                message: 'Student not found'
+            });
+        }
+        res.json({
+            success: true,
+            data: student
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+const updateStudentProfile = async (req, res) => {
+    try {
+        const { name, phone, parentPhone, address } = req.body;
+        const student = await Student.findById(req.params.id);
+
+        if (!student) {
+            return res.status(404).json({
+                success: false,
+                message: 'Student not found'
+            });
+        }
+
+        student.name = name || student.name;
+        student.phone = phone || student.phone;
+        student.parentPhone = parentPhone || student.parentPhone;
+        student.address = address || student.address;
+
+        const updatedStudent = await student.save();
+
+        res.json({
+            success: true,
+            data: updatedStudent,
+            message: 'Profile updated successfully'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+const updateStudentPassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const student = await Student.findById(req.params.id);
+
+        if (!student) {
+            return res.status(404).json({
+                success: false,
+                message: 'Student not found'
+            });
+        }
+
+        // Verify current password
+        const isMatch = await bcrypt.compare(currentPassword, student.password);
+        if (!isMatch) {
+            return res.status(400).json({
+                success: false,
+                message: 'Current password is incorrect'
+            });
+        }
+
+        // Update password
+        student.password = newPassword;
+        await student.save();
+
+        res.json({
+            success: true,
+            message: 'Password updated successfully'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 // Export all functions together
 module.exports = {
     createStudents,
     checkEmail,
     getStudentsByBatch,
     deleteFromBatch,
-    getStudentBatches
+    getStudentBatches,
+    getStudentProfile,
+    updateStudentProfile,
+    updateStudentPassword
 };
