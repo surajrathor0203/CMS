@@ -23,11 +23,13 @@ app.use(cors({
 const authRoutes = require('./routes/authRoutes');
 const batchRoutes = require('./routes/batchRoutes');
 const studentRoutes = require('./routes/studentRoutes');
+const noteRoutes = require('./routes/noteRoutes');  // Add this line
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/batch', batchRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/notes', noteRoutes);  // Add this line
 
 // MongoDB connection
 const connectDB = async () => {

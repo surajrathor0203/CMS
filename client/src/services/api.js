@@ -260,16 +260,28 @@ export const updateTeacherPassword = async (teacherId, passwordData) => {
   }
 };
 
-export const uploadBatchNotes = async (batchId, formData) => {
+export const uploadNote = async (file, batchId) => {
   try {
-    const response = await axios.post(`${API_URL}/api/batches/${batchId}/notes`, formData, {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('batchId', batchId);
+
+    const response = await api.post('/notes/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
-       
-      }
+      },
     });
-    return response;
+    return response.data;
   } catch (error) {
-    throw error;
+    throw error.response?.data || error;
+  }
+};
+
+export const getNotesByBatch = async (batchId) => {
+  try {
+    const response = await api.get(`/notes/batch/${batchId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
   }
 };

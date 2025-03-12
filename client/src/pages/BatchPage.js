@@ -30,14 +30,15 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 import TeacherLayout from '../components/TeacherLayout';
-import { getBatchById, getStudentsByBatch, deleteStudentFromBatch, uploadBatchNotes } from '../services/api';
+import { getBatchById, getStudentsByBatch, deleteStudentFromBatch, uploadNote, getNotesByBatch } from '../services/api';
 import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import SubjectIcon from '@mui/icons-material/Subject';
 import Loading from '../components/Loading';
+import DownloadIcon from '@mui/icons-material/Download';
 
 const theme = {
   primary: '#2e7d32',
@@ -58,10 +59,10 @@ export default function BatchPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [activeTab, setActiveTab] = useState('activity');
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [noteTitle, setNoteTitle] = useState('');
-  const [noteFile, setNoteFile] = useState(null);
-  const [uploading, setUploading] = useState(false);
+  const [notesUploadOpen, setNotesUploadOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [notes, setNotes] = useState([]); // Initialize as empty array instead of null
+  const [uploadLoading, setUploadLoading] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -70,9 +71,10 @@ export default function BatchPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [batchResponse, studentsResponse] = await Promise.all([
+      const [batchResponse, studentsResponse, notesResponse] = await Promise.all([
         getBatchById(batchId),
-        getStudentsByBatch(batchId)
+        getStudentsByBatch(batchId),
+        getNotesByBatch(batchId)
       ]);
 
       if (batchResponse.data) {
@@ -81,8 +83,14 @@ export default function BatchPage() {
       if (studentsResponse.data) {
         setStudents(studentsResponse.data);
       }
+      if (notesResponse.data) {
+        setNotes(notesResponse.data);
+      } else {
+        setNotes([]); // Set empty array if no notes data
+      }
     } catch (err) {
       setError('Failed to fetch data');
+      setNotes([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -141,36 +149,31 @@ export default function BatchPage() {
     setActiveTab(newValue);
   };
 
-  const handleUploadDialogOpen = () => {
-    setUploadDialogOpen(true);
+  const handleNotesUpload = () => {
+    setNotesUploadOpen(true);
   };
 
-  const handleUploadDialogClose = () => {
-    setUploadDialogOpen(false);
-    setNoteTitle('');
-    setNoteFile(null);
-  };
-
-  const handleFileChange = (event) => {
-    setNoteFile(event.target.files[0]);
+  const handleFileSelect = (event) => {
+    setSelectedFile(event.target.files[0]);
   };
 
   const handleUploadSubmit = async () => {
-    try {
-      setUploading(true);
-      const formData = new FormData();
-      formData.append('title', noteTitle);
-      formData.append('file', noteFile);
+    if (!selectedFile || !batchId) return;
 
-      await uploadBatchNotes(batchId, formData);
-      handleUploadDialogClose();
-      // Show success message
-      setError('');
-      // Optionally refresh the notes list here
-    } catch (err) {
-      setError('Failed to upload notes: ' + (err.response?.data?.message || err.message));
+    try {
+      setUploadLoading(true);
+      await uploadNote(selectedFile, batchId);
+      
+      // Refresh notes
+      const notesResponse = await getNotesByBatch(batchId);
+      setNotes(notesResponse.data);
+      
+      setNotesUploadOpen(false);
+      setSelectedFile(null);
+    } catch (error) {
+      setError('Failed to upload note');
     } finally {
-      setUploading(false);
+      setUploadLoading(false);
     }
   };
 
@@ -207,6 +210,63 @@ export default function BatchPage() {
       </TeacherLayout>
     );
   }
+
+  const NotesSection = () => (
+    <Box sx={{ mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Typography variant="h6" color={theme.primary}>
+          Notes
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<UploadFileIcon />}
+          onClick={handleNotesUpload}
+          sx={{ bgcolor: theme.primary }}
+          size="small"
+        >
+          Upload Notes
+        </Button>
+      </Box>
+      <Divider sx={{ mb: 2 }} />
+      {Array.isArray(notes) && notes.length > 0 ? ( // Add Array.isArray check
+        <TableContainer component={Paper}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Title</TableCell>
+                <TableCell>Uploaded By</TableCell>
+                <TableCell>Date</TableCell>
+                <TableCell align="right">Action</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {notes.map((note) => (
+                <TableRow key={note._id}>
+                  <TableCell>{note.title}</TableCell>
+                  <TableCell>{note.uploadedBy?.name || 'Unknown'}</TableCell>
+                  <TableCell>
+                    {new Date(note.createdAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell align="right">
+                    <IconButton
+                      size="small"
+                      onClick={() => window.open(note.fileUrl, '_blank')}
+                    >
+                      <DownloadIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
+        <Typography variant="body1" color="text.secondary" textAlign="center">
+          No notes available
+        </Typography>
+      )}
+    </Box>
+  );
 
   return (
     <TeacherLayout title={batch.name}>
@@ -389,26 +449,7 @@ export default function BatchPage() {
               <Card elevation={2}>
                 <CardContent>
                   {/* Notes Section */}
-                  <Box sx={{ mb: 3 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                      <Typography variant="h6" color={theme.primary}>
-                        Notes
-                      </Typography>
-                      <Button
-                        variant="contained"
-                        startIcon={<CloudUploadIcon />}
-                        onClick={handleUploadDialogOpen}
-                        sx={{ bgcolor: theme.primary }}
-                      >
-                        Upload Notes
-                      </Button>
-                    </Box>
-                    <Divider sx={{ mb: 2 }} />
-                    <Typography variant="body1" color="text.secondary" textAlign="center">
-                      No notes available
-                    </Typography>
-                    <Divider sx={{ mb: 2 }} />
-                  </Box>
+                  <NotesSection />
 
                   {/* Quizzes Section */}
                   <Box sx={{ mb: 3 }}>
@@ -458,52 +499,27 @@ export default function BatchPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={uploadDialogOpen} onClose={handleUploadDialogClose}>
-        <DialogTitle>Upload Batch Notes</DialogTitle>
+      <Dialog open={notesUploadOpen} onClose={() => setNotesUploadOpen(false)}>
+        <DialogTitle>Upload Notes</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>
-            Please enter a title for the notes and select a file to upload.
+            Please select a file to upload as notes for this batch.
           </DialogContentText>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Note Title"
-            type="text"
-            fullWidth
-            value={noteTitle}
-            onChange={(e) => setNoteTitle(e.target.value)}
-            sx={{ mb: 2 }}
-          />
           <input
-            accept=".pdf,.doc,.docx"
-            style={{ display: 'none' }}
-            id="note-file-upload"
             type="file"
-            onChange={handleFileChange}
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            onChange={handleFileSelect}
           />
-          <label htmlFor="note-file-upload">
-            <Button
-              variant="outlined"
-              component="span"
-              startIcon={<CloudUploadIcon />}
-            >
-              Select File
-            </Button>
-          </label>
-          {noteFile && (
-            <Typography variant="body2" sx={{ mt: 1 }}>
-              Selected file: {noteFile.name}
-            </Typography>
-          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleUploadDialogClose}>Cancel</Button>
+          <Button onClick={() => setNotesUploadOpen(false)}>Cancel</Button>
           <Button 
             onClick={handleUploadSubmit}
-            disabled={!noteTitle || !noteFile || uploading}
-            sx={{ color: theme.primary }}
+            disabled={!selectedFile || uploadLoading}
+            variant="contained"
+            sx={{ bgcolor: theme.primary }}
           >
-            {uploading ? 'Uploading...' : 'Upload'}
+            {uploadLoading ? 'Uploading...' : 'Upload'}
           </Button>
         </DialogActions>
       </Dialog>
