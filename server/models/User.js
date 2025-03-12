@@ -30,8 +30,16 @@ const userSchema = new mongoose.Schema({
     default: 'teacher'
   },
   subject: String,
-  phoneNumber: String,
-  countryCode: String,
+  phoneNumber: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  countryCode: {
+    type: String,
+    required: true,
+    trim: true
+  },
   address: String,
   createdAt: {
     type: Date,

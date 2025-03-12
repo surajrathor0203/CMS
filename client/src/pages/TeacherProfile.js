@@ -25,7 +25,7 @@ export default function TeacherProfile() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '',
+    phoneNumber: '',
     subject: '',
     address: '',
   });
@@ -48,7 +48,7 @@ export default function TeacherProfile() {
           setFormData({
             name: response.data.name,
             email: response.data.email,
-            phone: response.data.phone,
+            phoneNumber: response.data.phoneNumber,
             subject: response.data.subject,
             address: response.data.address,
           });
@@ -181,9 +181,9 @@ export default function TeacherProfile() {
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
-                    label="Phone Number"
-                    name="phone"
-                    value={formData.phone}
+                    label="phoneNumber Number"
+                    name="phoneNumber"
+                    value={formData.phoneNumber}
                     onChange={handleChange}
                     disabled={!isEditing}
                   />

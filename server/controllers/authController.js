@@ -17,7 +17,7 @@ const generateToken = (userId) => {
 
 exports.signup = async (req, res) => {
     try {
-        const { name, email, password, phone, subject, address, role } = req.body;
+        const { name, email, password, phoneNumber, countryCode, subject, address, role } = req.body;
 
         // Check if user already exists
         const existingUser = await User.findOne({ email });
@@ -36,7 +36,8 @@ exports.signup = async (req, res) => {
             name,
             email,
             password,
-            phone,
+            phoneNumber,   // Changed from phone to phoneNumber
+            countryCode,
             subject,
             address,
             role,
