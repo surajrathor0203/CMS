@@ -10,6 +10,7 @@ import ForgotPassword from './pages/forgot-password';
 import BatchPage from './pages/BatchPage';
 import AddStudent from './pages/AddStudent';
 import StudentProfile from './pages/StudentProfile';
+import TeacherProfile from './pages/TeacherProfile';  
 import './App.css';
 
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -84,11 +85,21 @@ function App() {
             } 
           />
           <Route 
-            path="/student-dashboard/settings" 
+            path="/student/settings" 
             element={
               <ProtectedRoute 
                 element={<StudentProfile />} 
                 allowedRoles={['student']} 
+              />
+            } 
+          />
+
+<Route 
+            path="/teacher/settings" 
+            element={
+              <ProtectedRoute 
+                element={<TeacherProfile />} 
+                allowedRoles={['teacher']} 
               />
             } 
           />

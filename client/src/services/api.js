@@ -232,3 +232,30 @@ export const updateStudentPassword = async (studentId, passwordData) => {
     throw error.response?.data || error;
   }
 };
+
+export const getTeacherProfile = async (teacherId) => {
+  try {
+    const response = await api.get(`/auth/teacher/profile/${teacherId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const updateTeacherProfile = async (teacherId, profileData) => {
+  try {
+    const response = await api.put(`/auth/teacher/profile/${teacherId}`, profileData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const updateTeacherPassword = async (teacherId, passwordData) => {
+  try {
+    const response = await api.put(`/auth/teacher/profile/${teacherId}/password`, passwordData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

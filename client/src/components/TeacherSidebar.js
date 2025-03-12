@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -25,16 +26,36 @@ import {
 } from 'lucide-react';
 import { getUserFromCookie } from '../utils/cookies';
 import { logout } from '../utils/auth';
+import { getTeacherProfile } from '../services/api';
 
 const drawerWidth = 240;
 
 export default function TeacherSidebar({ mobileOpen, handleDrawerToggle }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [teacherData, setTeacherData] = useState(null);
   
   // Get user data from cookie
   const userData = getUserFromCookie();
-  const userName = userData?.user?.name || 'Teacher';
+  const userId = userData?.user?.id;
+
+  useEffect(() => {
+    const fetchTeacherProfile = async () => {
+      try {
+        if (userId) {
+          const response = await getTeacherProfile(userId);
+          setTeacherData(response.data);
+        }
+      } catch (error) {
+        console.error('Error fetching teacher profile:', error);
+      }
+    };
+
+    fetchTeacherProfile();
+  }, [userId]);
+
+  // Use teacherData.name if available, otherwise fall back to userData or default
+  const userName = teacherData?.name || userData?.user?.name || 'Teacher';
 
   // Define a green color theme
 const theme = {
@@ -50,7 +71,7 @@ const theme = {
     { text: 'Assignments', icon: <FileText size={24} />, path: '/teacher/assignments' },
     { text: 'Analytics', icon: <BarChart size={24} />, path: '/teacher/analytics' },
     { text: 'Messages', icon: <MessageCircle size={24} />, path: '/teacher/messages' },
-    { text: 'Settings', icon: <Settings size={24} />, path: '/teacher/settings' },
+    { text: 'Settings', icon: <Settings size={24} />, path: '/teacher/settings' }, 
   ];
 
   const drawer = (
@@ -60,31 +81,40 @@ const theme = {
           display: 'flex', 
           alignItems: 'center', 
           gap: 1.5,
-          minHeight: '49px !important', // Reduce default height
-          py: 1 // Reduce padding
+          minHeight: '64px !important',
+          bgcolor: theme.background
         }}
       >
         <Avatar 
           sx={{ 
-            bgcolor: 'primary.main',
-            width: 32, // Reduced from 40
-            height: 32, // Reduced from 40
+            bgcolor: theme.primary,
+            width: 40,
+            height: 40
           }}
         >
-          <User size={20} /> {/* Reduced from 24 */}
+          <User size={24} />
         </Avatar>
         <Box>
           <Typography 
-            variant="subtitle2" // Changed from subtitle1
+            variant="subtitle1"
             noWrap 
             component="div" 
             sx={{ 
-              fontWeight: 'medium',
-              color: 'primary.main'
+              fontWeight: 'bold',
+              color: theme.primary
             }}
           >
             {userName}
           </Typography>
+          {/* <Typography 
+            variant="body2" 
+            sx={{ 
+              color: 'text.secondary',
+              lineHeight: 1 
+            }}
+          >
+            {userRole}
+          </Typography> */}
         </Box>
       </Toolbar>
       <Divider />

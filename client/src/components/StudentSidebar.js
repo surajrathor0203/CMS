@@ -34,10 +34,15 @@ export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(true);
   
   // Get user ID from cookie
   const user = getUserFromCookie()?.user;
+
+  const theme = {
+    primary: '#2e7d32', // dark green
+    light: '#81c784',   // light green
+    background: '#e8f5e9' // very light green background
+  };
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -49,11 +54,10 @@ export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
           }
         } catch (error) {
           console.error('Error fetching user data:', error);
-        } finally {
-          setLoading(false);
         }
       }
     };
+    
 
     fetchUserData();
   }, [user?.id]);
@@ -65,7 +69,7 @@ export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
     { text: 'Assignments', icon: <FileText size={24} />, path: '/student/assignments' },
     { text: 'Grades', icon: <Award size={24} />, path: '/student/grades' },
     { text: 'Messages', icon: <MessageCircle size={24} />, path: '/student/messages' },
-    { text: 'Settings', icon: <Settings size={24} />, path: '/student-dashboard/settings' },
+    { text: 'Settings', icon: <Settings size={24} />, path: '/student/settings' },
   ];
 
   const handleNavigation = (path) => {
@@ -80,34 +84,35 @@ export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
   const drawer = (
     <Box>
       <Toolbar 
-        sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: 1.5,
-          minHeight: '49px !important', // Reduce default height
-          py: 1 // Reduce padding
-        }}
+      sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 1.5,
+        minHeight: '64px !important',
+        bgcolor: theme.background
+      }}
       >
         <Avatar 
           sx={{ 
-            bgcolor: 'primary.main',
-            width: 32, // Reduced from 40
-            height: 32, // Reduced from 40
+            bgcolor: theme.primary,
+            width: 40,
+            height: 40
           }}
         >
-          <User size={20} /> {/* Reduced from 24 */}
+          <User size={24} />
         </Avatar>
         <Box>
           <Typography 
-            variant="subtitle2" // Changed from subtitle1
+            variant="subtitle1"
             noWrap 
             component="div" 
             sx={{ 
-              fontWeight: 'medium',
-              color: 'primary.main'
+              fontWeight: 'bold',
+              color: theme.primary
             }}
           >
-            {loading ? 'Loading...' : userData?.name || 'Student'}
+            {userData?.name}
+            {/* {loading ? 'Loading...' : userData?.name || 'Student'} */}
           </Typography>
         </Box>
       </Toolbar>

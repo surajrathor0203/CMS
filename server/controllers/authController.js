@@ -275,3 +275,62 @@ exports.resetPassword = async (req, res) => {
         });
     }
 };
+
+exports.getTeacherProfile = async (req, res) => {
+  try {
+    const teacher = await User.findById(req.params.id).select('-password');
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    }
+    res.json({ success: true, data: teacher });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.updateTeacherProfile = async (req, res) => {
+  try {
+    const { name, phone, subject, address } = req.body;
+    const teacher = await User.findById(req.params.id);
+
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    }
+
+    teacher.name = name || teacher.name;
+    teacher.phone = phone || teacher.phone;
+    teacher.subject = subject || teacher.subject;
+    teacher.address = address || teacher.address;
+
+    await teacher.save();
+
+    res.json({ success: true, data: teacher, message: 'Profile updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.updateTeacherPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const teacher = await User.findById(req.params.id);
+
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    }
+
+    // Verify current password
+    const isMatch = await teacher.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+    }
+
+    // Update password
+    teacher.password = newPassword;
+    await teacher.save();
+
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
