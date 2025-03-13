@@ -7,6 +7,10 @@ const noteItemSchema = new mongoose.Schema({
   fileUrl: {
     type: String,
     required: true
+  },
+  s3Key: {
+    type: String,
+    required: true
   }
 });
 

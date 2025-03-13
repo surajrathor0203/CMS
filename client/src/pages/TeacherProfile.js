@@ -181,7 +181,7 @@ export default function TeacherProfile() {
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
-                    label="phoneNumber Number"
+                    label="phoneNumber"
                     name="phoneNumber"
                     value={formData.phoneNumber}
                     onChange={handleChange}

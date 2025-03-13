@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -26,19 +26,21 @@ import {
   DialogTitle,
   IconButton,
   Tabs,
-  Tab
+  Tab,
+  CircularProgress
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import TeacherLayout from '../components/TeacherLayout';
-import { getBatchById, getStudentsByBatch, deleteStudentFromBatch, uploadNote, getNotesByBatch } from '../services/api';
+import { getBatchById, getStudentsByBatch, deleteStudentFromBatch, uploadNote, getNotesByBatch, deleteNote, updateNote } from '../services/api';
 import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import SubjectIcon from '@mui/icons-material/Subject';
 import Loading from '../components/Loading';
 import DownloadIcon from '@mui/icons-material/Download';
+import EditIcon from '@mui/icons-material/Edit';
 
 const theme = {
   primary: '#2e7d32',
@@ -63,12 +65,11 @@ export default function BatchPage() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [notes, setNotes] = useState([]); // Initialize as empty array instead of null
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [deleteNoteDialogOpen, setDeleteNoteDialogOpen] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState(null);
+  const [noteActionLoading, setNoteActionLoading] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, [batchId]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [batchResponse, studentsResponse, notesResponse] = await Promise.all([
@@ -94,7 +95,11 @@ export default function BatchPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [batchId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [batchId, fetchData]);
 
   const formatTime = (isoString) => {
     const date = new Date(isoString);
@@ -177,6 +182,42 @@ export default function BatchPage() {
     }
   };
 
+  const handleDeleteNote = async (noteId) => {
+    try {
+      setNoteActionLoading(true);
+      await deleteNote(noteId, batchId);
+      // Refresh notes
+      const notesResponse = await getNotesByBatch(batchId);
+      setNotes(notesResponse.data);
+      setDeleteNoteDialogOpen(false);
+      setNoteToDelete(null);
+    } catch (error) {
+      setError('Failed to delete note');
+    } finally {
+      setNoteActionLoading(false);
+    }
+  };
+
+  const handleUpdateNote = async (noteId, file) => {
+    try {
+      setUploadLoading(true);
+      await updateNote(noteId, file, batchId);
+      
+      // Refresh notes
+      const notesResponse = await getNotesByBatch(batchId);
+      setNotes(notesResponse.data);
+    } catch (error) {
+      setError('Failed to update note');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  const handleDeleteNoteClick = (note) => {
+    setNoteToDelete(note);
+    setDeleteNoteDialogOpen(true);
+  };
+
   const filteredStudents = students.filter(student => {
     const teacherInfo = student.teachersInfo?.find(info => info.batchId === batchId);
     return (
@@ -234,25 +275,43 @@ export default function BatchPage() {
             <TableHead>
               <TableRow>
                 <TableCell>Title</TableCell>
-                <TableCell>Uploaded By</TableCell>
-                <TableCell>Date</TableCell>
-                <TableCell align="right">Action</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {notes.map((note) => (
+              {Array.isArray(notes) && notes.map((note) => (
                 <TableRow key={note._id}>
                   <TableCell>{note.title}</TableCell>
-                  <TableCell>{note.uploadedBy?.name || 'Unknown'}</TableCell>
-                  <TableCell>
-                    {new Date(note.createdAt).toLocaleDateString()}
-                  </TableCell>
                   <TableCell align="right">
+                    <input
+                      type="file"
+                      id={`update-note-${note._id}`}
+                      style={{ display: 'none' }}
+                      onChange={(e) => handleUpdateNote(note._id, e.target.files[0])}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      disabled={noteActionLoading}
+                    />
+                    <IconButton
+                      size="small"
+                      onClick={() => document.getElementById(`update-note-${note._id}`).click()}
+                      disabled={noteActionLoading}
+                    >
+                      <EditIcon />
+                    </IconButton>
                     <IconButton
                       size="small"
                       onClick={() => window.open(note.fileUrl, '_blank')}
+                      disabled={noteActionLoading}
                     >
                       <DownloadIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => handleDeleteNoteClick(note)}
+                      disabled={noteActionLoading}
+                    >
+                      <DeleteIcon />
                     </IconButton>
                   </TableCell>
                 </TableRow>
@@ -419,8 +478,8 @@ export default function BatchPage() {
                                       </IconButton>
                                     </TableCell>
                                   </TableRow>
-                            );
-                          })}
+                                );
+                              })}
                           </TableBody>
                         </Table>
                       </TableContainer>
@@ -480,7 +539,6 @@ export default function BatchPage() {
           )}
         </Grid>
       </Box>
-
       <Dialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
@@ -499,7 +557,37 @@ export default function BatchPage() {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={notesUploadOpen} onClose={() => setNotesUploadOpen(false)}>
+      <Dialog
+        open={deleteNoteDialogOpen}
+        onClose={() => !noteActionLoading && setDeleteNoteDialogOpen(false)}
+      >
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this note? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setDeleteNoteDialogOpen(false)}
+            disabled={noteActionLoading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={() => handleDeleteNote(noteToDelete?._id)}
+            color="error" 
+            disabled={noteActionLoading}
+          >
+            {noteActionLoading ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog 
+        open={notesUploadOpen} 
+        onClose={() => !uploadLoading && setNotesUploadOpen(false)}
+      >
         <DialogTitle>Upload Notes</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>
@@ -509,10 +597,22 @@ export default function BatchPage() {
             type="file"
             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
             onChange={handleFileSelect}
+            disabled={uploadLoading}
           />
+          {uploadLoading && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+              <CircularProgress size={20} sx={{ mr: 1 }} />
+              <Typography>Uploading...</Typography>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setNotesUploadOpen(false)}>Cancel</Button>
+          <Button 
+            onClick={() => setNotesUploadOpen(false)}
+            disabled={uploadLoading}
+          >
+            Cancel
+          </Button>
           <Button 
             onClick={handleUploadSubmit}
             disabled={!selectedFile || uploadLoading}

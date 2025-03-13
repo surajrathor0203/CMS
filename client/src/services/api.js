@@ -285,3 +285,28 @@ export const getNotesByBatch = async (batchId) => {
     throw error.response?.data || error;
   }
 };
+
+export const deleteNote = async (noteId, batchId) => {
+  try {
+    const response = await api.delete(`/notes/${noteId}?batchId=${batchId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const updateNote = async (noteId, file, batchId) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.put(`/notes/${noteId}?batchId=${batchId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
