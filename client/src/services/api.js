@@ -310,3 +310,43 @@ export const updateNote = async (noteId, file, batchId) => {
     throw error.response?.data || error;
   }
 };
+
+export const createAssignment = async (assignmentData, batchId) => {
+  try {
+    const formData = new FormData();
+    formData.append('title', assignmentData.title);
+    formData.append('question', assignmentData.question);
+    formData.append('endTime', assignmentData.endTime);
+    if (assignmentData.file) {
+      formData.append('file', assignmentData.file);
+    }
+    formData.append('batchId', batchId);
+
+    const response = await api.post('/assignments/create', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getAssignmentsByBatch = async (batchId) => {
+  try {
+    const response = await api.get(`/assignments/batch/${batchId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const deleteAssignment = async (assignmentId, batchId) => {
+  try {
+    const response = await api.delete(`/assignments/${assignmentId}?batchId=${batchId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

@@ -11,6 +11,7 @@ import BatchPage from './pages/BatchPage';
 import AddStudent from './pages/AddStudent';
 import StudentProfile from './pages/StudentProfile';
 import TeacherProfile from './pages/TeacherProfile';  
+import AssignmentDetail from './pages/AssignmentDetail';
 import './App.css';
 
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -76,6 +77,15 @@ function App() {
             } 
           />
           <Route 
+            path="/teacher-dashboard/batch/:batchId/assignment/:assignmentId" 
+            element={
+              <ProtectedRoute 
+                element={<AssignmentDetail />} 
+                allowedRoles={['teacher']} 
+              />
+            } 
+          />
+          <Route 
             path="/student-dashboard" 
             element={
               <ProtectedRoute 
@@ -93,8 +103,7 @@ function App() {
               />
             } 
           />
-
-<Route 
+          <Route 
             path="/teacher/settings" 
             element={
               <ProtectedRoute 

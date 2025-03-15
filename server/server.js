@@ -19,17 +19,24 @@ app.use(cors({
     credentials: true
 }));
 
+// Import and register models before routes
+require('./models/User');
+require('./models/Assignment');
+require('./models/Batch');
+
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const batchRoutes = require('./routes/batchRoutes');
 const studentRoutes = require('./routes/studentRoutes');
-const noteRoutes = require('./routes/noteRoutes');  // Add this line
+const noteRoutes = require('./routes/noteRoutes');
+const assignmentRoutes = require('./routes/assignmentRoutes');  // Add this line
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/batch', batchRoutes);
 app.use('/api/students', studentRoutes);
-app.use('/api/notes', noteRoutes);  // Add this line
+app.use('/api/notes', noteRoutes);
+app.use('/api/assignments', assignmentRoutes);  // Add this line
 
 // MongoDB connection
 const connectDB = async () => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   Box,
   Typography,
@@ -33,7 +34,18 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import TeacherLayout from '../components/TeacherLayout';
-import { getBatchById, getStudentsByBatch, deleteStudentFromBatch, uploadNote, getNotesByBatch, deleteNote, updateNote } from '../services/api';
+import { 
+  getBatchById, 
+  getStudentsByBatch, 
+  deleteStudentFromBatch, 
+  uploadNote, 
+  getNotesByBatch, 
+  deleteNote, 
+  updateNote,
+  createAssignment,
+  getAssignmentsByBatch,
+  deleteAssignment
+} from '../services/api';
 import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -68,6 +80,14 @@ export default function BatchPage() {
   const [deleteNoteDialogOpen, setDeleteNoteDialogOpen] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState(null);
   const [noteActionLoading, setNoteActionLoading] = useState(false);
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const [assignmentData, setAssignmentData] = useState({
+    title: '',
+    question: '',
+    endTime: '',
+    file: null
+  });
+  const [assignments, setAssignments] = useState([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -97,9 +117,20 @@ export default function BatchPage() {
     }
   }, [batchId]);
 
+  const fetchAssignments = useCallback(async () => {
+    try {
+      const response = await getAssignmentsByBatch(batchId);
+      setAssignments(response.data);
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+      toast.error('Failed to fetch assignments');
+    }
+  }, [batchId]);
+
   useEffect(() => {
     fetchData();
-  }, [batchId, fetchData]);
+    fetchAssignments();
+  }, [batchId, fetchData, fetchAssignments]);
 
   const formatTime = (isoString) => {
     const date = new Date(isoString);
@@ -216,6 +247,57 @@ export default function BatchPage() {
   const handleDeleteNoteClick = (note) => {
     setNoteToDelete(note);
     setDeleteNoteDialogOpen(true);
+  };
+
+  const handleAssignmentDialogOpen = () => {
+    setAssignmentDialogOpen(true);
+  };
+
+  const handleAssignmentDialogClose = () => {
+    setAssignmentDialogOpen(false);
+    setAssignmentData({
+      title: '',
+      question: '',
+      endTime: '',
+      file: null
+    });
+  };
+
+  const handleAssignmentChange = (field) => (event) => {
+    setAssignmentData(prev => ({
+      ...prev,
+      [field]: field === 'file' ? event.target.files[0] : event.target.value
+    }));
+  };
+
+  const handleAssignmentSubmit = async () => {
+    try {
+      setUploadLoading(true);
+      await createAssignment(assignmentData, batchId);
+      handleAssignmentDialogClose();
+      fetchAssignments();
+    } catch (error) {
+      setError('Failed to create assignment');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  const handleDeleteAssignment = async (assignmentId) => {
+    try {
+      await deleteAssignment(assignmentId, batchId);
+      toast.success('Assignment deleted successfully');
+      fetchAssignments();
+    } catch (error) {
+      console.error('Error deleting assignment:', error);
+      toast.error('Failed to delete assignment');
+    }
+  };
+
+  const handleAssignmentClick = (assignment) => {
+    navigate(`/teacher-dashboard/batch/${batchId}/assignment/${assignment._id}`, {
+      state: assignment
+    });
   };
 
   const filteredStudents = students.filter(student => {
@@ -524,14 +606,62 @@ export default function BatchPage() {
 
                   {/* Assignments Section */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="h6" color={theme.primary} gutterBottom>
-                      Assignments
-                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Typography variant="h6" color={theme.primary}>
+                        Assignments
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleAssignmentDialogOpen}
+                        sx={{ bgcolor: theme.primary }}
+                        size="small"
+                      >
+                        Add Assignment
+                      </Button>
+                    </Box>
                     <Divider sx={{ mb: 2 }} />
-                    <Typography variant="body1" color="text.secondary" textAlign="center">
-                      No assignments available
-                    </Typography>
-                    <Divider sx={{ mb: 2 }} />
+                    <Grid container spacing={2}>
+                      {assignments.map((assignment) => (
+                        <Grid item xs={12} sm={6} md={4} key={assignment._id}>
+                          <Card 
+                            elevation={2}
+                            sx={{ 
+                              cursor: 'pointer',
+                              '&:hover': { boxShadow: 6 }
+                            }}
+                            onClick={() => handleAssignmentClick(assignment)}
+                          >
+                            <CardContent>
+                              <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
+                                {assignment.title}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Due: {new Date(assignment.endTime).toLocaleDateString()}
+                              </Typography>
+                              <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteAssignment(assignment._id);
+                                  }}
+                                  color="error"
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Box>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                    {assignments.length === 0 && (
+                      <Typography variant="body1" color="text.secondary" textAlign="center">
+                        No assignments available
+                      </Typography>
+                    )}
+                    <Divider sx={{ mt: 2 }} />
                   </Box>
                 </CardContent>
               </Card>
@@ -620,6 +750,85 @@ export default function BatchPage() {
             sx={{ bgcolor: theme.primary }}
           >
             {uploadLoading ? 'Uploading...' : 'Upload'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog 
+        open={assignmentDialogOpen} 
+        onClose={handleAssignmentDialogClose}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Create New Assignment</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            <TextField
+              label="Assignment Title"
+              fullWidth
+              value={assignmentData.title}
+              onChange={handleAssignmentChange('title')}
+              required
+            />
+            
+            <TextField
+              label="Question"
+              fullWidth
+              multiline
+              rows={4}
+              value={assignmentData.question}
+              onChange={handleAssignmentChange('question')}
+              required
+            />
+            
+            <TextField
+              label="End Time"
+              type="datetime-local"
+              fullWidth
+              value={assignmentData.endTime}
+              onChange={handleAssignmentChange('endTime')}
+              InputLabelProps={{
+                shrink: true,
+              }}
+              required
+            />
+            
+            <Box>
+              <input
+                type="file"
+                id="assignment-file"
+                style={{ display: 'none' }}
+                onChange={handleAssignmentChange('file')}
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              />
+              <label htmlFor="assignment-file">
+                <Button
+                  variant="outlined"
+                  component="span"
+                  startIcon={<UploadFileIcon />}
+                >
+                  Upload File (Optional)
+                </Button>
+              </label>
+              {assignmentData.file && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  Selected file: {assignmentData.file.name}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAssignmentDialogClose}>Cancel</Button>
+          <Button 
+            onClick={handleAssignmentSubmit}
+            variant="contained"
+            sx={{ bgcolor: theme.primary }}
+            disabled={!assignmentData.title || 
+                     (!assignmentData.question && !assignmentData.file) || 
+                     !assignmentData.endTime ||
+                     uploadLoading}
+          >
+            {uploadLoading ? 'Creating...' : 'Create Assignment'}
           </Button>
         </DialogActions>
       </Dialog>
