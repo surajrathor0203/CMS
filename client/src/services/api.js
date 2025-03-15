@@ -350,3 +350,25 @@ export const deleteAssignment = async (assignmentId, batchId) => {
     throw error.response?.data || error;
   }
 };
+
+export const editAssignment = async (assignmentId, assignmentData, batchId) => {
+  try {
+    const formData = new FormData();
+    formData.append('title', assignmentData.title);
+    formData.append('question', assignmentData.question);
+    formData.append('endTime', assignmentData.endTime);
+    formData.append('batchId', batchId); // Ensure batchId is included
+    if (assignmentData.file) {
+      formData.append('file', assignmentData.file);
+    }
+
+    const response = await api.put(`/assignments/${assignmentId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

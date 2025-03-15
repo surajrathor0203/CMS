@@ -25,7 +25,9 @@ exports.createAssignment = async (req, res) => {
                 Bucket: process.env.AWS_BUCKET_NAME,
                 Key: `assignments/${fileName}`,
                 Body: file.buffer,
-                ContentType: file.mimetype
+                ContentType: file.mimetype,
+                ACL: 'public-read', // Add public-read ACL
+                ContentDisposition: 'inline' // Allow browser to display content
             };
 
             const uploadResult = await s3.upload(params).promise();
@@ -138,6 +140,93 @@ exports.deleteAssignment = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error deleting assignment',
+            error: error.message
+        });
+    }
+};
+
+exports.editAssignment = async (req, res) => {
+    try {
+        const { title, question, endTime, batchId } = req.body;
+        const assignmentId = req.params.id;
+        const file = req.file;
+
+        if (!batchId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Batch ID is required'
+            });
+        }
+
+        const assignment = await Assignment.findOne({ batchId: batchId });
+        if (!assignment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Assignment not found'
+            });
+        }
+
+        const assignmentItem = assignment.assignments.id(assignmentId);
+        if (!assignmentItem) {
+            return res.status(404).json({
+                success: false,
+                message: 'Assignment item not found'
+            });
+        }
+
+        // Handle file update if new file is provided
+        let fileUrl = assignmentItem.fileUrl;
+        let fileName = assignmentItem.fileName;
+
+        if (file) {
+            // Delete old file if exists
+            if (assignmentItem.fileName) {
+                const deleteParams = {
+                    Bucket: process.env.AWS_BUCKET_NAME,
+                    Key: `assignments/${assignmentItem.fileName}`
+                };
+                await s3.deleteObject(deleteParams).promise();
+            }
+
+            // Upload new file
+            const fileExtension = file.originalname.split('.').pop();
+            fileName = `${uuidv4()}.${fileExtension}`;
+            
+            const uploadParams = {
+                Bucket: process.env.AWS_BUCKET_NAME,
+                Key: `assignments/${fileName}`,
+                Body: file.buffer,
+                ContentType: file.mimetype,
+                ACL: 'public-read',
+                ContentDisposition: 'inline'
+            };
+
+            const uploadResult = await s3.upload(uploadParams).promise();
+            fileUrl = uploadResult.Location;
+        }
+
+        // Update assignment
+        assignmentItem.title = title;
+        assignmentItem.question = question;
+        assignmentItem.endTime = endTime;
+        if (file) {
+            assignmentItem.fileUrl = fileUrl;
+            assignmentItem.fileName = fileName;
+        }
+
+        await assignment.save();
+
+        res.status(200).json({
+            success: true,
+            data: assignmentItem,
+            message: 'Assignment updated successfully'
+        });
+
+    } catch (error) {
+        console.error('Assignment update error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error updating assignment',
             error: error.message
         });
     }
