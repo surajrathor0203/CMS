@@ -10,7 +10,6 @@ import {
   createTheme,
   Dialog,
   DialogContent,
-  DialogActions,
   useMediaQuery,
   CircularProgress,
 } from "@mui/material";

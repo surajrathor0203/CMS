@@ -44,7 +44,9 @@ import {
   updateNote,
   createAssignment,
   getAssignmentsByBatch,
-  deleteAssignment
+  deleteAssignment,
+  getQuizzesByBatch,
+  deleteQuiz
 } from '../services/api';
 import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -88,6 +90,7 @@ export default function BatchPage() {
     file: null
   });
   const [assignments, setAssignments] = useState([]);
+  const [quizzes, setQuizzes] = useState([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -127,10 +130,21 @@ export default function BatchPage() {
     }
   }, [batchId]);
 
+  const fetchQuizzes = useCallback(async () => {
+    try {
+      const response = await getQuizzesByBatch(batchId);
+      setQuizzes(response.data);
+    } catch (error) {
+      console.error('Error fetching quizzes:', error);
+      toast.error('Failed to fetch quizzes');
+    }
+  }, [batchId]);
+
   useEffect(() => {
     fetchData();
     fetchAssignments();
-  }, [batchId, fetchData, fetchAssignments]);
+    fetchQuizzes();
+  }, [batchId, fetchData, fetchAssignments, fetchQuizzes]);
 
   const formatTime = (isoString) => {
     const date = new Date(isoString);
@@ -298,6 +312,27 @@ export default function BatchPage() {
     navigate(`/teacher-dashboard/batch/${batchId}/assignment/${assignment._id}`, {
       state: assignment
     });
+  };
+
+  const handleQuizDialogOpen = () => {
+    navigate(`/teacher-dashboard/batch/${batchId}/create-quiz`);
+  };
+
+  const handleDeleteQuiz = async (quizId, e) => {
+    e.stopPropagation();
+    try {
+      await deleteQuiz(quizId);
+      toast.success('Quiz deleted successfully');
+      fetchQuizzes();
+    } catch (error) {
+      console.error('Error deleting quiz:', error);
+      toast.error('Failed to delete quiz');
+    }
+  };
+
+  const handleEditQuiz = (quizId, e) => {
+    e.stopPropagation();
+    navigate(`/teacher-dashboard/batch/${batchId}/edit-quiz/${quizId}`);
   };
 
   const filteredStudents = students.filter(student => {
@@ -594,14 +629,71 @@ export default function BatchPage() {
 
                   {/* Quizzes Section */}
                   <Box sx={{ mb: 3 }}>
-                    <Typography variant="h6" color={theme.primary} gutterBottom>
-                      Quizzes
-                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Typography variant="h6" color={theme.primary}>
+                        Quizzes
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={handleQuizDialogOpen}
+                        sx={{ bgcolor: theme.primary }}
+                        size="small"
+                      >
+                        Create Quiz
+                      </Button>
+                    </Box>
                     <Divider sx={{ mb: 2 }} />
-                    <Typography variant="body1" color="text.secondary" textAlign="center">
-                      No quizzes available
-                    </Typography>
-                    <Divider sx={{ mb: 2 }} />
+                    <Grid container spacing={2}>
+                      {quizzes.map((quiz) => (
+                        <Grid item xs={12} sm={6} md={4} key={quiz._id}>
+                          <Card 
+                            elevation={2}
+                            sx={{ 
+                              cursor: 'pointer',
+                              '&:hover': { boxShadow: 6 }
+                            }}
+                          >
+                            <CardContent>
+                              <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
+                                {quiz.title}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                Duration: {quiz.duration} minutes
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Start Time: {new Date(quiz.startTime).toLocaleString()}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                Questions: {quiz.questions.length}
+                              </Typography>
+                              <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => handleEditQuiz(quiz._id, e)}
+                                  color="primary"
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => handleDeleteQuiz(quiz._id, e)}
+                                  color="error"
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Box>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                    {quizzes.length === 0 && (
+                      <Typography variant="body1" color="text.secondary" textAlign="center">
+                        No quizzes available
+                      </Typography>
+                    )}
+                    <Divider sx={{ mt: 2 }} />
                   </Box>
 
                   {/* Assignments Section */}

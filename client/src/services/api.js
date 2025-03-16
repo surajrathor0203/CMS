@@ -372,3 +372,51 @@ export const editAssignment = async (assignmentId, assignmentData, batchId) => {
     throw error.response?.data || error;
   }
 };
+
+export const createQuiz = async (quizData, batchId) => {
+  try {
+    const response = await api.post('/quizzes/create', {
+      ...quizData,
+      batchId
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getQuizzesByBatch = async (batchId) => {
+  try {
+    const response = await api.get(`/quizzes/batch/${batchId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const deleteQuiz = async (quizId) => {
+  try {
+    const response = await api.delete(`/quizzes/${quizId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getQuizById = async (quizId) => {
+  try {
+    const response = await api.get(`/quizzes/${quizId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const updateQuiz = async (quizId, quizData) => {
+  try {
+    const response = await api.put(`/quizzes/${quizId}`, quizData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

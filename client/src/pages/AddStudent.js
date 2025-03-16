@@ -46,7 +46,6 @@ const AddStudent = () => {
   const [isVerifying, setIsVerifying] = useState({});
   const [initialLoading, setInitialLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [processedCount, setProcessedCount] = useState(0);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -127,7 +126,6 @@ const AddStudent = () => {
     }
 
     setSubmitting(true);
-    setProgress(0);
     setProcessedCount(0);
     
     try {
@@ -148,11 +146,9 @@ const AddStudent = () => {
       // Update progress as each student is processed
       const updateProgress = (count) => {
         setProcessedCount(count);
-        setProgress((count / students.length) * 100);
       };
 
       const response = await createMultipleStudents(studentsData, batchDetails);
-      setProgress(100);
       
       if (response.success) {
         setSnackbar({

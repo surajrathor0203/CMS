@@ -12,6 +12,8 @@ import AddStudent from './pages/AddStudent';
 import StudentProfile from './pages/StudentProfile';
 import TeacherProfile from './pages/TeacherProfile';  
 import AssignmentDetail from './pages/AssignmentDetail';
+import QuizCreatePage from './pages/QuizCreatePage';
+import EditQuizPage from './pages/EditQuizPage';
 import './App.css';
 
 const ProtectedRoute = ({ element, allowedRoles }) => {
@@ -81,6 +83,24 @@ function App() {
             element={
               <ProtectedRoute 
                 element={<AssignmentDetail />} 
+                allowedRoles={['teacher']} 
+              />
+            } 
+          />
+          <Route 
+            path="/teacher-dashboard/batch/:batchId/create-quiz" 
+            element={
+              <ProtectedRoute 
+                element={<QuizCreatePage />} 
+                allowedRoles={['teacher']} 
+              />
+            } 
+          />
+          <Route 
+            path="/teacher-dashboard/batch/:batchId/edit-quiz/:quizId" 
+            element={
+              <ProtectedRoute 
+                element={<EditQuizPage />} 
                 allowedRoles={['teacher']} 
               />
             } 
