@@ -420,3 +420,11 @@ export const updateQuiz = async (quizId, quizData) => {
     throw error.response?.data || error;
   }
 };
+
+export const getBatchDetails = (batchId) => {
+  return axios.get(`${API_URL}/batches/${batchId}`);
+};
+
+export const getStudentAssignments = (batchId, studentId) => {
+  return axios.get(`${API_URL}/assignments/student/${studentId}/batch/${batchId}`);
+};
