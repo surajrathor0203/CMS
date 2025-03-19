@@ -426,6 +426,24 @@ export const updateQuiz = async (quizId, quizData) => {
   }
 };
 
+export const submitQuiz = async (quizId, answers) => {
+  try {
+    const response = await api.post(`/quizzes/${quizId}/submit`, { answers });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getQuizAttempt = async (quizId) => {
+  try {
+    const response = await api.get(`/quizzes/${quizId}/attempt`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
 export const getBatchDetails = (batchId) => {
   return axios.get(`${API_URL}/batches/${batchId}`);
 };

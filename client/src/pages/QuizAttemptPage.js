@@ -17,7 +17,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import StudentLayout from '../components/StudentLayout';
-import { getQuizById } from '../services/api';
+import { getQuizById, getQuizAttempt, submitQuiz } from '../services/api';
 import { toast } from 'react-toastify';
 
 const theme = {
@@ -35,22 +35,45 @@ export default function QuizAttemptPage() {
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmitQuiz = useCallback(async () => {
-    // TODO: Implement quiz submission logic
-    toast.success('Quiz submitted successfully');
-    navigate(`/student-dashboard/batch/${batchId}`);
-  }, [batchId, navigate]);
+    try {
+      setSubmitting(true);
+      const answersArray = quiz.questions.map((_, index) => answers[index] || 0);
+      const response = await submitQuiz(quizId, answersArray);
+      
+      toast.success('Quiz submitted successfully');
+      // Show results
+      navigate(`/student-dashboard/batch/${batchId}`, {
+        state: {
+          quizResult: response.data
+        }
+      });
+    } catch (error) {
+      toast.error(error.message || 'Failed to submit quiz');
+      if (error.message === 'Quiz already completed') {
+        navigate(`/student-dashboard/batch/${batchId}`);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }, [quizId, batchId, navigate, quiz, answers]);
 
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
         setLoading(true);
-        const response = await getQuizById(quizId);
+        const response = await getQuizAttempt(quizId);
+        if (!response.success) {
+          toast.error(response.message);
+          navigate(`/student-dashboard/batch/${batchId}`);
+          return;
+        }
         setQuiz(response.data);
-        setTimeLeft(response.data.duration * 60); // Convert minutes to seconds
+        setTimeLeft(response.data.duration * 60);
       } catch (error) {
-        toast.error('Failed to load quiz');
+        toast.error(error.message || 'Failed to load quiz');
         navigate(`/student-dashboard/batch/${batchId}`);
       } finally {
         setLoading(false);
@@ -193,9 +216,19 @@ export default function QuizAttemptPage() {
             </Typography>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setShowConfirmDialog(false)}>Cancel</Button>
-            <Button onClick={handleSubmitQuiz} variant="contained" color="primary">
-              Submit
+            <Button 
+              onClick={() => setShowConfirmDialog(false)}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubmitQuiz} 
+              variant="contained" 
+              color="primary"
+              disabled={submitting}
+            >
+              {submitting ? 'Submitting...' : 'Submit'}
             </Button>
           </DialogActions>
         </Dialog>

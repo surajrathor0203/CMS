@@ -33,6 +33,29 @@ const quizSchema = new mongoose.Schema({
       required: true
     }
   }],
+  students: [{
+    studentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    answers: [{
+      type: Number,
+      required: true
+    }],
+    score: {
+      type: Number,
+      default: 0
+    },
+    submittedAt: {
+      type: Date,
+      default: Date.now
+    },
+    completed: {
+      type: Boolean,
+      default: false
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now
