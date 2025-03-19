@@ -15,7 +15,10 @@ import AssignmentDetail from './pages/AssignmentDetail';
 import QuizCreatePage from './pages/QuizCreatePage';
 import EditQuizPage from './pages/EditQuizPage';
 import StudentBatchDetails from './pages/StudentBatchDetails';
+import QuizAttemptPage from './pages/QuizAttemptPage';
 import './App.css';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ProtectedRoute = ({ element, allowedRoles }) => {
   const isAuth = isAuthenticated();
@@ -125,6 +128,15 @@ function App() {
             } 
           />
           <Route 
+            path="/student-dashboard/batch/:batchId/quiz/:quizId" 
+            element={
+              <ProtectedRoute 
+                element={<QuizAttemptPage />} 
+                allowedRoles={['student']} 
+              />
+            } 
+          />
+          <Route 
             path="/student/settings" 
             element={
               <ProtectedRoute 
@@ -145,6 +157,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <ToastContainer />
       </div>
     </Router>
   );

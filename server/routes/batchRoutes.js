@@ -81,6 +81,23 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
+// Get batch details for a student
+router.get('/student/:batchId', async (req, res) => {
+  try {
+    const batch = await Batch.findById(req.params.batchId)
+      .populate('teacher', 'name email')
+      .select('name subject openingDate startTime endTime teacher');
+    
+    if (!batch) {
+      return res.status(404).json({ message: 'Batch not found' });
+    }
+
+    res.json(batch);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Update a batch
 router.put('/:id', async (req, res) => {
   try {

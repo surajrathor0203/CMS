@@ -279,7 +279,12 @@ export const uploadNote = async (file, batchId) => {
 
 export const getNotesByBatch = async (batchId) => {
   try {
-    const response = await api.get(`/notes/batch/${batchId}`);
+    const token = localStorage.getItem('token'); // Get token from localStorage
+    const response = await api.get(`/notes/batch/${batchId}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
@@ -427,4 +432,13 @@ export const getBatchDetails = (batchId) => {
 
 export const getStudentAssignments = (batchId, studentId) => {
   return axios.get(`${API_URL}/assignments/student/${studentId}/batch/${batchId}`);
+};
+
+export const getStudentBatchDetails = async (batchId) => {
+  try {
+    const response = await api.get(`/batch/student/${batchId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
 };

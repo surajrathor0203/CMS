@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { getStudentBatchDetails, getNotesByBatch, getQuizzesByBatch, getAssignmentsByBatch } from '../services/api';
 import StudentLayout from '../components/StudentLayout';
 import {
   Typography,
@@ -11,19 +12,19 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemIcon,
   Divider,
   Tabs,
   Tab,
   Paper,
   IconButton,
+  CircularProgress,
 } from '@mui/material';
-import AssignmentIcon from '@mui/icons-material/Assignment';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PersonIcon from '@mui/icons-material/Person';
 import SubjectIcon from '@mui/icons-material/Subject';
 import DownloadIcon from '@mui/icons-material/Download';
+import { toast } from 'react-toastify';
 
 // Same theme as BatchPage
 const theme = {
@@ -32,92 +33,52 @@ const theme = {
   background: '#e8f5e9',
 };
 
-// Dummy data
-const dummyBatchDetails = {
-  _id: "123",
-  name: "React Development Batch",
-  subject: "Web Development",
-  teacherName: "John Doe",
-  openingDate: "2024-02-01",
-  startTime: "2024-02-01T09:00:00",
-  endTime: "2024-02-01T11:00:00",
-};
-
-const dummyAssignments = [
-  {
-    _id: "1",
-    title: "React Components Assignment",
-    dueDate: "2024-02-15",
-    status: "Pending",
-    submitted: false
-  },
-  {
-    _id: "2",
-    title: "State Management Project",
-    dueDate: "2024-02-20",
-    status: "Submitted",
-    submitted: true
-  },
-  {
-    _id: "3",
-    title: "API Integration Exercise",
-    dueDate: "2024-02-25",
-    status: "Pending",
-    submitted: false
-  }
-];
-
-const dummyNotes = [
-  {
-    _id: "1",
-    title: "React Fundamentals",
-    fileUrl: "#"
-  },
-  {
-    _id: "2",
-    title: "State Management in React",
-    fileUrl: "#"
-  }
-];
-
-const dummyQuizzes = [
-  {
-    _id: "1",
-    title: "React Basics Quiz",
-    duration: 30,
-    startTime: "2024-02-10T10:00:00",
-    questions: Array(10).fill({})
-  },
-  {
-    _id: "2",
-    title: "Advanced React Concepts",
-    duration: 45,
-    startTime: "2024-02-15T14:00:00",
-    questions: Array(15).fill({})
-  }
-];
-
 export default function StudentBatchDetails() {
   const { batchId } = useParams();
   const [searchParams] = useSearchParams();
-  const batchName = searchParams.get('name');
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('activity');
+  const [batchDetails, setBatchDetails] = useState(null);
+  const [batchLoading, setBatchLoading] = useState(true);
+  const [batchError, setBatchError] = useState(null);
+  
+  const [quizzes, setQuizzes] = useState([]);
+  const [quizzesLoading, setQuizzesLoading] = useState(true);
+  const [quizzesError, setQuizzesError] = useState(null);
+  
+  const [assignments, setAssignments] = useState([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(true);
+  const [assignmentsError, setAssignmentsError] = useState(null);
+
+  const [notes, setNotes] = useState([]);
+  const [notesLoading, setNotesLoading] = useState(true);
+  const [notesError, setNotesError] = useState(null);
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    if (!dateString) return 'No date specified';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch (error) {
+      return 'Invalid date';
+    }
   };
 
   const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+    if (!dateString) return 'No time specified';
+    try {
+      return new Date(dateString).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch (error) {
+      return 'Invalid time';
+    }
   };
 
   const handleTabChange = (event, newValue) => {
@@ -130,14 +91,26 @@ export default function StudentBatchDetails() {
         Notes
       </Typography>
       <Divider sx={{ mb: 2 }} />
-      {dummyNotes.length > 0 ? (
+      {notesLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+          <CircularProgress size={24} />
+        </Box>
+      ) : notesError ? (
+        <Typography color="error" textAlign="center">
+          {notesError}
+        </Typography>
+      ) : notes.length > 0 ? (
         <Paper>
           <List>
-            {dummyNotes.map((note) => (
+            {notes.map((note) => (
               <ListItem
                 key={note._id}
                 secondaryAction={
-                  <IconButton edge="end" onClick={() => window.open(note.fileUrl, '_blank')}>
+                  <IconButton 
+                    edge="end" 
+                    onClick={() => window.open(note.fileUrl, '_blank')}
+                    title="Download Note"
+                  >
                     <DownloadIcon />
                   </IconButton>
                 }
@@ -155,8 +128,107 @@ export default function StudentBatchDetails() {
     </Box>
   );
 
+  useEffect(() => {
+    const fetchBatchDetails = async () => {
+      try {
+        setBatchLoading(true);
+        const response = await getStudentBatchDetails(batchId);
+        setBatchDetails(response);
+      } catch (err) {
+        setBatchError(err.message || 'Failed to fetch batch details');
+      } finally {
+        setBatchLoading(false);
+      }
+    };
+
+    fetchBatchDetails();
+  }, [batchId]);
+
+  // Fetch quizzes
+  useEffect(() => {
+    const fetchQuizzes = async () => {
+      try {
+        setQuizzesLoading(true);
+        const response = await getQuizzesByBatch(batchId);
+        setQuizzes(response.data || []);
+      } catch (err) {
+        setQuizzesError(err.message || 'Failed to fetch quizzes');
+      } finally {
+        setQuizzesLoading(false);
+      }
+    };
+
+    fetchQuizzes();
+  }, [batchId]);
+
+  // Fetch assignments
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      try {
+        setAssignmentsLoading(true);
+        const response = await getAssignmentsByBatch(batchId);
+        setAssignments(response.data || []);
+      } catch (err) {
+        setAssignmentsError(err.message || 'Failed to fetch assignments');
+      } finally {
+        setAssignmentsLoading(false);
+      }
+    };
+
+    fetchAssignments();
+  }, [batchId]);
+
+  // Fetch notes
+  useEffect(() => {
+    const fetchNotes = async () => {
+      try {
+        setNotesLoading(true);
+        const response = await getNotesByBatch(batchId);
+        setNotes(response.data || []);
+      } catch (err) {
+        setNotesError(err.message || 'Failed to fetch notes');
+      } finally {
+        setNotesLoading(false);
+      }
+    };
+
+    fetchNotes();
+  }, [batchId]);
+
+  const handleQuizClick = (quiz) => {
+    const now = new Date();
+    const quizStart = new Date(quiz.startTime);
+    
+    if (now < quizStart) {
+      toast.info("This quiz hasn't started yet");
+      return;
+    }
+    
+    navigate(`/student-dashboard/batch/${batchId}/quiz/${quiz._id}`);
+  };
+
+  if (batchLoading) {
+    return (
+      <StudentLayout title="Loading...">
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+          <CircularProgress />
+        </Box>
+      </StudentLayout>
+    );
+  }
+
+  if (batchError) {
+    return (
+      <StudentLayout title="Error">
+        <Box sx={{ p: 3 }}>
+          <Typography color="error">{batchError}</Typography>
+        </Box>
+      </StudentLayout>
+    );
+  }
+
   return (
-    <StudentLayout title={batchName || 'Batch Details'}>
+    <StudentLayout title={batchDetails?.name || 'Batch Details'}>
       <Box sx={{ p: 3 }}>
         <Grid container spacing={3}>
           {/* Batch Information Card */}
@@ -173,7 +245,7 @@ export default function StudentBatchDetails() {
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                       <SubjectIcon sx={{ color: theme.primary, mr: 1 }} />
                       <Typography variant="body1">
-                        Subject: {dummyBatchDetails.subject}
+                        Subject: {batchDetails?.subject}
                       </Typography>
                     </Box>
                   </Grid>
@@ -182,7 +254,7 @@ export default function StudentBatchDetails() {
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                       <AccessTimeIcon sx={{ color: theme.primary, mr: 1 }} />
                       <Typography variant="body1">
-                        Time: {formatTime(dummyBatchDetails.startTime)} - {formatTime(dummyBatchDetails.endTime)}
+                        Time: {formatTime(batchDetails?.startTime)} - {formatTime(batchDetails?.endTime)}
                       </Typography>
                     </Box>
                   </Grid>
@@ -191,7 +263,7 @@ export default function StudentBatchDetails() {
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                       <CalendarTodayIcon sx={{ color: theme.primary, mr: 1 }} />
                       <Typography variant="body1">
-                        Opening Date: {formatDate(dummyBatchDetails.openingDate)}
+                        Opening Date: {formatDate(batchDetails?.openingDate)}
                       </Typography>
                     </Box>
                   </Grid>
@@ -200,7 +272,7 @@ export default function StudentBatchDetails() {
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <PersonIcon sx={{ color: theme.primary, mr: 1 }} />
                       <Typography variant="body1">
-                        Teacher: {dummyBatchDetails.teacherName}
+                        Teacher: {batchDetails?.teacher?.name}
                       </Typography>
                     </Box>
                   </Grid>
@@ -241,38 +313,51 @@ export default function StudentBatchDetails() {
                       Quizzes
                     </Typography>
                     <Divider sx={{ mb: 2 }} />
-                    <Grid container spacing={2}>
-                      {dummyQuizzes.map((quiz) => (
-                        <Grid item xs={12} sm={6} md={4} key={quiz._id}>
-                          <Card 
-                            elevation={2}
-                            sx={{ 
-                              cursor: 'pointer',
-                              '&:hover': { boxShadow: 6 }
-                            }}
-                          >
-                            <CardContent>
-                              <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
-                                {quiz.title}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                Duration: {quiz.duration} minutes
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                Start Time: {new Date(quiz.startTime).toLocaleString()}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                Questions: {quiz.questions.length}
-                              </Typography>
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                      ))}
-                    </Grid>
-                    {dummyQuizzes.length === 0 && (
-                      <Typography variant="body1" color="text.secondary" textAlign="center">
-                        No quizzes available
+                    {quizzesLoading ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                        <CircularProgress size={24} />
+                      </Box>
+                    ) : quizzesError ? (
+                      <Typography color="error" textAlign="center">
+                        {quizzesError}
                       </Typography>
+                    ) : (
+                      <Grid container spacing={2}>
+                        {quizzes.map((quiz) => (
+                          <Grid item xs={12} sm={6} md={4} key={quiz._id}>
+                            <Card 
+                              elevation={2}
+                              sx={{ 
+                                cursor: 'pointer',
+                                '&:hover': { boxShadow: 6 }
+                              }}
+                              onClick={() => handleQuizClick(quiz)}
+                            >
+                              <CardContent>
+                                <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
+                                  {quiz.title}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                  Duration: {quiz.duration} minutes
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                  Start Time: {new Date(quiz.startTime).toLocaleString()}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  Questions: {quiz.questions.length}
+                                </Typography>
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        ))}
+                        {quizzes.length === 0 && (
+                          <Grid item xs={12}>
+                            <Typography variant="body1" color="text.secondary" textAlign="center">
+                              No quizzes available
+                            </Typography>
+                          </Grid>
+                        )}
+                      </Grid>
                     )}
                   </Box>
 
@@ -282,35 +367,63 @@ export default function StudentBatchDetails() {
                       Assignments
                     </Typography>
                     <Divider sx={{ mb: 2 }} />
-                    <Grid container spacing={2}>
-                      {dummyAssignments.map((assignment) => (
-                        <Grid item xs={12} sm={6} md={4} key={assignment._id}>
-                          <Card 
-                            elevation={2}
-                            sx={{ 
-                              cursor: 'pointer',
-                              '&:hover': { boxShadow: 6 }
-                            }}
-                          >
-                            <CardContent>
-                              <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
-                                {assignment.title}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                Due: {formatDate(assignment.dueDate)}
-                              </Typography>
-                              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                <Chip
-                                  label={assignment.submitted ? 'Submitted' : 'Not Submitted'}
-                                  color={assignment.submitted ? 'success' : 'warning'}
-                                  size="small"
-                                />
-                              </Box>
-                            </CardContent>
-                          </Card>
-                        </Grid>
-                      ))}
-                    </Grid>
+                    {assignmentsLoading ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                        <CircularProgress size={24} />
+                      </Box>
+                    ) : assignmentsError ? (
+                      <Typography color="error" textAlign="center">
+                        {assignmentsError}
+                      </Typography>
+                    ) : (
+                      <Grid container spacing={2}>
+                        {assignments.map((assignment) => (
+                          <Grid item xs={12} sm={6} md={4} key={assignment._id}>
+                            <Card 
+                              elevation={2}
+                              sx={{ 
+                                cursor: 'pointer',
+                                '&:hover': { boxShadow: 6 }
+                              }}
+                            >
+                              <CardContent>
+                                <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
+                                  {assignment.title}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                  Due: {assignment.endTime ? formatDate(assignment.endTime) : 'No due date set'}
+                                </Typography>
+                                {assignment.fileUrl && (
+                                  <Box sx={{ mb: 2 }}>
+                                    <IconButton 
+                                      size="small" 
+                                      onClick={() => window.open(assignment.fileUrl, '_blank')}
+                                      title="Download Assignment"
+                                    >
+                                      <DownloadIcon />
+                                    </IconButton>
+                                  </Box>
+                                )}
+                                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                  <Chip
+                                    label={assignment.submitted ? 'Submitted' : 'Not Submitted'}
+                                    color={assignment.submitted ? 'success' : 'warning'}
+                                    size="small"
+                                  />
+                                </Box>
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        ))}
+                        {assignments.length === 0 && (
+                          <Grid item xs={12}>
+                            <Typography variant="body1" color="text.secondary" textAlign="center">
+                              No assignments available
+                            </Typography>
+                          </Grid>
+                        )}
+                      </Grid>
+                    )}
                   </Box>
                 </CardContent>
               </Card>

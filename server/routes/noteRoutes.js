@@ -70,7 +70,7 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
 });
 
 // Get notes by batch
-router.get('/batch/:batchId', auth, async (req, res) => {
+router.get('/batch/:batchId', async (req, res) => {
   try {
     const note = await Note.findOne({ batchId: req.params.batchId })
       .populate('uploadedBy', 'name');
