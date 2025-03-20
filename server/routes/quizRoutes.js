@@ -69,6 +69,39 @@ router.get('/:quizId', protect, async (req, res) => {
   }
 });
 
+// Update quiz
+router.put('/:quizId', protect, async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const updates = req.body;
+
+    const quiz = await Quiz.findByIdAndUpdate(
+      quizId,
+      updates,
+      { new: true, runValidators: true }
+    );
+
+    if (!quiz) {
+      return res.status(404).json({
+        success: false,
+        message: 'Quiz not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: quiz,
+      message: 'Quiz updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating quiz:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating quiz'
+    });
+  }
+});
+
 // Submit quiz attempt
 router.post('/:quizId/submit', protect, async (req, res) => {
   try {
@@ -188,6 +221,32 @@ router.get('/:quizId/attempt', protect, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching quiz attempt'
+    });
+  }
+});
+
+// Delete quiz
+router.delete('/:quizId', protect, async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const quiz = await Quiz.findByIdAndDelete(quizId);
+    
+    if (!quiz) {
+      return res.status(404).json({
+        success: false,
+        message: 'Quiz not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Quiz deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting quiz:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting quiz'
     });
   }
 });

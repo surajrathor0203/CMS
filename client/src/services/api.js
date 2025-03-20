@@ -402,6 +402,9 @@ export const getQuizzesByBatch = async (batchId) => {
 export const deleteQuiz = async (quizId) => {
   try {
     const response = await api.delete(`/quizzes/${quizId}`);
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to delete quiz');
+    }
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
@@ -419,7 +422,13 @@ export const getQuizById = async (quizId) => {
 
 export const updateQuiz = async (quizId, quizData) => {
   try {
-    const response = await api.put(`/quizzes/${quizId}`, quizData);
+    const response = await api.put(`/quizzes/${quizId}`, {
+      ...quizData,
+      batchId: quizData.batchId
+    });
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to update quiz');
+    }
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
