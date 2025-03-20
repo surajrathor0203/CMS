@@ -18,6 +18,11 @@ import {
   Paper,
   IconButton,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
 } from '@mui/material';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -25,6 +30,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import SubjectIcon from '@mui/icons-material/Subject';
 import DownloadIcon from '@mui/icons-material/Download';
 import { toast } from 'react-toastify';
+import { getUserFromCookie } from '../utils/cookies';
 
 // Same theme as BatchPage
 const theme = {
@@ -53,6 +59,18 @@ export default function StudentBatchDetails() {
   const [notes, setNotes] = useState([]);
   const [notesLoading, setNotesLoading] = useState(true);
   const [notesError, setNotesError] = useState(null);
+
+  const [showScoreDialog, setShowScoreDialog] = useState(false);
+  const [selectedQuizResult, setSelectedQuizResult] = useState(null);
+  const [studentId, setStudentId] = useState(null);
+
+  useEffect(() => {
+    // Get student ID from cookies when component mounts
+    const userData = getUserFromCookie();
+    if (userData?.user?.id) {
+      setStudentId(userData.user.id);
+    }
+  }, []);
 
   const formatDate = (dateString) => {
     if (!dateString) return 'No date specified';
@@ -196,6 +214,28 @@ export default function StudentBatchDetails() {
   }, [batchId]);
 
   const handleQuizClick = (quiz) => {
+    if (!studentId) {
+      toast.error('User ID not found. Please try logging in again.');
+      return;
+    }
+
+    // Check if student has already attempted the quiz
+    const studentAttempt = quiz.students?.find(
+      student => student.studentId === studentId
+    );
+
+    if (studentAttempt) {
+      setSelectedQuizResult({
+        title: quiz.title,
+        score: studentAttempt.score,
+        totalQuestions: studentAttempt.totalQuestions,
+        correctAnswers: studentAttempt.correctAnswers,
+        submittedAt: studentAttempt.submittedAt
+      });
+      setShowScoreDialog(true);
+      return;
+    }
+
     const now = new Date();
     const quizStart = new Date(quiz.startTime);
     
@@ -206,6 +246,84 @@ export default function StudentBatchDetails() {
     
     navigate(`/student-dashboard/batch/${batchId}/quiz/${quiz._id}`);
   };
+
+const formatQuizTime = (dateString) => {
+  try {
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true, // This ensures AM/PM format
+    });
+  } catch (error) {
+    return 'Invalid date';
+  }
+};
+
+const QuizCard = ({ quiz }) => {
+  const studentAttempt = quiz.students?.find(
+    student => student.studentId === studentId
+  );
+
+  return (
+    <Card 
+      elevation={2}
+      sx={{ 
+        cursor: 'pointer',
+        '&:hover': { boxShadow: 6 }
+      }}
+      onClick={() => handleQuizClick(quiz)}
+    >
+      <CardContent>
+        <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
+          {quiz.title}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Duration: {quiz.duration} minutes
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Start Time: {formatQuizTime(quiz.startTime)}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Questions: {quiz.questions.length}
+        </Typography>
+        {studentAttempt && (
+          <Box sx={{ mt: 2 }}>
+            <Chip 
+              label={`Score: ${studentAttempt.correctAnswers}/${studentAttempt.totalQuestions}`}
+              color="success"
+              size="small"
+            />
+          </Box>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+const QuizResultDialog = () => (
+  <Dialog open={showScoreDialog} onClose={() => setShowScoreDialog(false)}>
+    <DialogTitle>{selectedQuizResult?.title} - Results</DialogTitle>
+    <DialogContent>
+      <Box sx={{ py: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Score: {selectedQuizResult?.correctAnswers} out of {selectedQuizResult?.totalQuestions}
+        </Typography>
+        <Typography variant="body1">
+          Percentage: {((selectedQuizResult?.correctAnswers / selectedQuizResult?.totalQuestions) * 100).toFixed(2)}%
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          Submitted: {new Date(selectedQuizResult?.submittedAt).toLocaleString()}
+        </Typography>
+      </Box>
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={() => setShowScoreDialog(false)}>Close</Button>
+    </DialogActions>
+  </Dialog>
+);
 
   if (batchLoading) {
     return (
@@ -325,29 +443,7 @@ export default function StudentBatchDetails() {
                       <Grid container spacing={2}>
                         {quizzes.map((quiz) => (
                           <Grid item xs={12} sm={6} md={4} key={quiz._id}>
-                            <Card 
-                              elevation={2}
-                              sx={{ 
-                                cursor: 'pointer',
-                                '&:hover': { boxShadow: 6 }
-                              }}
-                              onClick={() => handleQuizClick(quiz)}
-                            >
-                              <CardContent>
-                                <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
-                                  {quiz.title}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                  Duration: {quiz.duration} minutes
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                  Start Time: {new Date(quiz.startTime).toLocaleString()}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                  Questions: {quiz.questions.length}
-                                </Typography>
-                              </CardContent>
-                            </Card>
+                            <QuizCard quiz={quiz} />
                           </Grid>
                         ))}
                         {quizzes.length === 0 && (
@@ -443,6 +539,7 @@ export default function StudentBatchDetails() {
           )}
         </Grid>
       </Box>
+      <QuizResultDialog />
     </StudentLayout>
   );
 }

@@ -36,29 +36,36 @@ export default function QuizAttemptPage() {
   const [timeLeft, setTimeLeft] = useState(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Add this state
 
   const handleSubmitQuiz = useCallback(async () => {
+    if (isSubmitting) return; // Prevent multiple submissions
+    
     try {
+      setIsSubmitting(true); // Lock submission
       setSubmitting(true);
       const answersArray = quiz.questions.map((_, index) => answers[index] || 0);
       const response = await submitQuiz(quizId, answersArray);
       
       toast.success('Quiz submitted successfully');
-      // Show results
       navigate(`/student-dashboard/batch/${batchId}`, {
         state: {
-          quizResult: response.data
+          quizResult: {
+            score: response.data.score,
+            totalQuestions: response.data.totalQuestions,
+            correctAnswers: response.data.correctAnswers
+          }
         }
       });
     } catch (error) {
       toast.error(error.message || 'Failed to submit quiz');
-      if (error.message === 'Quiz already completed') {
+      if (error.message === 'Quiz already submitted') {
         navigate(`/student-dashboard/batch/${batchId}`);
       }
     } finally {
       setSubmitting(false);
     }
-  }, [quizId, batchId, navigate, quiz, answers]);
+  }, [quizId, batchId, navigate, quiz, answers, isSubmitting]);
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -90,20 +97,31 @@ export default function QuizAttemptPage() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          handleSubmitQuiz();
+          if (!isSubmitting) { // Only submit if not already submitting
+            handleSubmitQuiz();
+          }
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [timeLeft, handleSubmitQuiz]);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [timeLeft, handleSubmitQuiz, isSubmitting]);
 
   const handleAnswerChange = (event) => {
     setAnswers({
       ...answers,
       [currentQuestion]: parseInt(event.target.value),
+    });
+  };
+
+  const handleClearAnswer = () => {
+    setAnswers({
+      ...answers,
+      [currentQuestion]: null
     });
   };
 
@@ -161,19 +179,31 @@ export default function QuizAttemptPage() {
                 {quiz.questions[currentQuestion].question}
               </Typography>
 
-              <RadioGroup
-                value={answers[currentQuestion] || ''}
-                onChange={handleAnswerChange}
-              >
-                {quiz.questions[currentQuestion].options.map((option, index) => (
-                  <FormControlLabel
-                    key={index}
-                    value={index}
-                    control={<Radio />}
-                    label={option}
-                  />
-                ))}
-              </RadioGroup>
+              <Box sx={{ position: 'relative' }}>
+                <RadioGroup
+                  value={answers[currentQuestion] || ''}
+                  onChange={handleAnswerChange}
+                >
+                  {quiz.questions[currentQuestion].options.map((option, index) => (
+                    <FormControlLabel
+                      key={index}
+                      value={index}
+                      control={<Radio />}
+                      label={option}
+                    />
+                  ))}
+                </RadioGroup>
+                {answers[currentQuestion] !== undefined && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleClearAnswer}
+                    sx={{ mt: 1 }}
+                  >
+                    Clear Selection
+                  </Button>
+                )}
+              </Box>
             </Box>
 
             {/* Navigation Buttons */}

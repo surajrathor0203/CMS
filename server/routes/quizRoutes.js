@@ -7,7 +7,7 @@ const { protect } = require('../middleware/authMiddleware');
 router.get('/batch/:batchId', async (req, res) => {
   try {
     const quizzes = await Quiz.find({ batchId: req.params.batchId })
-      .select('title duration startTime questions')
+      .select('title duration startTime questions students')
       .sort({ startTime: 1 });
     res.json({ success: true, data: quizzes });
   } catch (error) {
@@ -73,7 +73,7 @@ router.get('/:quizId', protect, async (req, res) => {
 router.post('/:quizId/submit', protect, async (req, res) => {
   try {
     const { quizId } = req.params;
-    const studentId = req.user._id;
+    const studentId = req.user.id;
     const { answers } = req.body;
 
     const quiz = await Quiz.findById(quizId);
@@ -84,55 +84,69 @@ router.post('/:quizId/submit', protect, async (req, res) => {
       });
     }
 
-    // Check if student has already submitted
+    // Check if student has already submitted using findOne instead of find
     const existingSubmission = quiz.students.find(
       student => student.studentId.toString() === studentId.toString()
     );
 
-    if (existingSubmission && existingSubmission.completed) {
+    if (existingSubmission) {
       return res.status(400).json({
         success: false,
-        message: 'Quiz already submitted'
+        message: 'Quiz already submitted',
+        data: {
+          score: existingSubmission.score,
+          totalQuestions: existingSubmission.totalQuestions,
+          correctAnswers: existingSubmission.correctAnswers
+        }
       });
     }
 
     // Calculate score
-    let score = 0;
+    let correctAnswers = 0;
     answers.forEach((answer, index) => {
       if (answer === quiz.questions[index].correctAnswer) {
-        score++;
+        correctAnswers++;
       }
     });
 
-    const scorePercentage = (score / quiz.questions.length) * 100;
+    // Use findOneAndUpdate to atomically update the quiz
+    const result = await Quiz.findOneAndUpdate(
+      {
+        _id: quizId,
+        'students.studentId': { $ne: studentId } // Ensure student hasn't submitted
+      },
+      {
+        $push: {
+          students: {
+            studentId: studentId,
+            score: correctAnswers,
+            totalQuestions: quiz.questions.length,
+            correctAnswers,
+            submittedAt: new Date()
+          }
+        }
+      },
+      { new: true }
+    );
 
-    // Update or add student submission
-    if (existingSubmission) {
-      existingSubmission.answers = answers;
-      existingSubmission.score = scorePercentage;
-      existingSubmission.submittedAt = new Date();
-      existingSubmission.completed = true;
-    } else {
-      quiz.students.push({
-        studentId,
-        answers,
-        score: scorePercentage,
-        completed: true
+    if (!result) {
+      return res.status(400).json({
+        success: false,
+        message: 'Quiz already submitted or not found'
       });
     }
-
-    await quiz.save();
 
     res.json({
       success: true,
       data: {
-        score: scorePercentage,
+        score: correctAnswers,
         totalQuestions: quiz.questions.length,
-        correctAnswers: score
+        correctAnswers
       },
       message: 'Quiz submitted successfully'
     });
   } catch (error) {
+    console.error('Quiz submission error:', error);
     res.status(500).json({
       success: false,
       message: 'Error submitting quiz'
@@ -144,7 +158,7 @@ router.post('/:quizId/submit', protect, async (req, res) => {
 router.get('/:quizId/attempt', protect, async (req, res) => {
   try {
     const { quizId } = req.params;
-    const studentId = req.user._id;
+    const studentId = req.user.id; // Changed from req.user._id to req.user.id
 
     const quiz = await Quiz.findById(quizId);
     if (!quiz) {

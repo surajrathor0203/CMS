@@ -39,21 +39,21 @@ const quizSchema = new mongoose.Schema({
       ref: 'User',
       required: true
     },
-    answers: [{
-      type: Number,
-      required: true
-    }],
     score: {
       type: Number,
       default: 0
     },
+    totalQuestions: {
+      type: Number,
+      required: true
+    },
+    correctAnswers: {
+      type: Number,
+      required: true
+    },
     submittedAt: {
       type: Date,
       default: Date.now
-    },
-    completed: {
-      type: Boolean,
-      default: false
     }
   }],
   createdAt: {

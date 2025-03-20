@@ -9,20 +9,24 @@ const protect = async (req, res, next) => {
         if (!token) {
             return res.status(401).json({
                 success: false,
-                message: 'Not authorized, no token'
+                message: 'Not authorized to access this route'
             });
         }
 
         // Verify token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-        // Add user info to request
-        req.user = decoded;
+        // Set user in request
+        req.user = {
+            id: decoded.id,
+            role: decoded.role
+        };
+
         next();
     } catch (error) {
-        res.status(401).json({
+        return res.status(401).json({
             success: false,
-            message: 'Not authorized, token failed'
+            message: 'Not authorized to access this route'
         });
     }
 };
