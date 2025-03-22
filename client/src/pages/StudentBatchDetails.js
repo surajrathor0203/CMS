@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getStudentBatchDetails, getNotesByBatch, getQuizzesByBatch, getAssignmentsByBatch } from '../services/api';
 import StudentLayout from '../components/StudentLayout';
 import {
@@ -41,7 +41,6 @@ const theme = {
 
 export default function StudentBatchDetails() {
   const { batchId } = useParams();
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('activity');
   const [batchDetails, setBatchDetails] = useState(null);
@@ -325,6 +324,32 @@ const QuizResultDialog = () => (
   </Dialog>
 );
 
+const handleAssignmentClick = (assignment) => {
+  navigate(`/student-dashboard/batch/${batchId}/assignment/${assignment._id}`);
+};
+
+const isAssignmentOverdue = (endTime) => {
+  if (!endTime) return false;
+  return new Date(endTime) < new Date();
+};
+
+const getTimeRemaining = (endTime) => {
+  if (!endTime) return 'No due date';
+  
+  const now = new Date();
+  const end = new Date(endTime);
+  const diff = end - now;
+  
+  if (diff < 0) return 'Overdue';
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  
+  if (days > 0) return `${days} days left`;
+  if (hours > 0) return `${hours} hours left`;
+  return 'Due soon';
+};
+
   if (batchLoading) {
     return (
       <StudentLayout title="Loading...">
@@ -481,26 +506,49 @@ const QuizResultDialog = () => (
                                 cursor: 'pointer',
                                 '&:hover': { boxShadow: 6 }
                               }}
+                              onClick={() => handleAssignmentClick(assignment)}
                             >
                               <CardContent>
                                 <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
                                   {assignment.title}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                  Due: {assignment.endTime ? formatDate(assignment.endTime) : 'No due date set'}
+                                  Due: {assignment.endTime ? new Date(assignment.endTime).toLocaleString('en-US', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  }) : 'No due date set'}
                                 </Typography>
                                 {assignment.fileUrl && (
                                   <Box sx={{ mb: 2 }}>
                                     <IconButton 
                                       size="small" 
-                                      onClick={() => window.open(assignment.fileUrl, '_blank')}
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // Prevent card click
+                                        window.open(assignment.fileUrl, '_blank')
+                                      }}
                                       title="Download Assignment"
                                     >
                                       <DownloadIcon />
                                     </IconButton>
                                   </Box>
                                 )}
-                                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    {isAssignmentOverdue(assignment.endTime) ? 
+                                      <Chip 
+                                        label="Overdue" 
+                                        color="error" 
+                                        size="small" 
+                                      /> : 
+                                      <Typography variant="body2" color="text.secondary">
+                                        {getTimeRemaining(assignment.endTime)}
+                                      </Typography>
+                                    }
+                                  </Typography>
                                   <Chip
                                     label={assignment.submitted ? 'Submitted' : 'Not Submitted'}
                                     color={assignment.submitted ? 'success' : 'warning'}

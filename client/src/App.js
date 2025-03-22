@@ -16,6 +16,8 @@ import QuizCreatePage from './pages/QuizCreatePage';
 import EditQuizPage from './pages/EditQuizPage';
 import StudentBatchDetails from './pages/StudentBatchDetails';
 import QuizAttemptPage from './pages/QuizAttemptPage';
+import QuizResults from './pages/QuizResults';
+import AssignmentSubmissionPage from './pages/AssignmentSubmissionPage';
 import './App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -110,6 +112,15 @@ function App() {
             } 
           />
           <Route 
+            path="/teacher-dashboard/batch/:batchId/quiz/:quizId/results" 
+            element={
+              <ProtectedRoute 
+                element={<QuizResults />} 
+                allowedRoles={['teacher']} 
+              />
+            } 
+          />
+          <Route 
             path="/student-dashboard" 
             element={
               <ProtectedRoute 
@@ -132,6 +143,15 @@ function App() {
             element={
               <ProtectedRoute 
                 element={<QuizAttemptPage />} 
+                allowedRoles={['student']} 
+              />
+            } 
+          />
+          <Route 
+            path="/student-dashboard/batch/:batchId/assignment/:assignmentId" 
+            element={
+              <ProtectedRoute 
+                element={<AssignmentSubmissionPage />} 
                 allowedRoles={['student']} 
               />
             } 

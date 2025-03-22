@@ -378,6 +378,58 @@ export const editAssignment = async (assignmentId, assignmentData, batchId) => {
   }
 };
 
+export const getAssignmentById = async (assignmentId) => {
+  try {
+    const response = await api.get(`/assignments/${assignmentId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const submitAssignment = async (assignmentId, file) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.post(`/assignments/${assignmentId}/submit`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getStudentSubmission = async (assignmentId, studentId) => {
+  try {
+    const response = await api.get(`/assignments/${assignmentId}/submission/${studentId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const gradeAssignment = async (assignmentId, studentId, gradeData) => {
+  try {
+    const response = await api.post(`/assignments/${assignmentId}/grade/${studentId}`, gradeData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const deleteAssignmentSubmission = async (assignmentId) => {
+  try {
+    const response = await api.delete(`/assignments/${assignmentId}/submission`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
 export const createQuiz = async (quizData, batchId) => {
   try {
     const response = await api.post('/quizzes/create', {
@@ -435,9 +487,12 @@ export const updateQuiz = async (quizId, quizData) => {
   }
 };
 
-export const submitQuiz = async (quizId, answers) => {
+export const submitQuiz = async (quizId, answers, studentName) => {
   try {
-    const response = await api.post(`/quizzes/${quizId}/submit`, { answers });
+    const response = await api.post(`/quizzes/${quizId}/submit`, { 
+      answers,
+      studentName  // Add student name to the request
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || error;

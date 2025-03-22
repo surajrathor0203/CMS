@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -12,11 +12,23 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  TextField as GradeTextField,
+  Tooltip,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
-import EditIcon from '@mui/icons-material/Edit';
+import EditIcon from '@mui/icons-material/Edit'; // Fixed import path
+import GradeIcon from '@mui/icons-material/Grade';
 import TeacherLayout from '../components/TeacherLayout';
-import { editAssignment } from '../services/api';
+import { editAssignment, getAssignmentById, gradeAssignment } from '../services/api';
+import { toast } from 'react-toastify';
 
 export default function AssignmentDetail() {
   const { state: assignment } = useLocation();
@@ -31,6 +43,27 @@ export default function AssignmentDetail() {
     _id: assignment?._id,
     batchId: batchId
   });
+
+  const [assignmentDetails, setAssignmentDetails] = useState(null);
+  const [gradeDialogOpen, setGradeDialogOpen] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [gradeData, setGradeData] = useState({
+    grade: '',
+    feedback: ''
+  });
+
+  useEffect(() => {
+    const fetchAssignmentDetails = async () => {
+      try {
+        const response = await getAssignmentById(assignment._id);
+        setAssignmentDetails(response.data);
+      } catch (error) {
+        console.error('Error fetching assignment details:', error);
+      }
+    };
+
+    fetchAssignmentDetails();
+  }, [assignment._id]);
 
   if (!assignment) {
     return (
@@ -78,9 +111,46 @@ export default function AssignmentDetail() {
     }
   };
 
+  const handleGradeOpen = (submission) => {
+    setSelectedSubmission(submission);
+    setGradeData({
+      grade: submission.grade || '',
+      feedback: submission.feedback || ''
+    });
+    setGradeDialogOpen(true);
+  };
+
+  const handleGradeClose = () => {
+    setGradeDialogOpen(false);
+    setSelectedSubmission(null);
+    setGradeData({ grade: '', feedback: '' });
+  };
+
+  const handleGradeSubmit = async () => {
+    try {
+      await gradeAssignment(assignment._id, selectedSubmission.studentId, gradeData);
+      
+      // Update the assignments details in state
+      setAssignmentDetails(prev => ({
+        ...prev,
+        submissions: prev.submissions.map(sub => 
+          sub._id === selectedSubmission._id 
+            ? { ...sub, grade: gradeData.grade, feedback: gradeData.feedback }
+            : sub
+        )
+      }));
+
+      handleGradeClose();
+      toast.success('Grade submitted successfully');
+    } catch (error) {
+      toast.error(error.message || 'Failed to submit grade');
+      console.error('Error submitting grade:', error);
+    }
+  };
+
   return (
     <TeacherLayout title='Assignment Details'>
-      <Box sx={{ p: 3, maxWidth: '800px', margin: '0 auto' }}>
+      <Box sx={{ p: 3, maxWidth: '1200px', margin: '0 auto' }}> {/* Changed maxWidth from 800px to 1200px */}
         <Card elevation={2}>
           <CardContent>
             <Box display="flex" justifyContent="space-between" alignItems="center">
@@ -136,6 +206,67 @@ export default function AssignmentDetail() {
               </Box>
             )}
           </CardContent>
+          
+          {/* Submissions Section */}
+          <Box sx={{ mt: 4, mb: 2, px: 3 }}> {/* Added horizontal padding */}
+            <Typography variant="h6" gutterBottom>
+              Submissions ({assignmentDetails?.submissions?.length || 0})
+            </Typography>
+            <TableContainer component={Paper} sx={{ width: '100%' }}> {/* Added width 100% */}
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Student ID</TableCell>
+                    <TableCell>Submitted At</TableCell>
+                    <TableCell>File</TableCell>
+                    <TableCell>Grade/10</TableCell>
+                    <TableCell>Feedback</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {assignmentDetails?.submissions?.length > 0 ? (
+                    assignmentDetails.submissions.map((submission) => (
+                      <TableRow key={submission._id}>
+                        <TableCell>{submission.studentId}</TableCell>
+                        <TableCell>
+                          {new Date(submission.submittedAt).toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="small"
+                            startIcon={<DownloadIcon />}
+                            onClick={() => window.open(submission.fileUrl, '_blank')}
+                          >
+                            Download
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {submission.grade || 'Not graded'}
+                            <Tooltip title="Grade Submission">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleGradeOpen(submission)}
+                              >
+                                <GradeIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </TableCell>
+                        <TableCell>{submission.feedback || '-'}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center">
+                        No submissions yet
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
         </Card>
 
         {/* Edit Dialog */}
@@ -184,6 +315,37 @@ export default function AssignmentDetail() {
             <Button onClick={handleEditClose}>Cancel</Button>
             <Button onClick={handleSubmit} variant="contained">
               Save Changes
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Add Grading Dialog */}
+        <Dialog open={gradeDialogOpen} onClose={handleGradeClose}>
+          <DialogTitle>Grade Submission</DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2, gap: 2, display: 'flex', flexDirection: 'column' }}>
+              <GradeTextField
+                label="Grade"
+                type="number"
+                value={gradeData.grade}
+                onChange={(e) => setGradeData(prev => ({ ...prev, grade: e.target.value }))}
+                fullWidth
+                inputProps={{ min: 0, max: 100 }}
+              />
+              <GradeTextField
+                label="Feedback"
+                multiline
+                rows={4}
+                value={gradeData.feedback}
+                onChange={(e) => setGradeData(prev => ({ ...prev, feedback: e.target.value }))}
+                fullWidth
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleGradeClose}>Cancel</Button>
+            <Button onClick={handleGradeSubmit} variant="contained">
+              Submit Grade
             </Button>
           </DialogActions>
         </Dialog>

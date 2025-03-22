@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Quiz = require('../models/Quiz');
+const Batch = require('../models/Batch'); // Add this line to import Batch model
 const { protect } = require('../middleware/authMiddleware');
 
 // Get quizzes by batch
@@ -57,11 +58,33 @@ router.get('/:quizId', protect, async (req, res) => {
         message: 'Quiz not found'
       });
     }
+
+    // Get all students enrolled in the batch
+    const batch = await Batch.findById(quiz.batchId).populate('students');
+    
+    // Create a map of submitted students
+    const submittedStudentsMap = new Map(
+      quiz.students.map(s => [s.studentId.toString(), s])
+    );
+
+    // Create array of non-submitted students
+    const nonSubmittedStudents = batch.students.filter(student => 
+      !submittedStudentsMap.has(student._id.toString())
+    ).map(student => ({
+      _id: student._id,
+      name: student.name,
+      email: student.email
+    }));
+
     res.json({
       success: true,
-      data: quiz
+      data: {
+        ...quiz.toObject(),
+        nonSubmittedStudents
+      }
     });
   } catch (error) {
+    console.error('Get quiz error:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching quiz'
@@ -107,7 +130,7 @@ router.post('/:quizId/submit', protect, async (req, res) => {
   try {
     const { quizId } = req.params;
     const studentId = req.user.id;
-    const { answers } = req.body;
+    const { answers, studentName } = req.body;  // Add studentName here
 
     const quiz = await Quiz.findById(quizId);
     if (!quiz) {
@@ -146,12 +169,13 @@ router.post('/:quizId/submit', protect, async (req, res) => {
     const result = await Quiz.findOneAndUpdate(
       {
         _id: quizId,
-        'students.studentId': { $ne: studentId } // Ensure student hasn't submitted
+        'students.studentId': { $ne: studentId }
       },
       {
         $push: {
           students: {
             studentId: studentId,
+            studentName: studentName, // Add student name here
             score: correctAnswers,
             totalQuestions: quiz.questions.length,
             correctAnswers,

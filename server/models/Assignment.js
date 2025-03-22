@@ -1,5 +1,31 @@
 const mongoose = require('mongoose');
 
+const studentSubmissionSchema = new mongoose.Schema({
+    studentId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    fileUrl: {
+        type: String,
+        required: true
+    },
+    fileName: {
+        type: String,
+        required: true
+    },
+    submittedAt: {
+        type: Date,
+        default: Date.now
+    },
+    feedback: {
+        type: String
+    },
+    grade: {
+        type: Number
+    }
+});
+
 const assignmentItemSchema = new mongoose.Schema({
     title: {
         type: String,
@@ -18,7 +44,8 @@ const assignmentItemSchema = new mongoose.Schema({
     endTime: {
         type: Date,
         required: true
-    }
+    },
+    submissions: [studentSubmissionSchema]
 });
 
 const assignmentSchema = new mongoose.Schema({

@@ -231,3 +231,166 @@ exports.editAssignment = async (req, res) => {
         });
     }
 };
+
+exports.getAssignmentById = async (req, res) => {
+    try {
+        const assignment = await Assignment.findOne({
+            "assignments._id": req.params.assignmentId
+        }).populate('createdBy', 'name');
+
+        if (!assignment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Assignment not found'
+            });
+        }
+
+        const assignmentItem = assignment.assignments.id(req.params.assignmentId);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                ...assignmentItem.toObject(),
+                batchId: assignment.batchId,
+                createdBy: assignment.createdBy
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching assignment',
+            error: error.message
+        });
+    }
+};
+
+exports.submitAssignment = async (req, res) => {
+    try {
+        const { assignmentId } = req.params;
+        const studentId = req.user.id;
+        const file = req.file;
+
+        if (!file) {
+            return res.status(400).json({
+                success: false,
+                message: 'No file uploaded'
+            });
+        }
+
+        const assignment = await Assignment.findOne({
+            "assignments._id": assignmentId
+        });
+
+        if (!assignment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Assignment not found'
+            });
+        }
+
+        const assignmentItem = assignment.assignments.id(assignmentId);
+
+        // Check if assignment is overdue
+        if (new Date(assignmentItem.endTime) < new Date()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Assignment is past due date. Submissions are no longer accepted.'
+            });
+        }
+
+        // Check if student has already submitted
+        const existingSubmission = assignmentItem.submissions?.find(
+            sub => sub.studentId.toString() === studentId
+        );
+
+        if (existingSubmission) {
+            // Delete old file from S3
+            const deleteParams = {
+                Bucket: process.env.AWS_BUCKET_NAME,
+                Key: `submissions/${existingSubmission.fileName}`
+            };
+            await s3.deleteObject(deleteParams).promise();
+        }
+
+        // Upload new file
+        const fileExtension = file.originalname.split('.').pop();
+        const fileName = `${uuidv4()}.${fileExtension}`;
+        
+        const uploadParams = {
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: `submissions/${fileName}`,
+            Body: file.buffer,
+            ContentType: file.mimetype,
+            ACL: 'public-read'
+        };
+
+        const uploadResult = await s3.upload(uploadParams).promise();
+
+        const submission = {
+            studentId,
+            fileUrl: uploadResult.Location,
+            fileName,
+            submittedAt: new Date()
+        };
+
+        if (existingSubmission) {
+            // Update existing submission
+            Object.assign(existingSubmission, submission);
+        } else {
+            // Add new submission
+            if (!assignmentItem.submissions) {
+                assignmentItem.submissions = [];
+            }
+            assignmentItem.submissions.push(submission);
+        }
+
+        await assignment.save();
+
+        res.status(200).json({
+            success: true,
+            data: submission,
+            message: 'Assignment submitted successfully'
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error submitting assignment',
+            error: error.message
+        });
+    }
+};
+
+exports.getStudentSubmission = async (req, res) => {
+    try {
+        const { assignmentId, studentId } = req.params;
+
+        const assignment = await Assignment.findOne({
+            "assignments._id": assignmentId
+        });
+
+        if (!assignment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Assignment not found'
+            });
+        }
+
+        const assignmentItem = assignment.assignments.id(assignmentId);
+        const submission = assignmentItem.submissions?.find(
+            sub => sub.studentId.toString() === studentId
+        );
+
+        res.status(200).json({
+            success: true,
+            data: submission || null
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching submission',
+            error: error.message
+        });
+    }
+};

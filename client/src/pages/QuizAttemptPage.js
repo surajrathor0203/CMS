@@ -19,6 +19,7 @@ import {
 import StudentLayout from '../components/StudentLayout';
 import { getQuizById, getQuizAttempt, submitQuiz } from '../services/api';
 import { toast } from 'react-toastify';
+import { getUserFromCookie } from '../utils/cookies';  // Add this import
 
 const theme = {
   primary: '#2e7d32',
@@ -45,7 +46,12 @@ export default function QuizAttemptPage() {
       setIsSubmitting(true); // Lock submission
       setSubmitting(true);
       const answersArray = quiz.questions.map((_, index) => answers[index] || 0);
-      const response = await submitQuiz(quizId, answersArray);
+      
+      // Get user data from cookies
+      const userData = getUserFromCookie();
+      const studentName = userData?.user?.name || 'Unknown Student';
+
+      const response = await submitQuiz(quizId, answersArray, studentName);  // Pass student name
       
       toast.success('Quiz submitted successfully');
       navigate(`/student-dashboard/batch/${batchId}`, {

@@ -91,6 +91,11 @@ export default function BatchPage() {
   });
   const [assignments, setAssignments] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
+  const [deleteAssignmentDialogOpen, setDeleteAssignmentDialogOpen] = useState(false);
+  const [assignmentToDelete, setAssignmentToDelete] = useState(null);
+  const [deleteQuizDialogOpen, setDeleteQuizDialogOpen] = useState(false);
+  const [quizToDelete, setQuizToDelete] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -297,42 +302,67 @@ export default function BatchPage() {
     }
   };
 
-  const handleDeleteAssignment = async (assignmentId) => {
+  const handleDeleteAssignmentClick = (assignment, e) => {
+    e.stopPropagation();
+    setAssignmentToDelete(assignment);
+    setDeleteAssignmentDialogOpen(true);
+  };
+
+  const handleDeleteAssignmentConfirm = async () => {
     try {
-      await deleteAssignment(assignmentId, batchId);
+      setActionLoading(true);
+      await deleteAssignment(assignmentToDelete._id, batchId);
       toast.success('Assignment deleted successfully');
       fetchAssignments();
     } catch (error) {
       console.error('Error deleting assignment:', error);
       toast.error('Failed to delete assignment');
+    } finally {
+      setActionLoading(false);
+      setDeleteAssignmentDialogOpen(false);
+      setAssignmentToDelete(null);
     }
-  };
-
-  const handleAssignmentClick = (assignment) => {
-    navigate(`/teacher-dashboard/batch/${batchId}/assignment/${assignment._id}`, {
-      state: assignment
-    });
   };
 
   const handleQuizDialogOpen = () => {
     navigate(`/teacher-dashboard/batch/${batchId}/create-quiz`);
   };
 
-  const handleDeleteQuiz = async (quizId, e) => {
+  const handleDeleteQuizClick = (quiz, e) => {
     e.stopPropagation();
+    setQuizToDelete(quiz);
+    setDeleteQuizDialogOpen(true);
+  };
+
+  const handleDeleteQuizConfirm = async () => {
     try {
-      await deleteQuiz(quizId);
+      setActionLoading(true);
+      await deleteQuiz(quizToDelete._id);
       toast.success('Quiz deleted successfully');
       fetchQuizzes();
     } catch (error) {
       console.error('Error deleting quiz:', error);
       toast.error('Failed to delete quiz');
+    } finally {
+      setActionLoading(false);
+      setDeleteQuizDialogOpen(false);
+      setQuizToDelete(null);
     }
   };
 
   const handleEditQuiz = (quizId, e) => {
     e.stopPropagation();
     navigate(`/teacher-dashboard/batch/${batchId}/edit-quiz/${quizId}`);
+  };
+
+  const handleQuizClick = (quiz) => {
+    navigate(`/teacher-dashboard/batch/${batchId}/quiz/${quiz._id}/results?totalStudents=${filteredStudents.length}`);
+  };
+
+  const handleAssignmentClick = (assignment) => {
+    navigate(`/teacher-dashboard/batch/${batchId}/assignment/${assignment._id}`, {
+      state: assignment
+    });
   };
 
   const filteredStudents = students.filter(student => {
@@ -443,6 +473,8 @@ export default function BatchPage() {
       )}
     </Box>
   );
+
+  
 
   return (
     <TeacherLayout title={batch.name}>
@@ -653,6 +685,7 @@ export default function BatchPage() {
                               cursor: 'pointer',
                               '&:hover': { boxShadow: 6 }
                             }}
+                            onClick={() => handleQuizClick(quiz)}
                           >
                             <CardContent>
                               <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
@@ -662,7 +695,14 @@ export default function BatchPage() {
                                 Duration: {quiz.duration} minutes
                               </Typography>
                               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                Start Time: {new Date(quiz.startTime).toLocaleString()}
+                                Start Time: {new Date(quiz.startTime).toLocaleString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true
+                                })}
                               </Typography>
                               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                                 Questions: {quiz.questions.length}
@@ -677,7 +717,7 @@ export default function BatchPage() {
                                 </IconButton>
                                 <IconButton
                                   size="small"
-                                  onClick={(e) => handleDeleteQuiz(quiz._id, e)}
+                                  onClick={(e) => handleDeleteQuizClick(quiz, e)}
                                   color="error"
                                 >
                                   <DeleteIcon />
@@ -729,15 +769,19 @@ export default function BatchPage() {
                                 {assignment.title}
                               </Typography>
                               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                Due: {new Date(assignment.endTime).toLocaleDateString()}
+                                Due: {new Date(assignment.endTime).toLocaleString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true
+                                })}
                               </Typography>
                               <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
                                 <IconButton
                                   size="small"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteAssignment(assignment._id);
-                                  }}
+                                  onClick={(e) => handleDeleteAssignmentClick(assignment, e)}
                                   color="error"
                                 >
                                   <DeleteIcon />
@@ -921,6 +965,59 @@ export default function BatchPage() {
                      uploadLoading}
           >
             {uploadLoading ? 'Creating...' : 'Create Assignment'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={deleteAssignmentDialogOpen}
+        onClose={() => !actionLoading && setDeleteAssignmentDialogOpen(false)}
+      >
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this assignment? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setDeleteAssignmentDialogOpen(false)}
+            disabled={actionLoading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteAssignmentConfirm}
+            color="error" 
+            disabled={actionLoading}
+          >
+            {actionLoading ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={deleteQuizDialogOpen}
+        onClose={() => !actionLoading && setDeleteQuizDialogOpen(false)}
+      >
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this quiz? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setDeleteQuizDialogOpen(false)}
+            disabled={actionLoading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteQuizConfirm}
+            color="error" 
+            disabled={actionLoading}
+          >
+            {actionLoading ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
