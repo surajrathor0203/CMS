@@ -18,6 +18,7 @@ import StudentBatchDetails from './pages/StudentBatchDetails';
 import QuizAttemptPage from './pages/QuizAttemptPage';
 import QuizResults from './pages/QuizResults';
 import AssignmentSubmissionPage from './pages/AssignmentSubmissionPage';
+import TeacherLibrary from './pages/TeacherLibrary';
 import './App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -170,6 +171,15 @@ function App() {
             element={
               <ProtectedRoute 
                 element={<TeacherProfile />} 
+                allowedRoles={['teacher']} 
+              />
+            } 
+          />
+          <Route 
+            path="/teacher/library" 
+            element={
+              <ProtectedRoute 
+                element={<TeacherLibrary />} 
                 allowedRoles={['teacher']} 
               />
             } 

@@ -32,6 +32,7 @@ const studentRoutes = require('./routes/studentRoutes');
 const noteRoutes = require('./routes/noteRoutes');
 const assignmentRoutes = require('./routes/assignmentRoutes');  // Add this line
 const quizRoutes = require('./routes/quizRoutes');  // Add this line
+const libraryRoutes = require('./routes/libraryRoutes');  // Add this line
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -40,6 +41,7 @@ app.use('/api/students', studentRoutes);
 app.use('/api/notes', noteRoutes);
 app.use('/api/assignments', assignmentRoutes);  // Add this line
 app.use('/api/quizzes', quizRoutes);  // Add this line
+app.use('/api/library', libraryRoutes);  // Add this line
 
 // MongoDB connection
 const connectDB = async () => {

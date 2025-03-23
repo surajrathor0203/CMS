@@ -16,10 +16,19 @@ import {
   Alert,
   Tabs,
   Tab,
-  Chip
+  Chip,
+  Checkbox,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 import TeacherLayout from '../components/TeacherLayout';
-import { getQuizById } from '../services/api';
+import { getQuizById, deleteQuizStudents } from '../services/api';
+import { toast } from 'react-toastify';
 
 const QuizResults = () => {
   const { quizId } = useParams();
@@ -30,6 +39,8 @@ const QuizResults = () => {
   const location = useLocation()
   const searchParams = new URLSearchParams(location.search)
   const totalStudents = searchParams.get('totalStudents')
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchQuizData = async () => {
@@ -51,6 +62,39 @@ const QuizResults = () => {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+  };
+
+  const handleSelectAll = (event) => {
+    if (event.target.checked) {
+      setSelectedStudents(quiz.students.map(student => student.studentId));
+    } else {
+      setSelectedStudents([]);
+    }
+  };
+
+  const handleSelectStudent = (studentId) => {
+    setSelectedStudents(prev => {
+      if (prev.includes(studentId)) {
+        return prev.filter(id => id !== studentId);
+      } else {
+        return [...prev, studentId];
+      }
+    });
+  };
+
+  const handleDeleteStudents = async () => {
+    try {
+      await deleteQuizStudents(quizId, selectedStudents);
+      const response = await getQuizById(quizId);
+      if (response.success) {
+        setQuiz(response.data);
+        setSelectedStudents([]);
+        toast.success('Selected students deleted successfully');
+      }
+    } catch (err) {
+      toast.error('Failed to delete students');
+    }
+    setDeleteDialogOpen(false);
   };
 
   if (loading) {
@@ -102,11 +146,31 @@ const QuizResults = () => {
               </Tabs>
             </Box>
 
+            {activeTab === 0 && selectedStudents.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Button 
+                  variant="contained" 
+                  color="error" 
+                  startIcon={<DeleteIcon />}
+                  onClick={() => setDeleteDialogOpen(true)}
+                >
+                  Delete Selected ({selectedStudents.length})
+                </Button>
+              </Box>
+            )}
+
             {activeTab === 0 ? (
               <TableContainer component={Paper}>
                 <Table>
                   <TableHead>
                     <TableRow>
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          checked={quiz?.students?.length > 0 && selectedStudents.length === quiz.students.length}
+                          indeterminate={selectedStudents.length > 0 && selectedStudents.length < quiz?.students?.length}
+                          onChange={handleSelectAll}
+                        />
+                      </TableCell>
                       <TableCell>Student Name</TableCell>
                       <TableCell align="center">Score</TableCell>
                       <TableCell align="center">Correct Answers</TableCell>
@@ -116,6 +180,12 @@ const QuizResults = () => {
                   <TableBody>
                     {quiz?.students?.map((student) => (
                       <TableRow key={student.studentId}>
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            checked={selectedStudents.includes(student.studentId)}
+                            onChange={() => handleSelectStudent(student.studentId)}
+                          />
+                        </TableCell>
                         <TableCell>{student.studentName}</TableCell>
                         <TableCell align="center">
                           {Math.round((student.score / quiz.questions.length) * 100)}%
@@ -130,7 +200,7 @@ const QuizResults = () => {
                     ))}
                     {!quiz?.students?.length && (
                       <TableRow>
-                        <TableCell colSpan={4} align="center">
+                        <TableCell colSpan={5} align="center">
                           No submissions yet
                         </TableCell>
                       </TableRow>
@@ -172,6 +242,24 @@ const QuizResults = () => {
           </CardContent>
         </Card>
       </Box>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Delete Selected Students</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete {selectedStudents.length} selected student submissions? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleDeleteStudents} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </TeacherLayout>
   );
 };

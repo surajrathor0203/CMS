@@ -23,6 +23,7 @@ import {
   BarChart,
   MessageCircle,
   User,
+  Book,  // Add this import
 } from 'lucide-react';
 import { getUserFromCookie } from '../utils/cookies';
 import { logout } from '../utils/auth';
@@ -68,7 +69,7 @@ const theme = {
     { text: 'Dashboard', icon: <BookOpen size={24} />, path: '/teacher-dashboard' },
     { text: 'Students', icon: <Users size={24} />, path: '/teacher/students' },
     { text: 'Schedule', icon: <Calendar size={24} />, path: '/teacher/schedule' },
-    { text: 'Assignments', icon: <FileText size={24} />, path: '/teacher/assignments' },
+    { text: 'Library', icon: <Book size={24} />, path: '/teacher/library' },
     { text: 'Analytics', icon: <BarChart size={24} />, path: '/teacher/analytics' },
     { text: 'Messages', icon: <MessageCircle size={24} />, path: '/teacher/messages' },
     { text: 'Settings', icon: <Settings size={24} />, path: '/teacher/settings' }, 

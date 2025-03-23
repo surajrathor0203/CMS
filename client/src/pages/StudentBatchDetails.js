@@ -63,6 +63,9 @@ export default function StudentBatchDetails() {
   const [selectedQuizResult, setSelectedQuizResult] = useState(null);
   const [studentId, setStudentId] = useState(null);
 
+  const [showExpiredDialog, setShowExpiredDialog] = useState(false);
+  const [expiredQuiz, setExpiredQuiz] = useState(null);
+
   useEffect(() => {
     // Get student ID from cookies when component mounts
     const userData = getUserFromCookie();
@@ -212,6 +215,12 @@ export default function StudentBatchDetails() {
     fetchNotes();
   }, [batchId]);
 
+  const isQuizExpired = (quiz) => {
+    const startTime = new Date(quiz.startTime);
+    const endTime = new Date(startTime.getTime() + quiz.duration * 60000); // Convert duration from minutes to milliseconds
+    return new Date() > endTime;
+  };
+
   const handleQuizClick = (quiz) => {
     if (!studentId) {
       toast.error('User ID not found. Please try logging in again.');
@@ -242,6 +251,13 @@ export default function StudentBatchDetails() {
       toast.info("This quiz hasn't started yet");
       return;
     }
+
+    // Check if quiz has expired
+    if (isQuizExpired(quiz)) {
+      setExpiredQuiz(quiz);
+      setShowExpiredDialog(true);
+      return;
+    }
     
     navigate(`/student-dashboard/batch/${batchId}/quiz/${quiz._id}`);
   };
@@ -261,24 +277,48 @@ const formatQuizTime = (dateString) => {
   }
 };
 
+const getQuizStatus = (quiz) => {
+  const now = new Date();
+  const startTime = new Date(quiz.startTime);
+  const endTime = new Date(startTime.getTime() + quiz.duration * 60000);
+
+  if (now < startTime) {
+    return { status: 'upcoming', color: 'default', label: 'Not Started' };
+  } else if (now >= startTime && now <= endTime) {
+    return { status: 'open', color: 'success', label: 'Open' };
+  } else {
+    return { status: 'expired', color: 'error', label: 'Expired' };
+  }
+};
+
 const QuizCard = ({ quiz }) => {
   const studentAttempt = quiz.students?.find(
     student => student.studentId === studentId
   );
+  const quizStatus = getQuizStatus(quiz);
 
   return (
     <Card 
       elevation={2}
       sx={{ 
         cursor: 'pointer',
-        '&:hover': { boxShadow: 6 }
+        '&:hover': { boxShadow: 6 },
+        position: 'relative' // Add this for absolute positioning of status chip
       }}
       onClick={() => handleQuizClick(quiz)}
     >
       <CardContent>
-        <Typography variant="h6" component="h3" sx={{ mb: 1 }}>
-          {quiz.title}
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+          <Typography variant="h6" component="h3">
+            {quiz.title}
+          </Typography>
+          <Chip 
+            label={quizStatus.label}
+            color={quizStatus.color}
+            size="small"
+            sx={{ ml: 1 }}
+          />
+        </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           Duration: {quiz.duration} minutes
         </Typography>
@@ -295,6 +335,22 @@ const QuizCard = ({ quiz }) => {
               color="success"
               size="small"
             />
+          </Box>
+        )}
+        {quizStatus.status === 'open' && !studentAttempt && (
+          <Box sx={{ mt: 2 }}>
+            <Typography 
+              variant="body2" 
+              color="success.main" 
+              sx={{ 
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5
+              }}
+            >
+              Quiz is currently open! Click to attempt
+            </Typography>
           </Box>
         )}
       </CardContent>
@@ -320,6 +376,34 @@ const QuizResultDialog = () => (
     </DialogContent>
     <DialogActions>
       <Button onClick={() => setShowScoreDialog(false)}>Close</Button>
+    </DialogActions>
+  </Dialog>
+);
+
+const ExpiredQuizDialog = () => (
+  <Dialog open={showExpiredDialog} onClose={() => setShowExpiredDialog(false)}>
+    <DialogTitle>Quiz Expired</DialogTitle>
+    <DialogContent>
+      <Box sx={{ py: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          {expiredQuiz?.title}
+        </Typography>
+        <Typography variant="body1" color="error">
+          This quiz has ended and is no longer available for submission.
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          Quiz Duration: {expiredQuiz?.duration} minutes
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Start Time: {formatQuizTime(expiredQuiz?.startTime)}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          End Time: {formatQuizTime(new Date(new Date(expiredQuiz?.startTime).getTime() + (expiredQuiz?.duration * 60000)))}
+        </Typography>
+      </Box>
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={() => setShowExpiredDialog(false)}>Close</Button>
     </DialogActions>
   </Dialog>
 );
@@ -588,6 +672,7 @@ const getTimeRemaining = (endTime) => {
         </Grid>
       </Box>
       <QuizResultDialog />
+      <ExpiredQuizDialog />
     </StudentLayout>
   );
 }

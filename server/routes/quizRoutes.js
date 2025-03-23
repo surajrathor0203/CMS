@@ -275,4 +275,38 @@ router.delete('/:quizId', protect, async (req, res) => {
   }
 });
 
+// Delete multiple students from quiz
+router.post('/:quizId/delete-students', protect, async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const { studentIds } = req.body;
+
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return res.status(404).json({
+        success: false,
+        message: 'Quiz not found'
+      });
+    }
+
+    // Filter out the selected students
+    quiz.students = quiz.students.filter(
+      student => !studentIds.includes(student.studentId.toString())
+    );
+
+    await quiz.save();
+
+    res.json({
+      success: true,
+      message: 'Selected students deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting students:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting students'
+    });
+  }
+});
+
 module.exports = router;

@@ -14,31 +14,52 @@ const s3 = new AWS.S3({
   }
 });
 
-// Set bucket CORS policy
-const setBucketCorsPolicy = async () => {
-  const corsParams = {
-    Bucket: process.env.AWS_BUCKET_NAME,
-    CORSConfiguration: {
-      CORSRules: [
-        {
-          AllowedHeaders: ['*'],
-          AllowedMethods: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD'],
-          AllowedOrigins: ['*'],
-          ExposeHeaders: ['ETag'],
-          MaxAgeSeconds: 3000
-        }
-      ]
-    }
-  };
-
-  try {
-    await s3.putBucketCors(corsParams).promise();
-    console.log('Successfully set CORS policy');
-  } catch (err) {
-    console.error('Error setting CORS policy:', err);
+const corsParams = {
+  Bucket: process.env.AWS_BUCKET_NAME,
+  CORSConfiguration: {
+    CORSRules: [
+      {
+        AllowedHeaders: ['*'],
+        AllowedMethods: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD'],
+        AllowedOrigins: ['*'],
+        ExposeHeaders: ['ETag', 'Content-Length', 'Content-Type'],
+        MaxAgeSeconds: 3000
+      }
+    ]
   }
 };
 
-setBucketCorsPolicy();
+// Set bucket CORS policy
+const setBucketPolicy = async () => {
+  try {
+    // Set CORS
+    await s3.putBucketCors(corsParams).promise();
+    
+    // Make bucket public
+    const publicReadPolicy = {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Sid: 'PublicReadGetObject',
+          Effect: 'Allow',
+          Principal: '*',
+          Action: ['s3:GetObject'],
+          Resource: [`arn:aws:s3:::${process.env.AWS_BUCKET_NAME}/*`]
+        }
+      ]
+    };
+
+    await s3.putBucketPolicy({
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Policy: JSON.stringify(publicReadPolicy)
+    }).promise();
+
+    console.log('Successfully set bucket policies');
+  } catch (err) {
+    console.error('Error setting bucket policies:', err);
+  }
+};
+
+setBucketPolicy();
 
 module.exports = s3;

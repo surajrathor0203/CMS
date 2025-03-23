@@ -508,6 +508,17 @@ export const getQuizAttempt = async (quizId) => {
   }
 };
 
+export const deleteQuizStudents = async (quizId, studentIds) => {
+  try {
+    const response = await api.post(`/quizzes/${quizId}/delete-students`, {
+      studentIds
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
 export const getBatchDetails = (batchId) => {
   return axios.get(`${API_URL}/batches/${batchId}`);
 };
@@ -519,6 +530,66 @@ export const getStudentAssignments = (batchId, studentId) => {
 export const getStudentBatchDetails = async (batchId) => {
   try {
     const response = await api.get(`/batch/student/${batchId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const uploadBook = async (bookData) => {
+  try {
+    const formData = new FormData();
+    formData.append('title', bookData.title);
+    formData.append('description', bookData.description);
+    formData.append('authorName', bookData.authorName);
+    formData.append('subject', bookData.subject);
+    formData.append('authorTags', JSON.stringify(bookData.authorTags));
+    if (bookData.coverImage) {
+      formData.append('coverImage', bookData.coverImage);
+    }
+    formData.append('file', bookData.file);
+
+    const response = await api.post('/library/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getBooks = async (teacherId) => {
+  try {
+    const response = await api.get(`/library?teacherId=${teacherId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const deleteBook = async (bookId) => {
+  try {
+    const response = await api.delete(`/library/${bookId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getBookAccessUrl = async (bookId) => {
+  try {
+    const response = await api.get(`/library/${bookId}/access`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getAllBooks = async () => {
+  try {
+    const response = await api.get('/library/all');
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
