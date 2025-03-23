@@ -77,7 +77,7 @@ export const createBatch = async (batchData) => {
   try {
     const response = await api.post('/batch/create', batchData, {
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'multipart/form-data' // Changed from application/json
       }
     });
     return response.data;

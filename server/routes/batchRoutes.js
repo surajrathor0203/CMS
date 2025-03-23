@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const Batch = require('../models/Batch');
 const auth = require('../middleware/auth');
+const s3 = require('../config/s3Config');
+const multer = require('multer');
+const upload = multer();
 
 // Get all batches for a teacher
 router.get('/', auth, async (req, res) => {
@@ -21,9 +24,22 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Create a new batch
-router.post('/create', auth, async (req, res) => {
+router.post('/create', auth, upload.single('qrCode'), async (req, res) => {
   try {
-    const { name, subject, startTime, endTime, openingDate, teacher } = req.body;
+    const { 
+      name, 
+      subject, 
+      startTime, 
+      endTime, 
+      openingDate, 
+      teacher,
+      fees,
+      firstInstallmentDate,
+      secondInstallmentDate,
+      upiHolderName,
+      upiId,
+      upiNumber
+    } = req.body;
 
     // Check if batch with same name exists
     const existingBatch = await Batch.findOne({ name });
@@ -34,20 +50,54 @@ router.post('/create', auth, async (req, res) => {
       });
     }
 
+    // Validate required file
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'QR code image is required'
+      });
+    }
+
+    // Upload QR code to S3
+    const params = {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: `qr-codes/${Date.now()}-${req.file.originalname}`,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+      ACL: 'public-read' // Make the file publicly accessible
+    };
+
+    const uploadResult = await s3.upload(params).promise();
+    const qrCodeUrl = uploadResult.Location;
+    const s3Key = uploadResult.Key;  // Get the S3 key
+
     const batch = new Batch({
       name,
       subject,
-      teacher, // Use the teacher ID from request body
+      teacher,
       startTime,
       endTime,
-      openingDate
+      openingDate,
+      fees: parseFloat(fees),
+      firstInstallmentDate,
+      secondInstallmentDate,
+      payment: {
+        upiHolderName,
+        upiId,
+        upiNumber,
+        qrCodeUrl,
+        s3Key  // Store the S3 key
+      }
     });
 
     await batch.save();
     res.status(201).json({ success: true, data: batch });
   } catch (error) {
     console.error('Error creating batch:', error);
-    res.status(500).json({ success: false, message: 'Error creating batch' });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Error creating batch'
+    });
   }
 });
 
@@ -99,10 +149,54 @@ router.get('/student/:batchId', async (req, res) => {
 });
 
 // Update a batch
-router.put('/:id', async (req, res) => {
+router.put('/:id', upload.single('qrCode'), async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const updateData = { ...req.body };
+    
+    if (req.file) {
+      // First, get the existing batch to delete old file if exists
+      const existingBatch = await Batch.findById(id);
+      if (existingBatch?.payment?.s3Key) {
+        // Delete old file from S3
+        try {
+          await s3.deleteObject({
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: existingBatch.payment.s3Key
+          }).promise();
+        } catch (deleteError) {
+          console.error('Error deleting old QR code:', deleteError);
+        }
+      }
+
+      // Upload new file
+      const params = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: `qr-codes/${Date.now()}-${req.file.originalname}`,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype,
+        ACL: 'public-read'
+      };
+
+      const uploadResult = await s3.upload(params).promise();
+      updateData.payment = {
+        upiHolderName: req.body.upiHolderName,
+        upiId: req.body.upiId,
+        upiNumber: req.body.upiNumber,
+        qrCodeUrl: uploadResult.Location,
+        s3Key: uploadResult.Key  // Store new S3 key
+      };
+    } else {
+      // If no new QR code, keep existing QR code and S3 key
+      const existingBatch = await Batch.findById(id);
+      updateData.payment = {
+        upiHolderName: req.body.upiHolderName,
+        upiId: req.body.upiId,
+        upiNumber: req.body.upiNumber,
+        qrCodeUrl: existingBatch.payment.qrCodeUrl,
+        s3Key: existingBatch.payment.s3Key
+      };
+    }
     
     const updatedBatch = await Batch.findByIdAndUpdate(
       id,
@@ -134,7 +228,9 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
   try {
     const teacherId = req.query.teacherId;
-    const batch = await Batch.findOneAndDelete({ 
+    
+    // First get the batch to get the S3 key
+    const batch = await Batch.findOne({ 
       _id: req.params.id, 
       teacher: teacherId 
     });
@@ -145,6 +241,21 @@ router.delete('/:id', auth, async (req, res) => {
         message: 'Batch not found' 
       });
     }
+
+    // Delete file from S3 if exists
+    if (batch.payment?.s3Key) {
+      try {
+        await s3.deleteObject({
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: batch.payment.s3Key
+        }).promise();
+      } catch (deleteError) {
+        console.error('Error deleting QR code from S3:', deleteError);
+      }
+    }
+
+    // Delete the batch
+    await Batch.findByIdAndDelete(batch._id);
 
     res.json({ success: true, message: 'Batch deleted successfully' });
   } catch (error) {

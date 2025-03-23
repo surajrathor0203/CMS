@@ -32,6 +32,40 @@ const batchSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
+  fees: {
+    type: Number,
+    required: true
+  },
+  firstInstallmentDate: {
+    type: Date,
+    required: true
+  },
+  secondInstallmentDate: {
+    type: Date,
+    required: true
+  },
+  payment: {
+    upiHolderName: {
+      type: String,
+      required: true
+    },
+    upiId: {
+      type: String,
+      required: true
+    },
+    upiNumber: {
+      type: String,
+      required: true
+    },
+    qrCodeUrl: {
+      type: String,
+      required: true
+    },
+    s3Key: {  // Add this field
+      type: String,
+      required: true
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now
