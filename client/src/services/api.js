@@ -544,6 +544,7 @@ export const uploadBook = async (bookData) => {
     formData.append('authorName', bookData.authorName);
     formData.append('subject', bookData.subject);
     formData.append('authorTags', JSON.stringify(bookData.authorTags));
+    formData.append('teacherName', bookData.teacherName); // Add teacher name to form data
     if (bookData.coverImage) {
       formData.append('coverImage', bookData.coverImage);
     }

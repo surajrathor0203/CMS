@@ -98,11 +98,25 @@ const BookCard = ({ book, onDelete, onOpen }) => {
         <Typography variant="h6" component="h2" gutterBottom fontWeight="bold">
           {book.title}
         </Typography>
-        
-        <Typography variant="body2" color="text.secondary" gutterBottom>
-          Author: {book.authorName}
-        </Typography>
-        
+
+        {/* Modified to show author and uploader in same row */}
+        <Box sx={{ 
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          mb: 1
+        }}>
+          <Typography variant="body2" color="text.secondary">
+            Author: {book.authorName}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            •
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Uploaded by: {book.teacherName || 'Unknown Teacher'}
+          </Typography>
+        </Box>
+
         <Box sx={{ 
           display: 'flex', 
           alignItems: { xs: 'flex-start', sm: 'center' },
@@ -128,7 +142,7 @@ const BookCard = ({ book, onDelete, onOpen }) => {
             />
           </Box>
 
-          {/* Tags */}
+          {/* Tags - Modified to show all tags */}
           {book.authorTags?.length > 0 && (
             <Stack 
               direction="row" 
@@ -136,12 +150,12 @@ const BookCard = ({ book, onDelete, onOpen }) => {
               sx={{ 
                 flexWrap: 'wrap', 
                 gap: 0.5,
-                ml: { xs: 0, sm: 'auto' }, // Only auto margin on desktop
-                width: { xs: '100%', sm: 'auto' }, // Full width on mobile
+                ml: { xs: 0, sm: 'auto' },
+                width: { xs: '100%', sm: 'auto' },
                 mt: { xs: 0, sm: 0 }
               }}
             >
-              {book.authorTags.slice(0, 3).map((tag, index) => (
+              {book.authorTags.map((tag, index) => (
                 <Chip 
                   key={index} 
                   label={tag} 
@@ -184,7 +198,7 @@ const BookCard = ({ book, onDelete, onOpen }) => {
                 }
               }}
             >
-              Open Book
+              Read Book
             </Button>
           </Box>
         </Box>
@@ -246,21 +260,32 @@ export default function TeacherLibrary() {
         return;
       }
 
-      await uploadBook(uploadData);
-      toast.success('Book uploaded successfully');
-      setOpenUpload(false);
-      fetchMyBooks();
-      setUploadData({
-        title: '',
-        description: '',
-        authorName: '',
-        subject: '',
-        authorTags: [],
-        coverImage: null,
-        file: null
-      });
+      // Add teacher name to upload data
+      const uploadDataWithTeacher = {
+        ...uploadData,
+        teacherName: userData?.user?.name || 'Unknown Teacher'
+      };
+
+      const response = await uploadBook(uploadDataWithTeacher);
+      if (response.success) {
+        toast.success('Book uploaded successfully');
+        setOpenUpload(false);
+        fetchMyBooks();
+        setUploadData({
+          title: '',
+          description: '',
+          authorName: '',
+          subject: '',
+          authorTags: [],
+          coverImage: null,
+          file: null
+        });
+      } else {
+        toast.error(response.message || 'Failed to upload book');
+      }
     } catch (error) {
-      toast.error('Failed to upload book');
+      console.error('Upload error:', error);
+      toast.error(error.message || 'Failed to upload book');
     }
   };
 
@@ -307,7 +332,8 @@ export default function TeacherLibrary() {
   const filteredBooks = (activeTab === 'all' ? allBooks : myBooks).filter(book =>
     book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     book.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    book.authorName?.toLowerCase().includes(searchTerm.toLowerCase())
+    book.authorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    book.teacherName?.toLowerCase().includes(searchTerm.toLowerCase()) // Add search by teacher name
   );
 
   return (
@@ -332,7 +358,7 @@ export default function TeacherLibrary() {
         <TextField
           fullWidth
           variant="outlined"
-          placeholder="Search books by title, author, subject or category..."
+          placeholder="Search books by title, author, subject or uploader..." // Updated placeholder
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           InputProps={{

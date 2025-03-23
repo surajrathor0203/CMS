@@ -41,6 +41,9 @@ exports.uploadBook = async (req, res) => {
     const { title, description, authorName, subject, authorTags } = req.body;
     const teacherId = req.user.id;
     
+    // Get teacher name from request
+    const teacherName = req.body.teacherName || req.user.name || 'Unknown Teacher';
+    
     let fileUrl, coverImageUrl, pdfKey, coverImageKey;
     const s3Params = {
       Bucket: process.env.AWS_BUCKET_NAME,
@@ -96,7 +99,7 @@ exports.uploadBook = async (req, res) => {
       });
     }
 
-    // Create library entry
+    // Create library entry with teacher name
     const book = await Library.create({
       title,
       description,
@@ -106,6 +109,7 @@ exports.uploadBook = async (req, res) => {
       coverImageUrl,
       fileUrl,
       teacher: teacherId,
+      teacherName, // Add teacher name
       s3Keys: {
         coverImage: coverImageKey || null,
         pdf: pdfKey

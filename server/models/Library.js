@@ -17,6 +17,10 @@ const librarySchema = new mongoose.Schema({
   authorTags: [String],
   coverImageUrl: String,
   fileUrl: String,
+  teacherName: {
+    type: String,
+    required: true
+  },
   teacher: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
