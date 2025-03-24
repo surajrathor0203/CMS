@@ -24,12 +24,18 @@ import {
   DialogActions,
   Button,
   TextField,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel
 } from '@mui/material';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PersonIcon from '@mui/icons-material/Person';
 import SubjectIcon from '@mui/icons-material/Subject';
 import DownloadIcon from '@mui/icons-material/Download';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import { styled } from '@mui/material/styles';
 import { toast } from 'react-toastify';
 import { getUserFromCookie } from '../utils/cookies';
 
@@ -39,6 +45,32 @@ const theme = {
   light: '#81c784',
   background: '#e8f5e9',
 };
+
+const UploadBox = styled(Box)(({ theme }) => ({
+  border: `2px dashed ${theme.palette.divider}`,
+  borderRadius: theme.shape.borderRadius,
+  padding: theme.spacing(3),
+  textAlign: 'center',
+  marginBottom: theme.spacing(3),
+  backgroundColor: theme.palette.background.default,
+  cursor: 'pointer',
+  '&:hover': {
+    borderColor: theme.palette.primary.main,
+    backgroundColor: theme.palette.action.hover,
+  },
+}));
+
+const VisuallyHiddenInput = styled('input')({
+  clip: 'rect(0 0 0 0)',
+  clipPath: 'inset(50%)',
+  height: 1,
+  overflow: 'hidden',
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  whiteSpace: 'nowrap',
+  width: 1,
+});
 
 export default function StudentBatchDetails() {
   const { batchId } = useParams();
@@ -68,13 +100,8 @@ export default function StudentBatchDetails() {
   const [expiredQuiz, setExpiredQuiz] = useState(null);
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [paymentHistory, setPaymentHistory] = useState([]); // Move this to parent
+  const [paymentHistory, setPaymentHistory] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    amount: '',
-    receipt: null,
-    feedback: ''
-  });
 
   useEffect(() => {
     // Get student ID from cookies when component mounts
@@ -163,9 +190,10 @@ export default function StudentBatchDetails() {
       try {
         setBatchLoading(true);
         const response = await getStudentBatchDetails(batchId);
-        console.log('Received batch details:', response); // Add this debug log
+        console.log('Batch Details Response:', response); // Debug log
         setBatchDetails(response);
       } catch (err) {
+        console.error('Error fetching batch details:', err); // Debug log
         setBatchError(err.message || 'Failed to fetch batch details');
       } finally {
         setBatchLoading(false);
@@ -445,7 +473,7 @@ const getTimeRemaining = (endTime) => {
   return 'Due soon';
 };
 
-const PaymentDetailsCard = ({ batchDetails, onSubmitClick, paymentHistory }) => (
+const PaymentDetailsCard = ({ batchDetails, paymentHistory }) => (
   <Card elevation={2}>
     <CardContent>
       <Typography variant="h6" color={theme.primary} gutterBottom>
@@ -455,7 +483,8 @@ const PaymentDetailsCard = ({ batchDetails, onSubmitClick, paymentHistory }) => 
       
       {batchDetails?.payment ? (
         <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
+          {/* Column 1: Basic Payment Details */}
+          <Grid item xs={12} md={4}>
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" color="text.secondary">
                 Payment Contact
@@ -485,33 +514,36 @@ const PaymentDetailsCard = ({ batchDetails, onSubmitClick, paymentHistory }) => 
             
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" color="text.secondary">
-                Fee Amount
+                Total Fee Amount
               </Typography>
               <Typography variant="body1">
                 ₹{batchDetails.fees}
               </Typography>
             </Box>
+          </Grid>
 
+          {/* Column 2: Installment Dates */}
+          <Grid item xs={12} md={4}>
             <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">
-                First Installment Due Date
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Installment Due Dates
               </Typography>
-              <Typography variant="body1">
-                {formatDate(batchDetails.firstInstallmentDate)}
-              </Typography>
-            </Box>
-
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Second Installment Due Date
-              </Typography>
-              <Typography variant="body1">
-                {formatDate(batchDetails.secondInstallmentDate)}
-              </Typography>
+              {console.log('Installment Dates:', batchDetails.installmentDates)} {/* Debug log */}
+              {Array.isArray(batchDetails.installmentDates) && batchDetails.installmentDates.map((date, index) => (
+                <Box key={index} sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Installment {index + 1}
+                  </Typography>
+                  <Typography variant="body1">
+                    {formatDate(date)}
+                  </Typography>
+                </Box>
+              ))}
             </Box>
           </Grid>
           
-          <Grid item xs={12} md={6}>
+          {/* Column 3: QR Code */}
+          <Grid item xs={12} md={4}>
             <Box sx={{ 
               display: 'flex', 
               flexDirection: 'column', 
@@ -547,163 +579,286 @@ const PaymentDetailsCard = ({ batchDetails, onSubmitClick, paymentHistory }) => 
           Payment details not available
         </Typography>
       )}
-
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={onSubmitClick}
-        sx={{ mt: 2 }}
-      >
-        Submit Payment
-      </Button>
-
-      {/* Payment History Section */}
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h6" color={theme.primary} gutterBottom>
-          Payment History
-        </Typography>
-        <List>
-          {paymentHistory.map((payment, index) => (
-            <ListItem key={index} divider>
-              <ListItemText
-                primary={`Amount: ₹${payment.amount}`}
-                secondary={
-                  <>
-                    <Typography variant="body2">
-                      Date: {new Date(payment.paymentDate).toLocaleDateString()}
-                    </Typography>
-                    <Typography variant="body2">
-                      Status: <Chip size="small" label={payment.status} color={
-                        payment.status === 'approved' ? 'success' :
-                        payment.status === 'rejected' ? 'error' : 'default'
-                      } />
-                    </Typography>
-                    {payment.feedback && (
-                      <Typography variant="body2">
-                        Feedback: {payment.feedback}
-                      </Typography>
-                    )}
-                  </>
-                }
-              />
-              <IconButton onClick={() => window.open(payment.receiptUrl, '_blank')}>
-                <DownloadIcon />
-              </IconButton>
-            </ListItem>
-          ))}
-          {paymentHistory.length === 0 && (
-            <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-              No payment history available
-            </Typography>
-          )}
-        </List>
-      </Box>
     </CardContent>
   </Card>
 );
 
-const PaymentSection = () => (
-  <Grid item xs={12}>
-    <PaymentDetailsCard 
-      batchDetails={batchDetails}
-      onSubmitClick={() => setPaymentModalOpen(true)}
-      paymentHistory={paymentHistory}
-    />
+const PaymentSection = () => {
+  const [formData, setFormData] = useState({
+    amount: '',
+    receipt: null,
+    feedback: '',
+    installmentNumber: ''
+  });
 
-    {/* Payment Submission Modal */}
-    <Dialog open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)}>
-      <DialogTitle>Submit Payment</DialogTitle>
-      <form onSubmit={handleSubmit}>
-        <DialogContent>
-          <TextField
-            label="Amount"
-            type="number"
-            fullWidth
-            required
-            value={formData.amount}
-            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            label="Feedback (Optional)"
-            multiline
-            rows={3}
-            fullWidth
-            value={formData.feedback}
-            onChange={(e) => setFormData({ ...formData, feedback: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <Button
-            variant="outlined"
-            component="label"
-            fullWidth
-          >
-            Upload Receipt
-            <input
-              type="file"
-              hidden
-              accept="image/*,.pdf"
-              onChange={(e) => setFormData({ 
-                ...formData, 
-                receipt: e.target.files[0] 
-              })}
-            />
-          </Button>
-          {formData.receipt && (
-            <Typography variant="body2" sx={{ mt: 1 }}>
-              Selected file: {formData.receipt.name}
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPaymentModalOpen(false)}>Cancel</Button>
-          <Button 
-            type="submit" 
-            variant="contained" 
-            disabled={loading || !formData.receipt || !formData.amount}
-          >
-            {loading ? <CircularProgress size={24} /> : 'Submit'}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
-  </Grid>
-);
-
-  useEffect(() => {
-    if (studentId) {
-      fetchPaymentHistory();
-    }
-  }, [studentId]);
-
-  const fetchPaymentHistory = async () => {
-    try {
-      const response = await getPayments(batchId, studentId);
-      setPaymentHistory(response.data.payments || []);
-    } catch (error) {
-      toast.error('Failed to fetch payment history');
-    }
-  };
-
-  const handleSubmit = async (e) => {
+  const handlePaymentSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-
     try {
-      await submitPayment(batchId, {
-        ...formData,
-        studentId,
-      });
+      setLoading(true);
+      
+      if (!formData.receipt || !formData.amount || !formData.installmentNumber) {
+        toast.error('Please fill all required fields');
+        return;
+      }
+
+      const paymentData = {
+        amount: formData.amount,
+        receipt: formData.receipt,
+        feedback: formData.feedback || '',
+        studentId: studentId,
+        installmentNumber: formData.installmentNumber
+      };
+
+      await submitPayment(batchId, paymentData);
       toast.success('Payment submitted successfully');
-      setPaymentModalOpen(false);
       fetchPaymentHistory();
-      setFormData({ amount: '', receipt: null, feedback: '' });
+      setFormData({ amount: '', receipt: null, feedback: '', installmentNumber: '' });
     } catch (error) {
+      console.error('Payment error:', error);
       toast.error(error.message || 'Failed to submit payment');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+      // Auto-fill amount when installment is selected
+      ...(name === 'installmentNumber' ? {
+        amount: (batchDetails.fees / batchDetails.numberOfInstallments).toFixed(2)
+      } : {})
+    }));
+  };
+
+  return (
+    <Grid container spacing={3}>
+      {/* Payment Details Section */}
+      <Grid item xs={12}>
+        <PaymentDetailsCard 
+          batchDetails={batchDetails}
+          paymentHistory={paymentHistory}
+        />
+      </Grid>
+
+      {/* Payment Form Section */}
+      <Grid item xs={12}>
+        <Card elevation={3} sx={{ borderRadius: 2 }}>
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="h5" color="primary" fontWeight="bold" gutterBottom>
+              Submit Payment
+            </Typography>
+            <Divider sx={{ mb: 3 }} />
+
+            <form onSubmit={handlePaymentSubmit}>
+              {/* Installment Selection */}
+              <FormControl fullWidth sx={{ mb: 3 }}>
+                <InputLabel id="installment-select-label">Select Installment</InputLabel>
+                <Select
+                  labelId="installment-select-label"
+                  id="installment-select"
+                  name="installmentNumber"
+                  value={formData.installmentNumber}
+                  onChange={handleInputChange}
+                  label="Select Installment"
+                  required
+                >
+                  {batchDetails?.installmentDates?.map((date, index) => (
+                    <MenuItem key={index} value={index + 1}>
+                      Installment {index + 1} - Due: {formatDate(date)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {/* Amount Input */}
+              <TextField
+                label="Amount"
+                type="number"
+                name="amount"
+                fullWidth
+                required
+                value={formData.amount}
+                onChange={handleInputChange}
+                sx={{ mb: 3 }}
+                inputProps={{
+                  min: 0,
+                  max: batchDetails?.fees || 0,
+                  step: "0.01"
+                }}
+                variant="outlined"
+              />
+              
+              {/* Feedback Input */}
+              <TextField
+                label="Feedback (Optional)"
+                multiline
+                rows={3}
+                fullWidth
+                name="feedback"
+                value={formData.feedback}
+                onChange={handleInputChange}
+                sx={{ mb: 3 }}
+                variant="outlined"
+              />
+
+              {/* File Upload */}
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Upload Payment Receipt*
+              </Typography>
+              <UploadBox>
+                <CloudUploadIcon color="action" sx={{ fontSize: 40, mb: 1 }} />
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Drag and drop a file here or
+                </Typography>
+                <Button
+                  component="label"
+                  variant="contained"
+                  size="small"
+                  sx={{ mt: 1 }}
+                >
+                  Browse Files
+                  <VisuallyHiddenInput
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setFormData(prev => ({ ...prev, receipt: file }));
+                      }
+                    }}
+                    required
+                  />
+                </Button>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                  PNG, JPG, PDF up to 10MB
+                </Typography>
+              </UploadBox>
+              
+              {formData.receipt && (
+                <Paper variant="outlined" sx={{ p: 1, mb: 3, display: 'flex', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ flex: 1 }}>
+                    {formData.receipt.name}
+                  </Typography>
+                  <IconButton 
+                    size="small" 
+                    color="error"
+                    onClick={() => setFormData(prev => ({ ...prev, receipt: null }))}
+                  >
+                    ×
+                  </IconButton>
+                </Paper>
+              )}
+
+              {/* Submit Button */}
+              <Button 
+                type="submit" 
+                variant="contained" 
+                fullWidth
+                disabled={loading || !formData.receipt || !formData.amount}
+                sx={{ 
+                  py: 1.5,
+                  borderRadius: 2
+                }}
+              >
+                {loading ? (
+                  <>
+                    <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
+                    Submitting...
+                  </>
+                ) : 'Submit Payment'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </Grid>
+
+      {/* Payment History Section */}
+      <Grid item xs={12}>
+        <Card elevation={3} sx={{ borderRadius: 2 }}>
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="h5" color="primary" fontWeight="bold" gutterBottom>
+              Payment History
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            
+            {paymentHistory.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                No payment history available
+              </Typography>
+            ) : (
+              <List sx={{ width: '100%' }}>
+                {paymentHistory.map((payment, index) => (
+                  <ListItem
+                    key={index}
+                    divider={index < paymentHistory.length - 1}
+                    secondaryAction={
+                      <IconButton 
+                        edge="end" 
+                        color="primary"
+                        onClick={() => window.open(payment.receiptUrl, '_blank')}
+                      >
+                        <DownloadIcon />
+                      </IconButton>
+                    }
+                    sx={{ py: 2 }}
+                  >
+                    <ListItemText
+                      primary={
+                        <Typography variant="h6">
+                          ₹{payment.amount}
+                        </Typography>
+                      }
+                      secondary={
+                        <Box sx={{ mt: 1 }}>
+                          <Typography variant="body2" component="span" display="block">
+                            Date: {new Date(payment.paymentDate).toLocaleDateString()}
+                          </Typography>
+                          <Box sx={{ mt: 1, mb: 1 }}>
+                            <Chip 
+                              size="small" 
+                              label={payment.status} 
+                              color={
+                                payment.status === 'approved' ? 'success' :
+                                payment.status === 'rejected' ? 'error' : 'default'
+                              } 
+                            />
+                          </Box>
+                          {payment.feedback && (
+                            <Typography variant="body2" component="span">
+                              <b>Feedback:</b> {payment.feedback}
+                            </Typography>
+                          )}
+                        </Box>
+                      }
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </CardContent>
+        </Card>
+      </Grid>
+    </Grid>
+  );
+}
+
+const fetchPaymentHistory = async () => {
+  try {
+    const response = await getPayments(batchId, studentId);
+    setPaymentHistory(response.data.payments || []);
+  } catch (error) {
+    toast.error('Failed to fetch payment history');
+  }
+};
+
+useEffect(() => {
+  if (studentId) {
+    fetchPaymentHistory();
+  }
+}, [studentId]);
 
   if (batchLoading) {
     return (
@@ -945,15 +1100,7 @@ const PaymentSection = () => (
             </Grid>
           )}
 
-          {activeTab === 'payment' && (
-            <Grid item xs={12}>
-              <PaymentDetailsCard 
-                batchDetails={batchDetails}
-                onSubmitClick={() => setPaymentModalOpen(true)}
-                paymentHistory={paymentHistory}
-              />
-            </Grid>
-          )}
+          {activeTab === 'payment' && <PaymentSection />}
         </Grid>
       </Box>
       <QuizResultDialog />

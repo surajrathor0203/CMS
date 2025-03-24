@@ -34,21 +34,17 @@ router.post('/create', auth, upload.single('qrCode'), async (req, res) => {
       openingDate, 
       teacher,
       fees,
-      firstInstallmentDate,
-      secondInstallmentDate,
+      numberOfInstallments,
+      installmentDates,  // This will be array of dates only
       upiHolderName,
       upiId,
       upiNumber
     } = req.body;
 
-    // Check if batch with same name exists
-    const existingBatch = await Batch.findOne({ name });
-    if (existingBatch) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Batch with this name already exists' 
-      });
-    }
+    // Parse installment dates if they come as string
+    const parsedInstallmentDates = typeof installmentDates === 'string' 
+      ? JSON.parse(installmentDates) 
+      : installmentDates;
 
     // Validate required file
     if (!req.file) {
@@ -64,12 +60,12 @@ router.post('/create', auth, upload.single('qrCode'), async (req, res) => {
       Key: `qr-codes/${Date.now()}-${req.file.originalname}`,
       Body: req.file.buffer,
       ContentType: req.file.mimetype,
-      ACL: 'public-read' // Make the file publicly accessible
+      ACL: 'public-read'
     };
 
     const uploadResult = await s3.upload(params).promise();
     const qrCodeUrl = uploadResult.Location;
-    const s3Key = uploadResult.Key;  // Get the S3 key
+    const s3Key = uploadResult.Key;
 
     const batch = new Batch({
       name,
@@ -79,14 +75,14 @@ router.post('/create', auth, upload.single('qrCode'), async (req, res) => {
       endTime,
       openingDate,
       fees: parseFloat(fees),
-      firstInstallmentDate,
-      secondInstallmentDate,
+      numberOfInstallments: parseInt(numberOfInstallments),
+      installmentDates: parsedInstallmentDates.map(date => new Date(date)),
       payment: {
         upiHolderName,
         upiId,
         upiNumber,
         qrCodeUrl,
-        s3Key  // Store the S3 key
+        s3Key
       }
     });
 
@@ -136,7 +132,7 @@ router.get('/student/:batchId', async (req, res) => {
   try {
     const batch = await Batch.findById(req.params.batchId)
       .populate('teacher', 'name email')
-      .select('name subject openingDate startTime endTime teacher fees firstInstallmentDate secondInstallmentDate payment'); // Added payment fields
+      .select('name subject openingDate startTime endTime teacher fees numberOfInstallments installmentDates payment'); // Added installmentDates
     
     if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
@@ -153,7 +149,15 @@ router.put('/:id', upload.single('qrCode'), async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = { ...req.body };
-    
+
+    // Parse installment dates if they come as string
+    if (updateData.installmentDates) {
+      updateData.installmentDates = typeof updateData.installmentDates === 'string' 
+        ? JSON.parse(updateData.installmentDates) 
+        : updateData.installmentDates;
+    }
+
+    // Handle payment info
     if (req.file) {
       // First, get the existing batch to delete old file if exists
       const existingBatch = await Batch.findById(id);
@@ -184,10 +188,10 @@ router.put('/:id', upload.single('qrCode'), async (req, res) => {
         upiId: req.body.upiId,
         upiNumber: req.body.upiNumber,
         qrCodeUrl: uploadResult.Location,
-        s3Key: uploadResult.Key  // Store new S3 key
+        s3Key: uploadResult.Key
       };
-    } else {
-      // If no new QR code, keep existing QR code and S3 key
+    } else if (req.body.upiHolderName || req.body.upiId || req.body.upiNumber) {
+      // If no new QR code but payment details are updated
       const existingBatch = await Batch.findById(id);
       updateData.payment = {
         upiHolderName: req.body.upiHolderName,
@@ -217,6 +221,7 @@ router.put('/:id', upload.single('qrCode'), async (req, res) => {
       message: 'Batch updated successfully'
     });
   } catch (error) {
+    console.error('Error updating batch:', error);
     res.status(500).json({ 
       success: false, 
       message: error.message 
@@ -268,7 +273,7 @@ router.delete('/:id', auth, async (req, res) => {
 router.post('/:batchId/payment', upload.single('receipt'), async (req, res) => {
   try {
     const { batchId } = req.params;
-    const { amount, feedback, studentId } = req.body;  // Get studentId from request body instead
+    const { amount, feedback, studentId, installmentNumber } = req.body;  // Add installmentNumber
 
     // Validate the file
     if (!req.file) {
@@ -297,7 +302,6 @@ router.post('/:batchId/payment', upload.single('receipt'), async (req, res) => {
       });
     }
 
-    // Find or create student payment record using studentId from body
     let studentPaymentIndex = batch.studentPayments.findIndex(
       sp => sp.student.toString() === studentId
     );
@@ -311,9 +315,10 @@ router.post('/:batchId/payment', upload.single('receipt'), async (req, res) => {
       studentPaymentIndex = batch.studentPayments.length - 1;
     }
 
-    // Add new payment
+    // Add new payment with installmentNumber
     const payment = {
       amount: parseFloat(amount),
+      installmentNumber: parseInt(installmentNumber), // Add this line
       receiptUrl: uploadResult.Location,
       s3Key: uploadResult.Key,
       feedback,

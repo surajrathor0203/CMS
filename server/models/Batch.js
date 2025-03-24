@@ -36,14 +36,16 @@ const batchSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
-  firstInstallmentDate: {
+  numberOfInstallments: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 10
+  },
+  installmentDates: [{
     type: Date,
     required: true
-  },
-  secondInstallmentDate: {
-    type: Date,
-    required: true
-  },
+  }],
   payment: {
     upiHolderName: {
       type: String,
@@ -74,6 +76,10 @@ const batchSchema = new mongoose.Schema({
     },
     payments: [{
       amount: {
+        type: Number,
+        required: true
+      },
+      installmentNumber: {  // Add this field
         type: Number,
         required: true
       },

@@ -63,8 +63,8 @@ export default function TeacherDashboard() {
     endTime: null,
     openingDate: null,
     fees: '',
-    firstInstallmentDate: null,
-    secondInstallmentDate: null,
+    numberOfInstallments: 1,
+    installmentDates: [null],
     upiHolderName: '',
     upiId: '',
     upiNumber: '',
@@ -95,8 +95,8 @@ export default function TeacherDashboard() {
     endTime: null,
     openingDate: null,
     fees: '',
-    firstInstallmentDate: null,
-    secondInstallmentDate: null,
+    numberOfInstallments: 1,
+    installmentDates: [null],
     upiHolderName: '',
     upiId: '',
     upiNumber: '',
@@ -106,6 +106,8 @@ export default function TeacherDashboard() {
   const navigate = useNavigate();
   const [batchStudentCounts, setBatchStudentCounts] = useState({});
   const [initialLoading, setInitialLoading] = useState(true);
+  const [qrFileName, setQrFileName] = useState('');
+  const [editQrFileName, setEditQrFileName] = useState('');
 
   useEffect(() => {
     fetchBatches().finally(() => setInitialLoading(false));
@@ -135,6 +137,7 @@ export default function TeacherDashboard() {
   const handleOpen = () => setOpen(true);
   const handleClose = () => {
     setOpen(false);
+    setQrFileName(''); // Reset filename
     setErrors({
       name: '',
       startTime: '',
@@ -164,6 +167,36 @@ export default function TeacherDashboard() {
       ...newBatch,
       [field]: value
     });
+  };
+
+  const handleInstallmentChange = (index, field, value) => {
+    const updatedInstallments = [...newBatch.installments];
+    updatedInstallments[index] = {
+      ...updatedInstallments[index],
+      [field]: value
+    };
+    setNewBatch({
+      ...newBatch,
+      installments: updatedInstallments
+    });
+  };
+
+  const handleNumberOfInstallmentsChange = (e) => {
+    const num = parseInt(e.target.value);
+    setNewBatch(prev => ({
+      ...prev,
+      numberOfInstallments: num,
+      installmentDates: Array(num).fill(null)
+    }));
+  };
+
+  const handleInstallmentDateChange = (index, value) => {
+    const updatedDates = [...newBatch.installmentDates];
+    updatedDates[index] = value;
+    setNewBatch(prev => ({
+      ...prev,
+      installmentDates: updatedDates
+    }));
   };
 
   const validateForm = (batchData = newBatch) => {
@@ -226,32 +259,30 @@ export default function TeacherDashboard() {
       isValid = false;
     }
 
-    if (!batchData.firstInstallmentDate) {
-      newErrors.firstInstallmentDate = 'First installment date is required';
-      isValid = false;
+    if (batchData.installmentDates) {
+      const invalidDates = batchData.installmentDates.some(date => !date);
+      if (invalidDates) {
+        newErrors.general = 'Please set all installment due dates';
+        isValid = false;
+      }
     }
 
-    if (!batchData.secondInstallmentDate) {
-      newErrors.secondInstallmentDate = 'Second installment date is required';
-      isValid = false;
-    }
-
-    if (!batchData.upiHolderName) {
+    if (!batchData.upiHolderName?.trim()) {
       newErrors.upiHolderName = 'UPI holder name is required';
       isValid = false;
     }
 
-    if (!batchData.upiId) {
+    if (!batchData.upiId?.trim()) {
       newErrors.upiId = 'UPI ID is required';
       isValid = false;
     }
 
-    if (!batchData.upiNumber) {
+    if (!batchData.upiNumber?.trim()) {
       newErrors.upiNumber = 'UPI number is required';
       isValid = false;
     }
 
-    if (!batchData.qrCode) {
+    if (!batchData.qrCode && !selectedBatch) {
       newErrors.qrCode = 'QR code image is required';
       isValid = false;
     }
@@ -296,8 +327,12 @@ export default function TeacherDashboard() {
       
       // Fees and installment details
       formData.append('fees', newBatch.fees);
-      formData.append('firstInstallmentDate', newBatch.firstInstallmentDate.toDate().toISOString());
-      formData.append('secondInstallmentDate', newBatch.secondInstallmentDate.toDate().toISOString());
+      formData.append('numberOfInstallments', newBatch.numberOfInstallments);
+      
+      const installmentDates = JSON.stringify(
+        newBatch.installmentDates.map(date => date.toDate().toISOString())
+      );
+      formData.append('installmentDates', installmentDates);
       
       // Payment details
       formData.append('upiHolderName', newBatch.upiHolderName);
@@ -320,8 +355,8 @@ export default function TeacherDashboard() {
           endTime: null,
           openingDate: null,
           fees: '',
-          firstInstallmentDate: null,
-          secondInstallmentDate: null,
+          numberOfInstallments: 1,
+          installmentDates: [null],
           upiHolderName: '',
           upiId: '',
           upiNumber: '',
@@ -381,12 +416,12 @@ export default function TeacherDashboard() {
       endTime: dayjs(selectedBatch.endTime),
       openingDate: dayjs(selectedBatch.openingDate),
       fees: selectedBatch.fees,
-      firstInstallmentDate: dayjs(selectedBatch.firstInstallmentDate),
-      secondInstallmentDate: dayjs(selectedBatch.secondInstallmentDate),
+      numberOfInstallments: selectedBatch.numberOfInstallments,
+      installmentDates: selectedBatch.installmentDates.map(date => dayjs(date)),
       upiHolderName: selectedBatch.payment.upiHolderName,
       upiId: selectedBatch.payment.upiId,
       upiNumber: selectedBatch.payment.upiNumber,
-      qrCode: null // QR code needs to be uploaded again if needed
+      qrCode: null
     });
     setEditDialogOpen(true);
     handleMenuClose();
@@ -395,6 +430,7 @@ export default function TeacherDashboard() {
   const handleEditClose = () => {
     setEditDialogOpen(false);
     setSelectedBatch(null);
+    setEditQrFileName(''); // Reset filename
     setErrors({
       name: '',
       startTime: '',
@@ -426,6 +462,26 @@ export default function TeacherDashboard() {
     });
   };
 
+  const handleEditInstallmentDateChange = (index, value) => {
+    const updatedDates = [...editBatch.installmentDates];
+    updatedDates[index] = value;
+    setEditBatch(prev => ({
+      ...prev,
+      installmentDates: updatedDates
+    }));
+  };
+
+  const handleEditNumberOfInstallmentsChange = (e) => {
+    const num = parseInt(e.target.value);
+    setEditBatch(prev => ({
+      ...prev,
+      numberOfInstallments: num,
+      installmentDates: Array(num).fill(null).map((_, i) => 
+        i < prev.installmentDates.length ? prev.installmentDates[i] : null
+      )
+    }));
+  };
+
   const handleEditSubmit = async () => {
     if (!validateForm(editBatch)) {
       return;
@@ -433,33 +489,26 @@ export default function TeacherDashboard() {
 
     setLoading(true);
     try {
-      const formData = new FormData();
-      formData.append('name', editBatch.name.trim());
-      formData.append('subject', editBatch.subject);
-      formData.append('startTime', formatTime(editBatch.startTime));
-      formData.append('endTime', formatTime(editBatch.endTime));
-      formData.append('openingDate', editBatch.openingDate.toDate().toISOString());
-      formData.append('fees', editBatch.fees);
-      formData.append('firstInstallmentDate', editBatch.firstInstallmentDate.toDate().toISOString());
-      formData.append('secondInstallmentDate', editBatch.secondInstallmentDate.toDate().toISOString());
-      formData.append('upiHolderName', editBatch.upiHolderName);
-      formData.append('upiId', editBatch.upiId);
-      formData.append('upiNumber', editBatch.upiNumber);
-      
-      if (editBatch.qrCode) {
-        formData.append('qrCode', editBatch.qrCode);
-      }
-      
-      const result = await updateBatch(selectedBatch._id, formData);
+      // Create a new object with the correct date formats
+      const batchDataToUpdate = {
+        ...editBatch,
+        startTime: dayjs(editBatch.startTime),
+        endTime: dayjs(editBatch.endTime),
+        openingDate: dayjs(editBatch.openingDate),
+        installmentDates: editBatch.installmentDates.map(date => dayjs(date))
+      };
+
+      const result = await updateBatch(selectedBatch._id, batchDataToUpdate);
       if (result.success) {
         setSuccess(true);
         handleEditClose();
         fetchBatches();
       }
     } catch (err) {
+      console.error('Error updating batch:', err);
       setErrors({
         ...errors,
-        general: err.response?.data?.message || 'Failed to update batch'
+        general: err.message || 'Failed to update batch'
       });
     } finally {
       setLoading(false);
@@ -738,37 +787,34 @@ export default function TeacherDashboard() {
                   helperText={errors.fees}
                 />
                 
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DatePicker
-                    label="First Installment Date"
-                    value={newBatch.firstInstallmentDate}
-                    onChange={(newValue) => handleTimeChange('firstInstallmentDate', newValue)}
-                    sx={{ mt: 2, width: '100%' }}
-                    slotProps={{
-                      textField: {
-                        error: !!errors.firstInstallmentDate,
-                        helperText: errors.firstInstallmentDate,
-                        fullWidth: true
-                      }
-                    }}
-                    format="DD/MM/YYYY"  // Add this line
-                  />
-                  
-                  <DatePicker
-                    label="Second Installment Date"
-                    value={newBatch.secondInstallmentDate}
-                    onChange={(newValue) => handleTimeChange('secondInstallmentDate', newValue)}
-                    sx={{ mt: 2, width: '100%' }}
-                    slotProps={{
-                      textField: {
-                        error: !!errors.secondInstallmentDate,
-                        helperText: errors.secondInstallmentDate,
-                        fullWidth: true
-                      }
-                    }}
-                    format="DD/MM/YYYY"  // Add this line
-                  />
-                </LocalizationProvider>
+                <TextField
+                  select
+                  fullWidth
+                  label="Number of Installments"
+                  value={newBatch.numberOfInstallments}
+                  onChange={handleNumberOfInstallmentsChange}
+                  margin="normal"
+                >
+                  {[1,2,3,4,5,6,7,8,9,10].map((num) => (
+                    <MenuItem key={num} value={num}>
+                      {num} {num === 1 ? 'Installment' : 'Installments'}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
+                {newBatch.installmentDates.map((date, index) => (
+                  <Box key={index} sx={{ mt: 2 }}>
+                    <LocalizationProvider dateAdapter={AdapterDayjs}>
+                      <DatePicker
+                        label={`Installment ${index + 1} Due Date`}
+                        value={date}
+                        onChange={(newValue) => handleInstallmentDateChange(index, newValue)}
+                        sx={{ width: '100%' }}
+                        format="DD/MM/YYYY"
+                      />
+                    </LocalizationProvider>
+                  </Box>
+                ))}
               
                 <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>Online Payment Details</Typography>
                 <TextField
@@ -804,30 +850,39 @@ export default function TeacherDashboard() {
                   helperText={errors.upiNumber}
                 />
                 
-                <Button
-                  variant="outlined"
-                  component="label"
-                  fullWidth
-                  sx={{ mt: 2 }}
-                >
-                  Upload QR Code
-                  <input
-                    type="file"
-                    hidden
-                    accept="image/*"
-                    onChange={(e) => {
-                      setNewBatch({
-                        ...newBatch,
-                        qrCode: e.target.files[0]
-                      });
-                    }}
-                  />
-                </Button>
-                {errors.qrCode && (
-                  <Typography color="error" variant="caption">
-                    {errors.qrCode}
-                  </Typography>
-                )}
+                <Box>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    fullWidth
+                    sx={{ mt: 2 }}
+                  >
+                    Upload QR Code
+                    <input
+                      type="file"
+                      hidden
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        setNewBatch({
+                          ...newBatch,
+                          qrCode: file
+                        });
+                        setQrFileName(file ? file.name : '');
+                      }}
+                    />
+                  </Button>
+                  {qrFileName && (
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                      Selected file: {qrFileName}
+                    </Typography>
+                  )}
+                  {errors.qrCode && (
+                    <Typography color="error" variant="caption">
+                      {errors.qrCode}
+                    </Typography>
+                  )}
+                </Box>
                 {errors.general && (
                   <Alert severity="error" sx={{ mt: 2 }}>
                     {errors.general}
@@ -962,37 +1017,34 @@ export default function TeacherDashboard() {
                   helperText={errors.fees}
                 />
                 
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DatePicker
-                    label="First Installment Date"
-                    value={editBatch.firstInstallmentDate}
-                    onChange={(newValue) => handleEditTimeChange('firstInstallmentDate', newValue)}
-                    sx={{ mt: 2, width: '100%' }}
-                    slotProps={{
-                      textField: {
-                        error: !!errors.firstInstallmentDate,
-                        helperText: errors.firstInstallmentDate,
-                        fullWidth: true
-                      }
-                    }}
-                    format="DD/MM/YYYY"
-                  />
-                  
-                  <DatePicker
-                    label="Second Installment Date"
-                    value={editBatch.secondInstallmentDate}
-                    onChange={(newValue) => handleEditTimeChange('secondInstallmentDate', newValue)}
-                    sx={{ mt: 2, width: '100%' }}
-                    slotProps={{
-                      textField: {
-                        error: !!errors.secondInstallmentDate,
-                        helperText: errors.secondInstallmentDate,
-                        fullWidth: true
-                      }
-                    }}
-                    format="DD/MM/YYYY"
-                  />
-                </LocalizationProvider>
+                <TextField
+                  select
+                  fullWidth
+                  label="Number of Installments"
+                  value={editBatch.numberOfInstallments}
+                  onChange={handleEditNumberOfInstallmentsChange}
+                  margin="normal"
+                >
+                  {[1,2,3,4,5,6,7,8,9,10].map((num) => (
+                    <MenuItem key={num} value={num}>
+                      {num} {num === 1 ? 'Installment' : 'Installments'}
+                    </MenuItem>
+                  ))}
+                </TextField>
+
+                {editBatch.installmentDates.map((date, index) => (
+                  <Box key={index} sx={{ mt: 2 }}>
+                    <LocalizationProvider dateAdapter={AdapterDayjs}>
+                      <DatePicker
+                        label={`Installment ${index + 1} Due Date`}
+                        value={date}
+                        onChange={(newValue) => handleEditInstallmentDateChange(index, newValue)}
+                        sx={{ width: '100%' }}
+                        format="DD/MM/YYYY"
+                      />
+                    </LocalizationProvider>
+                  </Box>
+                ))}
               
                 <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>Online Payment Details</Typography>
                 <TextField
@@ -1028,30 +1080,39 @@ export default function TeacherDashboard() {
                   helperText={errors.upiNumber}
                 />
                 
-                <Button
-                  variant="outlined"
-                  component="label"
-                  fullWidth
-                  sx={{ mt: 2 }}
-                >
-                  Update QR Code
-                  <input
-                    type="file"
-                    hidden
-                    accept="image/*"
-                    onChange={(e) => {
-                      setEditBatch({
-                        ...editBatch,
-                        qrCode: e.target.files[0]
-                      });
-                    }}
-                  />
-                </Button>
-                {errors.qrCode && (
-                  <Typography color="error" variant="caption">
-                    {errors.qrCode}
-                  </Typography>
-                )}
+                <Box>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    fullWidth
+                    sx={{ mt: 2 }}
+                  >
+                    Update QR Code
+                    <input
+                      type="file"
+                      hidden
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        setEditBatch({
+                          ...editBatch,
+                          qrCode: file
+                        });
+                        setEditQrFileName(file ? file.name : '');
+                      }}
+                    />
+                  </Button>
+                  {editQrFileName && (
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                      Selected file: {editQrFileName}
+                    </Typography>
+                  )}
+                  {errors.qrCode && (
+                    <Typography color="error" variant="caption">
+                      {errors.qrCode}
+                    </Typography>
+                  )}
+                </Box>
                 {errors.general && (
                   <Alert severity="error" sx={{ mt: 2 }}>
                     {errors.general}

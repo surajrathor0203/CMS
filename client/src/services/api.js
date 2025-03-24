@@ -73,17 +73,17 @@ export const resetPassword = async (email, otp, newPassword, userType) => {
   }
 };
 
-export const createBatch = async (batchData) => {
+export const createBatch = async (formData) => {
   try {
-    const response = await api.post('/batch/create', batchData, {
+    const response = await api.post('/batch/create', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data' // Changed from application/json
+        'Content-Type': 'multipart/form-data'
       }
     });
     return response.data;
   } catch (error) {
-    const errorMessage = error.response?.data?.message || 'Failed to create batch';
-    throw new Error(errorMessage);
+    console.error('Error in createBatch:', error);
+    throw error.response ? error.response : error;
   }
 };
 
@@ -103,9 +103,41 @@ export const getBatchById = async (batchId) => {
 
 export const updateBatch = async (batchId, batchData) => {
   try {
-    const response = await api.put(`/batch/${batchId}`, batchData);
+    const formData = new FormData();
+    
+    // Basic details
+    formData.append('name', batchData.name.trim());
+    formData.append('subject', batchData.subject);
+    formData.append('startTime', batchData.startTime.toISOString());
+    formData.append('endTime', batchData.endTime.toISOString());
+    formData.append('openingDate', batchData.openingDate.toISOString());
+    formData.append('fees', batchData.fees);
+    formData.append('numberOfInstallments', batchData.numberOfInstallments);
+    
+    // Convert dates to ISO strings before stringifying
+    const installmentDates = batchData.installmentDates.map(date => 
+      date.toISOString()
+    );
+    formData.append('installmentDates', JSON.stringify(installmentDates));
+    
+    // Payment details
+    formData.append('upiHolderName', batchData.upiHolderName);
+    formData.append('upiId', batchData.upiId);
+    formData.append('upiNumber', batchData.upiNumber);
+    
+    // QR Code file if provided
+    if (batchData.qrCode instanceof File) {
+      formData.append('qrCode', batchData.qrCode);
+    }
+
+    const response = await api.put(`/batch/${batchId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
     return response.data;
   } catch (error) {
+    console.error('Error updating batch:', error);
     throw error.response?.data || error;
   }
 };
@@ -604,15 +636,21 @@ export const submitPayment = async (batchId, paymentData) => {
   try {
     const formData = new FormData();
     formData.append('amount', paymentData.amount);
-    formData.append('feedback', paymentData.feedback);
+    formData.append('feedback', paymentData.feedback || '');
     formData.append('receipt', paymentData.receipt);
-    formData.append('studentId', paymentData.studentId); // Add studentId to form data
+    formData.append('studentId', paymentData.studentId);
+    formData.append('installmentNumber', paymentData.installmentNumber); // Add this line
 
     const response = await api.post(`/batch/${batchId}/payment`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     });
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message);
+    }
+    
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
