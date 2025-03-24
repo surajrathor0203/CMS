@@ -61,11 +61,51 @@ const batchSchema = new mongoose.Schema({
       type: String,
       required: true
     },
-    s3Key: {  // Add this field
+    s3Key: {
       type: String,
       required: true
     }
   },
+  studentPayments: [{
+    student: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    payments: [{
+      amount: {
+        type: Number,
+        required: true
+      },
+      receiptUrl: {
+        type: String,
+        required: true
+      },
+      s3Key: {
+        type: String,
+        required: true
+      },
+      paymentDate: {
+        type: Date,
+        default: Date.now
+      },
+      feedback: {
+        type: String
+      },
+      status: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending'
+      }
+    }],
+    totalPaid: {
+      type: Number,
+      default: 0
+    },
+    lastPaymentDate: {
+      type: Date
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now

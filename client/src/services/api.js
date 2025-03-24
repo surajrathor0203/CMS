@@ -530,8 +530,11 @@ export const getStudentAssignments = (batchId, studentId) => {
 export const getStudentBatchDetails = async (batchId) => {
   try {
     const response = await api.get(`/batch/student/${batchId}`);
+    // Add some logging to debug
+    console.log('Batch details response:', response.data);
     return response.data;
   } catch (error) {
+    console.error('Error fetching batch details:', error);
     throw error.response?.data || error;
   }
 };
@@ -591,6 +594,34 @@ export const getBookAccessUrl = async (bookId) => {
 export const getAllBooks = async () => {
   try {
     const response = await api.get('/library/all');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const submitPayment = async (batchId, paymentData) => {
+  try {
+    const formData = new FormData();
+    formData.append('amount', paymentData.amount);
+    formData.append('feedback', paymentData.feedback);
+    formData.append('receipt', paymentData.receipt);
+    formData.append('studentId', paymentData.studentId); // Add studentId to form data
+
+    const response = await api.post(`/batch/${batchId}/payment`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getPayments = async (batchId, studentId) => {
+  try {
+    const response = await api.get(`/batch/${batchId}/payments?studentId=${studentId}`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error;

@@ -136,7 +136,7 @@ router.get('/student/:batchId', async (req, res) => {
   try {
     const batch = await Batch.findById(req.params.batchId)
       .populate('teacher', 'name email')
-      .select('name subject openingDate startTime endTime teacher');
+      .select('name subject openingDate startTime endTime teacher fees firstInstallmentDate secondInstallmentDate payment'); // Added payment fields
     
     if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
@@ -261,6 +261,115 @@ router.delete('/:id', auth, async (req, res) => {
   } catch (error) {
     console.error('Error deleting batch:', error);
     res.status(500).json({ success: false, message: 'Error deleting batch' });
+  }
+});
+
+// Remove auth middleware from payment routes
+router.post('/:batchId/payment', upload.single('receipt'), async (req, res) => {
+  try {
+    const { batchId } = req.params;
+    const { amount, feedback, studentId } = req.body;  // Get studentId from request body instead
+
+    // Validate the file
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment receipt is required'
+      });
+    }
+
+    // Upload receipt to S3
+    const params = {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: `payment-receipts/${Date.now()}-${req.file.originalname}`,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+      ACL: 'public-read'
+    };
+
+    const uploadResult = await s3.upload(params).promise();
+
+    const batch = await Batch.findById(batchId);
+    if (!batch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Batch not found'
+      });
+    }
+
+    // Find or create student payment record using studentId from body
+    let studentPaymentIndex = batch.studentPayments.findIndex(
+      sp => sp.student.toString() === studentId
+    );
+
+    if (studentPaymentIndex === -1) {
+      batch.studentPayments.push({
+        student: studentId,
+        payments: [],
+        totalPaid: 0
+      });
+      studentPaymentIndex = batch.studentPayments.length - 1;
+    }
+
+    // Add new payment
+    const payment = {
+      amount: parseFloat(amount),
+      receiptUrl: uploadResult.Location,
+      s3Key: uploadResult.Key,
+      feedback,
+      paymentDate: new Date()
+    };
+
+    batch.studentPayments[studentPaymentIndex].payments.push(payment);
+    batch.studentPayments[studentPaymentIndex].totalPaid += parseFloat(amount);
+    batch.studentPayments[studentPaymentIndex].lastPaymentDate = new Date();
+
+    await batch.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Payment submitted successfully',
+      data: payment
+    });
+
+  } catch (error) {
+    console.error('Error submitting payment:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error submitting payment'
+    });
+  }
+});
+
+// Remove auth middleware from get payments route
+router.get('/:batchId/payments', async (req, res) => {
+  try {
+    const { batchId } = req.params;
+    const { studentId } = req.query;  // Get studentId from query params
+
+    const batch = await Batch.findById(batchId);
+    if (!batch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Batch not found'
+      });
+    }
+
+    const studentPayment = batch.studentPayments.find(
+      sp => sp.student.toString() === studentId
+    );
+
+    res.json({
+      success: true,
+      data: studentPayment || { payments: [], totalPaid: 0 }
+    });
+
+  } catch (error) {
+    console.error('Error fetching payments:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error fetching payments'
+    });
   }
 });
 
