@@ -71,7 +71,7 @@ const batchSchema = new mongoose.Schema({
   studentPayments: [{
     student: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'Student', // Change this from 'User' to 'Student'
       required: true
     },
     payments: [{

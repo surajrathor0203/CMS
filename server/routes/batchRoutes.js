@@ -378,4 +378,107 @@ router.get('/:batchId/payments', async (req, res) => {
   }
 });
 
+// Get pending payments for a batch
+router.get('/:batchId/payments/pending', async (req, res) => {
+  try {
+    const batch = await Batch.findById(req.params.batchId)
+      .populate({
+        path: 'studentPayments.student',
+        select: 'name email',
+        model: 'Student' // Add this line to specify the model
+      });
+
+    if (!batch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Batch not found'
+      });
+    }
+
+    // Filter pending payments with null check for student
+    const pendingPayments = batch.studentPayments.reduce((acc, sp) => {
+      // Skip if student is null or payments array is empty
+      if (!sp.student || !sp.payments) return acc;
+
+      const pendingFromStudent = sp.payments
+        .filter(p => p.status === 'pending')
+        .map(p => ({
+          _id: p._id,
+          paymentId: p._id,
+          studentId: sp.student._id,
+          studentName: sp.student.name || 'Unknown Student',
+          amount: p.amount,
+          installmentNumber: p.installmentNumber,
+          paymentDate: p.paymentDate,
+          receiptUrl: p.receiptUrl
+        }));
+      return [...acc, ...pendingFromStudent];
+    }, []);
+
+    res.json({
+      success: true,
+      data: pendingPayments
+    });
+  } catch (error) {
+    console.error('Error in pending payments route:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error fetching pending payments'
+    });
+  }
+});
+
+// Verify payment
+router.put('/:batchId/payments/:paymentId/verify', async (req, res) => {
+  try {
+    const { batchId, paymentId } = req.params;
+    const { status, studentId } = req.body;
+
+    const batch = await Batch.findById(batchId);
+    if (!batch) {
+      return res.status(404).json({
+        success: false,
+        message: 'Batch not found'
+      });
+    }
+
+    // Find the student payment record and update the payment status
+    const studentPayment = batch.studentPayments.find(
+      sp => sp.student.toString() === studentId
+    );
+
+    if (!studentPayment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student payment record not found'
+      });
+    }
+
+    const payment = studentPayment.payments.find(
+      p => p._id.toString() === paymentId
+    );
+
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Payment not found'
+      });
+    }
+
+    payment.status = status;
+    await batch.save();
+
+    res.json({
+      success: true,
+      message: `Payment ${status} successfully`
+    });
+  } catch (error) {
+    console.error('Error verifying payment:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;

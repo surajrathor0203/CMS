@@ -665,3 +665,24 @@ export const getPayments = async (batchId, studentId) => {
     throw error.response?.data || error;
   }
 };
+
+export const getPendingPayments = async (batchId) => {
+  try {
+    const response = await api.get(`/batch/${batchId}/payments/pending`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const verifyPayment = async (batchId, paymentId, status, studentId) => {
+  try {
+    const response = await api.put(`/batch/${batchId}/payments/${paymentId}/verify`, {
+      status,
+      studentId
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

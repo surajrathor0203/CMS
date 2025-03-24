@@ -20,6 +20,7 @@ import QuizResults from './pages/QuizResults';
 import AssignmentSubmissionPage from './pages/AssignmentSubmissionPage';
 import TeacherLibrary from './pages/TeacherLibrary';
 import StudentLibrary from './pages/StudentLibrary';
+import StudentDetails from './pages/StudentDetails';
 import './App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -118,6 +119,15 @@ function App() {
             element={
               <ProtectedRoute 
                 element={<QuizResults />} 
+                allowedRoles={['teacher']} 
+              />
+            } 
+          />
+          <Route 
+            path="/teacher-dashboard/batch/:batchId/student/:studentId" 
+            element={
+              <ProtectedRoute 
+                element={<StudentDetails />} 
                 allowedRoles={['teacher']} 
               />
             } 
