@@ -15,15 +15,10 @@ import {
 } from '@mui/material';
 import {
   BookOpen,
-  Calendar,
-  FileText,
   Settings,
   LogOut,
-  GraduationCap,
-  MessageCircle,
-  Award,
   User,
-  Book,  // Add this import
+  Book,
 } from 'lucide-react';
 import { getUserFromCookie, clearUserCookies } from '../utils/cookies';
 import { logout } from '../utils/auth';
@@ -67,11 +62,7 @@ export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
 
   const menuItems = [
     { text: 'Dashboard', icon: <BookOpen size={24} />, path: '/student-dashboard' },
-    { text: 'Courses', icon: <GraduationCap size={24} />, path: '/student/courses' },
-    { text: 'Schedule', icon: <Calendar size={24} />, path: '/student/schedule' },
     { text: 'Library', icon: <Book size={24} />, path: '/student/library' },
-    { text: 'Grades', icon: <Award size={24} />, path: '/student/grades' },
-    { text: 'Messages', icon: <MessageCircle size={24} />, path: '/student/messages' },
     { text: 'Settings', icon: <Settings size={24} />, path: '/student/settings' },
   ];
 

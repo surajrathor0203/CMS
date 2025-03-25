@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const checkInstallments = require('./utils/installmentChecker');
 
 // Load environment variables
 dotenv.config();
@@ -57,8 +58,45 @@ const connectDB = async () => {
     }
 };
 
-// Connect to database
-connectDB();
+// Schedule installment check to run daily at 3:57 PM
+const scheduleInstallmentCheck = () => {
+  const now = new Date();
+  const scheduledTime = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    18, // 24-hour format: 15 = 3 PM
+    16, // Minutes
+    0  // Seconds
+  );
+
+  // If today's scheduled time has passed, schedule for tomorrow
+  if (now > scheduledTime) {
+    scheduledTime.setDate(scheduledTime.getDate() + 1);
+  }
+
+  const msToScheduledTime = scheduledTime.getTime() - now.getTime();
+  console.log(`Installment check scheduled for: ${scheduledTime.toLocaleString()}`);
+
+  // First run at next 3:57 PM
+  setTimeout(() => {
+    console.log('Running installment check...');
+    checkInstallments();
+    // Then run every 24 hours
+    setInterval(() => {
+      console.log('Running daily installment check...');
+      checkInstallments();
+    }, 24 * 60 * 60 * 1000);
+  }, msToScheduledTime);
+};
+
+// Connect to database and start the scheduler
+connectDB().then(() => {
+  scheduleInstallmentCheck();
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+});
 
 // Basic route
 app.get('/', (req, res) => {
@@ -73,6 +111,3 @@ app.use((err, req, res, next) => {
 
 // Start server
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});

@@ -14,16 +14,11 @@ import {
   Avatar,
 } from '@mui/material';
 import {
-  Users,
-  Calendar,
-  FileText,
   Settings,
   LogOut,
   BookOpen,
-  BarChart,
-  MessageCircle,
   User,
-  Book,  // Add this import
+  Book,
 } from 'lucide-react';
 import { getUserFromCookie } from '../utils/cookies';
 import { logout } from '../utils/auth';
@@ -72,11 +67,7 @@ const theme = {
 
   const menuItems = [
     { text: 'Dashboard', icon: <BookOpen size={24} />, path: '/teacher-dashboard' },
-    { text: 'Students', icon: <Users size={24} />, path: '/teacher/students' },
-    { text: 'Schedule', icon: <Calendar size={24} />, path: '/teacher/schedule' },
     { text: 'Library', icon: <Book size={24} />, path: '/teacher/library' },
-    { text: 'Analytics', icon: <BarChart size={24} />, path: '/teacher/analytics' },
-    { text: 'Messages', icon: <MessageCircle size={24} />, path: '/teacher/messages' },
     { text: 'Settings', icon: <Settings size={24} />, path: '/teacher/settings' }, 
   ];
 

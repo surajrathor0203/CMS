@@ -1114,18 +1114,19 @@ useEffect(() => {
                                   </Box>
                                 )}
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <Typography variant="body2" color="text.secondary">
-                                    {isAssignmentOverdue(assignment.endTime) ? 
+                                  <Box>
+                                    {isAssignmentOverdue(assignment.endTime) ? (
                                       <Chip 
                                         label="Overdue" 
                                         color="error" 
                                         size="small" 
-                                      /> : 
-                                      <Typography variant="body2" color="text.secondary">
+                                      />
+                                    ) : (
+                                      <Box component="span" sx={{ color: 'text.secondary', typography: 'body2' }}>
                                         {getTimeRemaining(assignment.endTime)}
-                                      </Typography>
-                                    }
-                                  </Typography>
+                                      </Box>
+                                    )}
+                                  </Box>
                                   <Chip
                                     label={assignment.submitted ? 'Submitted' : 'Not Submitted'}
                                     color={assignment.submitted ? 'success' : 'warning'}
