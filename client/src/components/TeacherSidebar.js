@@ -45,7 +45,12 @@ export default function TeacherSidebar({ mobileOpen, handleDrawerToggle }) {
       try {
         if (userId) {
           const response = await getTeacherProfile(userId);
-          setTeacherData(response.data);
+          if (response.success) {
+            setTeacherData({
+              ...response.data,
+              profilePictureUrl: response.data.profilePicture?.url || ''
+            });
+          }
         }
       } catch (error) {
         console.error('Error fetching teacher profile:', error);
@@ -87,13 +92,19 @@ const theme = {
         }}
       >
         <Avatar 
+          src={teacherData?.profilePictureUrl}
           sx={{ 
             bgcolor: theme.primary,
             width: 40,
-            height: 40
+            height: 40,
+            '& img': {
+              objectFit: 'cover',
+              width: '100%',
+              height: '100%'
+            }
           }}
         >
-          <User size={24} />
+          {!teacherData?.profilePictureUrl && <User size={24} />}
         </Avatar>
         <Box>
           <Typography 

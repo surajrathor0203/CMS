@@ -37,10 +37,23 @@ const userSchema = new mongoose.Schema({
   },
   countryCode: {
     type: String,
-    required: true,
+    required: function() {
+      // Only required during initial creation
+      return this.isNew;
+    },
     trim: true
   },
   address: String,
+  profilePicture: {
+    url: {
+      type: String,
+      default: ''
+    },
+    s3Key: {
+      type: String,
+      default: ''
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now

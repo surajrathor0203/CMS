@@ -247,9 +247,13 @@ export const getStudentProfile = async (studentId) => {
   }
 };
 
-export const updateStudentProfile = async (studentId, profileData) => {
+export const updateStudentProfile = async (studentId, formData) => {
   try {
-    const response = await api.put(`/students/profile/${studentId}`, profileData);
+    const response = await api.put(`/students/profile/${studentId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
@@ -681,6 +685,15 @@ export const verifyPayment = async (batchId, paymentId, status, studentId) => {
       status,
       studentId
     });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const toggleStudentLock = async (batchId, studentId) => {
+  try {
+    const response = await api.post(`/batch/${batchId}/students/${studentId}/toggle-lock`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error;

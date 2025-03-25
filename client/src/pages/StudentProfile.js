@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Card,
@@ -9,16 +9,19 @@ import {
   Avatar,
   Grid,
   Alert,
+  IconButton,
 } from '@mui/material';
 import StudentLayout from '../components/StudentLayout';
 import { getUserFromCookie } from '../utils/cookies';
 import PersonIcon from '@mui/icons-material/Person';
+import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import { getStudentProfile, updateStudentProfile, updateStudentPassword } from '../services/api';
 import Loading from '../components/Loading'; // Add this import
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 export default function StudentProfile() {
   const user = getUserFromCookie()?.user;
@@ -28,6 +31,8 @@ export default function StudentProfile() {
     phone: '',
     parentPhone: '',
     address: '',
+    profilePictureUrl: '',
+    previewUrl: '',
   });
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState(null);
@@ -39,6 +44,8 @@ export default function StudentProfile() {
     confirmPassword: '',
   });
   const [passwordError, setPasswordError] = useState('');
+  const fileInputRef = useRef(null);
+  const [profilePicture, setProfilePicture] = useState(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -51,6 +58,7 @@ export default function StudentProfile() {
             phone: response.data.phone,
             parentPhone: response.data.parentPhone,
             address: response.data.address,
+            profilePictureUrl: response.data.profilePicture?.url || '', // Add this line
           });
         }
       } catch (error) {
@@ -106,13 +114,74 @@ export default function StudentProfile() {
     }
   };
 
+  const handleProfilePictureClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleProfilePictureChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setProfilePicture(file);
+      // Optional: Show preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({
+          ...prev,
+          previewUrl: reader.result
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveProfilePicture = async () => {
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('phone', formData.phone);
+      formDataToSend.append('parentPhone', formData.parentPhone);
+      formDataToSend.append('address', formData.address);
+      formDataToSend.append('removeProfilePicture', 'true');
+
+      const response = await updateStudentProfile(user.id, formDataToSend);
+      if (response.success) {
+        setMessage({ type: 'success', text: 'Profile picture removed successfully!' });
+        setFormData(prev => ({
+          ...prev,
+          profilePictureUrl: '',
+          previewUrl: ''
+        }));
+        setProfilePicture(null);
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message || 'Failed to remove profile picture' });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await updateStudentProfile(user.id, formData);
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('phone', formData.phone);
+      formDataToSend.append('parentPhone', formData.parentPhone);
+      formDataToSend.append('address', formData.address);
+      
+      if (profilePicture) {
+        formDataToSend.append('file', profilePicture);
+      }
+
+      const response = await updateStudentProfile(user.id, formDataToSend);
       if (response.success) {
         setMessage({ type: 'success', text: 'Profile updated successfully!' });
         setIsEditing(false);
+        // Update the profile picture URL in the form data
+        if (response.data.profilePicture?.url) {
+          setFormData(prev => ({
+            ...prev,
+            profilePictureUrl: response.data.profilePicture.url
+          }));
+        }
       }
     } catch (error) {
       setMessage({ type: 'error', text: error.message || 'Failed to update profile' });
@@ -133,16 +202,57 @@ export default function StudentProfile() {
         <Card elevation={3}>
           <CardContent>
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
-              <Avatar
-                sx={{
-                  width: 100,
-                  height: 100,
-                  bgcolor: '#2e7d32',
-                  mb: 2
-                }}
-              >
-                <PersonIcon sx={{ fontSize: 60 }} />
-              </Avatar>
+              <Box sx={{ position: 'relative' }}>
+                <Avatar
+                  src={formData.previewUrl || formData.profilePictureUrl}
+                  sx={{
+                    width: 100,
+                    height: 100,
+                    bgcolor: '#2e7d32',
+                    mb: 2,
+                    '& img': { // Add styles for the image
+                      objectFit: 'cover',
+                      width: '100%',
+                      height: '100%'
+                    }
+                  }}
+                >
+                  {(!formData.previewUrl && !formData.profilePictureUrl) && (
+                    <PersonIcon sx={{ fontSize: 60 }} />
+                  )}
+                </Avatar>
+                {isEditing && (
+                  <Box sx={{ position: 'absolute', bottom: 16, right: -16, display: 'flex', gap: 1 }}>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleProfilePictureChange}
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                    />
+                    <IconButton
+                      sx={{
+                        bgcolor: 'rgba(0, 0, 0, 0.3)',
+                        '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.5)' }
+                      }}
+                      onClick={handleProfilePictureClick}
+                    >
+                      <PhotoCamera sx={{ color: 'white' }} />
+                    </IconButton>
+                    {(formData.profilePictureUrl || formData.previewUrl) && (
+                      <IconButton
+                        sx={{
+                          bgcolor: 'rgba(211, 47, 47, 0.3)',
+                          '&:hover': { bgcolor: 'rgba(211, 47, 47, 0.5)' }
+                        }}
+                        onClick={handleRemoveProfilePicture}
+                      >
+                        <DeleteIcon sx={{ color: 'white' }} />
+                      </IconButton>
+                    )}
+                  </Box>
+                )}
+              </Box>
               <Typography variant="h5" gutterBottom>
                 {formData.name}
               </Typography>

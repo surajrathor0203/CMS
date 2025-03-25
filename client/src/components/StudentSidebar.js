@@ -51,14 +51,16 @@ export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
         try {
           const response = await getStudentProfile(user.id);
           if (response.success) {
-            setUserData(response.data);
+            setUserData({
+              ...response.data,
+              profilePictureUrl: response.data.profilePicture?.url || ''
+            });
           }
         } catch (error) {
           console.error('Error fetching user data:', error);
         }
       }
     };
-    
 
     fetchUserData();
   }, [user?.id]);
@@ -94,13 +96,19 @@ export default function StudentSidebar({ mobileOpen, handleDrawerToggle }) {
       }}
       >
         <Avatar 
+          src={userData?.profilePictureUrl}
           sx={{ 
             bgcolor: theme.primary,
             width: 40,
-            height: 40
+            height: 40,
+            '& img': {
+              objectFit: 'cover',
+              width: '100%',
+              height: '100%'
+            }
           }}
         >
-          <User size={24} />
+          {!userData?.profilePictureUrl && <User size={24} />}
         </Avatar>
         <Box>
           <Typography 

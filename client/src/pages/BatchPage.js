@@ -545,7 +545,8 @@ export default function BatchPage() {
         );
         toast.success('Payment approved successfully');
         setVerifyDialogOpen(false);
-        fetchPendingPayments(); // Refresh the list
+        // Redirect to student details page
+        navigate(`/teacher-dashboard/batch/${batchId}/student/${selectedPayment.studentId}`);
       } catch (error) {
         console.error('Error approving payment:', error);
         toast.error('Failed to approve payment');
@@ -562,7 +563,8 @@ export default function BatchPage() {
         );
         toast.success('Payment rejected');
         setVerifyDialogOpen(false);
-        fetchPendingPayments(); // Refresh the list
+        // Redirect to student details page
+        navigate(`/teacher-dashboard/batch/${batchId}/student/${selectedPayment.studentId}`);
       } catch (error) {
         console.error('Error rejecting payment:', error);
         toast.error('Failed to reject payment');
@@ -822,8 +824,20 @@ export default function BatchPage() {
                                   >
                                     <TableCell component="th" scope="row">
                                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Avatar sx={{ bgcolor: theme.primary, width: 32, height: 32 }}>
-                                          {student.name?.[0]?.toUpperCase() || 'S'}
+                                        <Avatar 
+                                          src={student.profilePicture?.url}
+                                          sx={{ 
+                                            bgcolor: theme.primary, 
+                                            width: 35, 
+                                            height: 35,
+                                            '& img': {
+                                              objectFit: 'cover',
+                                              width: '100%',
+                                              height: '100%'
+                                            }
+                                          }}
+                                        >
+                                          {(!student.profilePicture?.url) && (student.name?.[0]?.toUpperCase() || 'S')}
                                         </Avatar>
                                         {student.name}
                                       </Box>

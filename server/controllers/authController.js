@@ -5,6 +5,7 @@ const { generateUsername } = require('../utils/usernameGenerator');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { generateOTP, verifyOTPValidity } = require('../utils/otpUtils');
+const s3 = require('../config/s3Config');
 
 // Store OTPs with expiry (in memory - consider using Redis in production)
 const otpStore = new Map();
@@ -283,7 +284,14 @@ exports.getTeacherProfile = async (req, res) => {
     if (!teacher) {
       return res.status(404).json({ success: false, message: 'Teacher not found' });
     }
-    res.json({ success: true, data: teacher });
+
+    // Include the profile picture URL in the response
+    const profileData = {
+      ...teacher.toObject(),
+      profilePictureUrl: teacher.profilePicture?.url || ''
+    };
+
+    res.json({ success: true, data: profileData });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -291,23 +299,88 @@ exports.getTeacherProfile = async (req, res) => {
 
 exports.updateTeacherProfile = async (req, res) => {
   try {
-    const { name, phone, subject, address } = req.body;
+    const { name, phoneNumber, subject, address } = req.body;
+    const profilePicture = req.file;
+    const removeProfilePicture = req.body.removeProfilePicture === 'true';
+    
+    // Use findOneAndUpdate instead of findById to avoid validation
     const teacher = await User.findById(req.params.id);
-
+    
     if (!teacher) {
       return res.status(404).json({ success: false, message: 'Teacher not found' });
     }
 
-    teacher.name = name || teacher.name;
-    teacher.phone = phone || teacher.phone;
-    teacher.subject = subject || teacher.subject;
-    teacher.address = address || teacher.address;
+    // Only update the fields that are provided
+    if (name) teacher.name = name;
+    if (phoneNumber) teacher.phoneNumber = phoneNumber;
+    if (subject) teacher.subject = subject;
+    if (address) teacher.address = address;
 
-    await teacher.save();
+    // Handle profile picture removal
+    if (removeProfilePicture) {
+      if (teacher.profilePicture?.s3Key) {
+        try {
+          await s3.deleteObject({
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: teacher.profilePicture.s3Key
+          }).promise();
+        } catch (error) {
+          console.error('Error deleting profile picture:', error);
+        }
+      }
+      teacher.profilePicture = { url: '', s3Key: '' };
+    }
+    // Handle profile picture upload
+    else if (profilePicture) {
+      if (teacher.profilePicture?.s3Key) {
+        try {
+          await s3.deleteObject({
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: teacher.profilePicture.s3Key
+          }).promise();
+        } catch (error) {
+          console.error('Error deleting old profile picture:', error);
+        }
+      }
 
-    res.json({ success: true, data: teacher, message: 'Profile updated successfully' });
+      const fileName = `profiles/teacher-${teacher._id}-${Date.now()}-${profilePicture.originalname}`;
+      const params = {
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: fileName,
+        Body: profilePicture.buffer,
+        ContentType: profilePicture.mimetype,
+        ACL: 'public-read'
+      };
+
+      try {
+        const s3Upload = await s3.upload(params).promise();
+        teacher.profilePicture = {
+          url: s3Upload.Location,
+          s3Key: fileName
+        };
+      } catch (error) {
+        console.error('Error uploading to S3:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Error uploading profile picture'
+        });
+      }
+    }
+
+    // Save with validation disabled for this update
+    const updatedTeacher = await teacher.save({ validateBeforeSave: false });
+
+    res.json({
+      success: true,
+      data: updatedTeacher,
+      message: 'Profile updated successfully'
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Profile update error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Error updating profile'
+    });
   }
 };
 

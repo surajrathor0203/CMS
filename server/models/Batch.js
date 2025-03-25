@@ -112,6 +112,16 @@ const batchSchema = new mongoose.Schema({
       type: Date
     }
   }],
+  lockedStudents: [{
+    studentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Student'
+    },
+    lockedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now

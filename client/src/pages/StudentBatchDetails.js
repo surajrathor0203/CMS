@@ -35,6 +35,8 @@ import PersonIcon from '@mui/icons-material/Person';
 import SubjectIcon from '@mui/icons-material/Subject';
 import DownloadIcon from '@mui/icons-material/Download';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import LockIcon from '@mui/icons-material/Lock'; // Add this import
+import LockOpenIcon from '@mui/icons-material/LockOpen'; // Add this import
 import { styled } from '@mui/material/styles';
 import { toast } from 'react-toastify';
 import { getUserFromCookie } from '../utils/cookies';
@@ -102,6 +104,7 @@ export default function StudentBatchDetails() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
     // Get student ID from cookies when component mounts
@@ -110,6 +113,39 @@ export default function StudentBatchDetails() {
       setStudentId(userData.user.id);
     }
   }, []);
+
+  useEffect(() => {
+    const fetchBatchDetails = async () => {
+      try {
+        setBatchLoading(true);
+        const response = await getStudentBatchDetails(batchId);
+        setBatchDetails(response);
+        
+        // Check if current student's ID exists in lockedStudents array
+        const isStudentLocked = response.lockedStudents?.some(
+          lockInfo => lockInfo.studentId === studentId
+        );
+        
+        setIsLocked(isStudentLocked);
+        
+        // Force payment tab if locked
+        if (isStudentLocked) {
+          setActiveTab('payment');
+          toast.error('Your account is locked due to pending payments.');
+        }
+
+      } catch (err) {
+        console.error('Error fetching batch details:', err);
+        setBatchError(err.message || 'Failed to fetch batch details');
+      } finally {
+        setBatchLoading(false);
+      }
+    };
+
+    if (studentId) {
+      fetchBatchDetails();
+    }
+  }, [batchId, studentId]); // Added studentId as dependency
 
   const formatDate = (dateString) => {
     if (!dateString) return 'No date specified';
@@ -139,6 +175,11 @@ export default function StudentBatchDetails() {
   };
 
   const handleTabChange = (event, newValue) => {
+    // Prevent switching to other tabs if account is locked
+    if (isLocked && newValue !== 'payment') {
+      toast.error('Your account is locked. Please complete pending payments.');
+      return;
+    }
     setActiveTab(newValue);
   };
 
@@ -184,24 +225,6 @@ export default function StudentBatchDetails() {
       )}
     </Box>
   );
-
-  useEffect(() => {
-    const fetchBatchDetails = async () => {
-      try {
-        setBatchLoading(true);
-        const response = await getStudentBatchDetails(batchId);
-        console.log('Batch Details Response:', response); // Debug log
-        setBatchDetails(response);
-      } catch (err) {
-        console.error('Error fetching batch details:', err); // Debug log
-        setBatchError(err.message || 'Failed to fetch batch details');
-      } finally {
-        setBatchLoading(false);
-      }
-    };
-
-    fetchBatchDetails();
-  }, [batchId]);
 
   // Fetch quizzes
   useEffect(() => {
@@ -633,6 +656,12 @@ const PaymentSection = () => {
     }));
   };
 
+  const calculateTotalPaid = () => {
+    return paymentHistory
+      .filter(payment => payment.status === 'approved')
+      .reduce((sum, payment) => sum + payment.amount, 0);
+  };
+
   return (
     <Grid container spacing={3}>
       {/* Payment Details Section */}
@@ -779,9 +808,19 @@ const PaymentSection = () => {
       <Grid item xs={12}>
         <Card elevation={3} sx={{ borderRadius: 2 }}>
           <CardContent sx={{ p: 3 }}>
-            <Typography variant="h5" color="primary" fontWeight="bold" gutterBottom>
-              Payment History
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h5" color="primary" fontWeight="bold">
+                Payment History
+              </Typography>
+              <Box>
+                <Typography variant="h6" color="text.secondary">
+                  Total Paid: ₹{calculateTotalPaid()} / ₹{batchDetails?.fees}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" align="right">
+                  {((calculateTotalPaid() / batchDetails?.fees) * 100).toFixed(1)}% paid
+                </Typography>
+              </Box>
+            </Box>
             <Divider sx={{ mb: 2 }} />
             
             {paymentHistory.length === 0 ? (
@@ -888,9 +927,17 @@ useEffect(() => {
           <Grid item xs={12}>
             <Card elevation={2}>
               <CardContent>
-                <Typography variant="h6" gutterBottom color={theme.primary}>
-                  Batch Information
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6" color={theme.primary}>
+                    Batch Information
+                  </Typography>
+                  <Chip
+                    icon={isLocked ? <LockIcon /> : <LockOpenIcon />}
+                    label={isLocked ? 'Account Locked' : 'Account Active'}
+                    color={isLocked ? 'error' : 'success'}
+                    variant="outlined"
+                  />
+                </Box>
                 <Divider sx={{ mb: 2 }} />
                 
                 <Grid container spacing={3}>
@@ -944,14 +991,30 @@ useEffect(() => {
                 value={activeTab} 
                 onChange={handleTabChange}
                 sx={{
-                  '& .MuiTab-root': { fontWeight: 'bold' },
+                  '& .MuiTab-root': { 
+                    fontWeight: 'bold',
+                    '&.Mui-disabled': {
+                      color: 'rgba(0, 0, 0, 0.38)' // Grayed out color for disabled tabs
+                    }
+                  },
                   '& .Mui-selected': { color: theme.primary },
                   '& .MuiTabs-indicator': { backgroundColor: theme.primary }
                 }}
               >
-                <Tab label="Batch Activity" value="activity" />
-                <Tab label="My Progress" value="progress" />
-                <Tab label="Fee Payment" value="payment" />
+                <Tab 
+                  label="Batch Activity" 
+                  value="activity"
+                  disabled={isLocked}
+                />
+                <Tab 
+                  label="My Progress" 
+                  value="progress"
+                  disabled={isLocked}
+                />
+                <Tab 
+                  label="Fee Payment" 
+                  value="payment"
+                />
               </Tabs>
             </Box>
           </Grid>

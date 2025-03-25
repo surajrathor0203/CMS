@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');  // Add this import
 const { generatePassword } = require('../utils/passwordGenerator');
 const { sendStudentWelcomeEmail } = require('../utils/emailService');
 const { generateUsername } = require('../utils/usernameGenerator');
+const s3 = require('../config/s3Config');
 
 const createStudents = async (students, batchDetails) => {
   const results = [];
@@ -205,7 +206,8 @@ const getStudentProfile = async (req, res) => {
 
 const updateStudentProfile = async (req, res) => {
     try {
-        const { name, phone, parentPhone, address } = req.body;
+        const { name, phone, parentPhone, address, removeProfilePicture } = req.body;
+        const profilePicture = req.file;
         const student = await Student.findById(req.params.id);
 
         if (!student) {
@@ -215,10 +217,64 @@ const updateStudentProfile = async (req, res) => {
             });
         }
 
+        // Update basic info
         student.name = name || student.name;
         student.phone = phone || student.phone;
         student.parentPhone = parentPhone || student.parentPhone;
         student.address = address || student.address;
+
+        // Handle profile picture removal
+        if (removeProfilePicture === 'true') {
+            if (student.profilePicture?.s3Key) {
+                try {
+                    await s3.deleteObject({
+                        Bucket: process.env.AWS_BUCKET_NAME,
+                        Key: student.profilePicture.s3Key
+                    }).promise();
+                } catch (error) {
+                    console.error('Error deleting profile picture:', error);
+                }
+            }
+            student.profilePicture = { url: '', s3Key: '' };
+        }
+        // Handle profile picture upload
+        else if (profilePicture) {
+            // Delete old profile picture from S3 if exists
+            if (student.profilePicture?.s3Key) {
+                try {
+                    await s3.deleteObject({
+                        Bucket: process.env.AWS_BUCKET_NAME,
+                        Key: student.profilePicture.s3Key
+                    }).promise();
+                } catch (error) {
+                    console.error('Error deleting old profile picture:', error);
+                }
+            }
+
+            // Upload new profile picture to S3
+            const fileName = `profiles/${student._id}-${Date.now()}-${profilePicture.originalname}`;
+            const params = {
+                Bucket: process.env.AWS_BUCKET_NAME,
+                Key: fileName,
+                Body: profilePicture.buffer,
+                ContentType: profilePicture.mimetype,
+                ACL: 'public-read'
+            };
+
+            try {
+                const s3Upload = await s3.upload(params).promise();
+                student.profilePicture = {
+                    url: s3Upload.Location,
+                    s3Key: fileName
+                };
+            } catch (error) {
+                console.error('Error uploading to S3:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Error uploading profile picture'
+                });
+            }
+        }
 
         const updatedStudent = await student.save();
 

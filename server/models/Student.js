@@ -39,6 +39,16 @@ const studentSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  profilePicture: {
+    url: {
+      type: String,
+      default: ''
+    },
+    s3Key: {
+      type: String,
+      default: ''
+    }
+  },
   teachersInfo: [{
     batchId: {
       type: mongoose.Schema.Types.ObjectId,

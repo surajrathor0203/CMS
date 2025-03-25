@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const Student = require('../models/Student');
 const Batch = require('../models/Batch');
 const { 
@@ -13,6 +14,21 @@ const {
   updateStudentPassword  // Add this import
 } = require('../controllers/studentController');
 const { protect } = require('../middleware/authMiddleware');
+
+// Configure multer for memory storage
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Not an image! Please upload an image.'), false);
+        }
+    }
+});
 
 router.post('/create-multiple', async (req, res) => {
   try {
@@ -124,7 +140,7 @@ router.get('/:studentId/batches', protect, getStudentBatches);
 
 // Add these new routes before module.exports
 router.get('/profile/:id', protect, getStudentProfile);
-router.put('/profile/:id', protect, updateStudentProfile);
+router.put('/profile/:id', protect, upload.single('file'), updateStudentProfile);
 router.put('/profile/:id/password', protect, updateStudentPassword); // Add this line
 
 module.exports = router;

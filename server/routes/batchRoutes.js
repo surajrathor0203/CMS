@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Batch = require('../models/Batch');
 const auth = require('../middleware/auth');
+const { protect } = require('../middleware/authMiddleware'); // Add this import
 const s3 = require('../config/s3Config');
 const multer = require('multer');
 const upload = multer();
@@ -132,7 +133,7 @@ router.get('/student/:batchId', async (req, res) => {
   try {
     const batch = await Batch.findById(req.params.batchId)
       .populate('teacher', 'name email')
-      .select('name subject openingDate startTime endTime teacher fees numberOfInstallments installmentDates payment'); // Added installmentDates
+      .select('name subject openingDate startTime endTime teacher fees numberOfInstallments installmentDates payment lockedStudents'); // Added lockedStudents
     
     if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
@@ -478,6 +479,38 @@ router.put('/:batchId/payments/:paymentId/verify', async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+});
+
+router.post('/:batchId/students/:studentId/toggle-lock', auth, async (req, res) => {
+  try {
+    const { batchId, studentId } = req.params;
+    const batch = await Batch.findById(batchId);
+    
+    if (!batch) {
+      return res.status(404).json({ success: false, message: 'Batch not found' });
+    }
+
+    const studentLockIndex = batch.lockedStudents.findIndex(
+      ls => ls.studentId.toString() === studentId
+    );
+
+    if (studentLockIndex === -1) {
+      // Lock student
+      batch.lockedStudents.push({ studentId });
+    } else {
+      // Unlock student
+      batch.lockedStudents.splice(studentLockIndex, 1);
+    }
+
+    await batch.save();
+
+    res.json({
+      success: true,
+      message: `Student ${studentLockIndex === -1 ? 'locked' : 'unlocked'} successfully`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
