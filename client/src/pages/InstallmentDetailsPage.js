@@ -109,6 +109,35 @@ export default function InstallmentDetailsPage() {
   const pendingStudents = getPendingStudents();
 
   const renderTableRow = (student) => {
+    // Find student's payment record
+    const studentPayment = batch.studentPayments?.find(
+      payment => payment.student.toString() === student._id.toString()
+    );
+
+    // Find all payments for this installment
+    const installmentPayments = studentPayment?.payments?.filter(
+      payment => 
+        payment.installmentNumber === parseInt(installmentNumber) &&
+        (activeTab === 0 ? payment.status === 'approved' : true)
+    ) || [];
+
+    // Calculate total amount for this installment
+    const totalAmount = installmentPayments.reduce((sum, payment) => sum + payment.amount, 0);
+
+    // Create amount display string with individual amounts if multiple payments
+    let amountDisplay = '';
+    if (activeTab === 0) {
+      if (installmentPayments.length > 1) {
+        amountDisplay = installmentPayments
+          .map(p => `₹${p.amount.toLocaleString()}`)
+          .join(' + ') + ` = ₹${totalAmount.toLocaleString()}`;
+      } else {
+        amountDisplay = `₹${totalAmount.toLocaleString()}`;
+      }
+    } else {
+      amountDisplay = `₹${installmentAmount.toLocaleString()}`;
+    }
+
     return (
       <TableRow key={student._id}>
         <TableCell>
@@ -124,6 +153,7 @@ export default function InstallmentDetailsPage() {
         </TableCell>
         <TableCell>{student.email}</TableCell>
         <TableCell>{student.phone}</TableCell>
+        <TableCell>{amountDisplay}</TableCell>
       </TableRow>
     );
   };
@@ -170,6 +200,7 @@ export default function InstallmentDetailsPage() {
                     <TableCell>Student</TableCell>
                     <TableCell>Email</TableCell>
                     <TableCell>Phone</TableCell>
+                    <TableCell>Amount</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>

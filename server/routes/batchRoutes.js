@@ -324,11 +324,17 @@ router.post('/:batchId/payment', upload.single('receipt'), async (req, res) => {
       receiptUrl: uploadResult.Location,
       s3Key: uploadResult.Key,
       feedback,
-      paymentDate: new Date()
+      paymentDate: new Date(),
+      status: 'pending' // Default status is pending
     };
 
     batch.studentPayments[studentPaymentIndex].payments.push(payment);
-    batch.studentPayments[studentPaymentIndex].totalPaid += parseFloat(amount);
+    
+    // Calculate totalPaid only from approved payments
+    batch.studentPayments[studentPaymentIndex].totalPaid = batch.studentPayments[studentPaymentIndex].payments
+      .filter(p => p.status === 'approved')
+      .reduce((sum, p) => sum + p.amount, 0);
+
     batch.studentPayments[studentPaymentIndex].lastPaymentDate = new Date();
 
     await batch.save();
@@ -444,19 +450,20 @@ router.put('/:batchId/payments/:paymentId/verify', async (req, res) => {
       });
     }
 
-    // Find the student payment record and update the payment status
-    const studentPayment = batch.studentPayments.find(
+    // Find the student payment record
+    const studentPaymentIndex = batch.studentPayments.findIndex(
       sp => sp.student.toString() === studentId
     );
 
-    if (!studentPayment) {
+    if (studentPaymentIndex === -1) {
       return res.status(404).json({
         success: false,
         message: 'Student payment record not found'
       });
     }
 
-    const payment = studentPayment.payments.find(
+    // Find the specific payment
+    const payment = batch.studentPayments[studentPaymentIndex].payments.find(
       p => p._id.toString() === paymentId
     );
 
@@ -467,7 +474,14 @@ router.put('/:batchId/payments/:paymentId/verify', async (req, res) => {
       });
     }
 
+    const oldStatus = payment.status;
     payment.status = status;
+
+    // Recalculate totalPaid based on approved payments only
+    batch.studentPayments[studentPaymentIndex].totalPaid = batch.studentPayments[studentPaymentIndex].payments
+      .filter(p => p.status === 'approved')
+      .reduce((sum, p) => sum + p.amount, 0);
+
     await batch.save();
 
     res.json({

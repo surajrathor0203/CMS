@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Card,
@@ -10,7 +10,10 @@ import {
   Grid,
   Alert,
   IconButton,
+  Zoom,
+  Paper,
 } from '@mui/material';
+import { motion } from 'framer-motion';
 import TeacherLayout from '../components/TeacherLayout';
 import { getUserFromCookie } from '../utils/cookies';
 import PersonIcon from '@mui/icons-material/Person';
@@ -22,6 +25,8 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import LockResetIcon from '@mui/icons-material/LockReset';
 
 export default function TeacherProfile() {
   const user = getUserFromCookie()?.user;
@@ -33,6 +38,7 @@ export default function TeacherProfile() {
     address: '',
     profilePictureUrl: '',
     previewUrl: '',
+    username: '',
   });
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState(null);
@@ -59,7 +65,8 @@ export default function TeacherProfile() {
             subject: response.data.subject,
             address: response.data.address,
             profilePictureUrl: response.data.profilePictureUrl || '',
-            previewUrl: ''
+            previewUrl: '',
+            username: response.data.username,
           });
         }
       } catch (error) {
@@ -197,212 +204,411 @@ export default function TeacherProfile() {
 
   return (
     <TeacherLayout title="Profile Settings">
-      <Box sx={{ maxWidth: 800, mx: 'auto', mt: 4 }}>
-        <Card elevation={3}>
-          <CardContent>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
-              <Box sx={{ position: 'relative' }}>
-                <Avatar
-                  src={formData.previewUrl || formData.profilePictureUrl}
-                  sx={{
-                    width: 100,
-                    height: 100,
-                    bgcolor: '#2e7d32',
-                    mb: 2,
-                    '& img': {
-                      objectFit: 'cover',
-                      width: '100%',
-                      height: '100%'
-                    }
-                  }}
-                >
-                  {(!formData.previewUrl && !formData.profilePictureUrl) && (
-                    <PersonIcon sx={{ fontSize: 60 }} />
-                  )}
-                </Avatar>
-                {isEditing && (
-                  <Box sx={{ position: 'absolute', bottom: 16, right: -16, display: 'flex', gap: 1 }}>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleProfilePictureChange}
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                    />
-                    <IconButton
-                      sx={{
-                        bgcolor: 'rgba(0, 0, 0, 0.3)',
-                        '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.5)' }
-                      }}
-                      onClick={handleProfilePictureClick}
+      <Box 
+        sx={{ 
+          maxWidth: 1200, 
+          mx: 'auto', 
+          mt: 4,
+          px: 3,
+          position: 'relative'
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <Card 
+            elevation={0} 
+            sx={{ 
+              borderRadius: 4,
+              background: 'linear-gradient(135deg, #f6f9fc 0%, #ffffff 100%)',
+              overflow: 'visible',
+              position: 'relative',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '200px',
+                background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
+                borderRadius: '16px 16px 0 0',
+              }
+            }}
+          >
+            <CardContent sx={{ position: 'relative', p: 4 }}>
+              <Grid container spacing={4}>
+                {/* Profile Header Section */}
+                <Grid item xs={12} md={4}>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    position: 'relative',
+                    mt: 8
+                  }}>
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      transition={{ type: "spring", stiffness: 300 }}
                     >
-                      <PhotoCamera sx={{ color: 'white' }} />
-                    </IconButton>
-                    {(formData.profilePictureUrl || formData.previewUrl) && (
-                      <IconButton
+                      <Avatar
+                        src={formData.previewUrl || formData.profilePictureUrl}
                         sx={{
-                          bgcolor: 'rgba(211, 47, 47, 0.3)',
-                          '&:hover': { bgcolor: 'rgba(211, 47, 47, 0.5)' }
+                          width: 180,
+                          height: 180,
+                          border: '5px solid white',
+                          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                          bgcolor: 'primary.main',
+                          position: 'relative',
+                          zIndex: 1,
                         }}
-                        onClick={handleRemoveProfilePicture}
                       >
-                        <DeleteIcon sx={{ color: 'white' }} />
-                      </IconButton>
+                        {(!formData.previewUrl && !formData.profilePictureUrl) && (
+                          <PersonIcon sx={{ fontSize: 80 }} />
+                        )}
+                      </Avatar>
+                    </motion.div>
+
+                    {isEditing && (
+                      <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleProfilePictureChange}
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                        />
+                        <IconButton
+                          sx={{
+                            bgcolor: 'primary.main',
+                            color: 'white',
+                            '&:hover': { transform: 'scale(1.1)' },
+                            transition: 'all 0.3s ease',
+                          }}
+                          onClick={handleProfilePictureClick}
+                        >
+                          <PhotoCamera />
+                        </IconButton>
+                        {(formData.profilePictureUrl || formData.previewUrl) && (
+                          <IconButton
+                            sx={{
+                              bgcolor: 'error.main',
+                              color: 'white',
+                              '&:hover': { transform: 'scale(1.1)' },
+                              transition: 'all 0.3s ease',
+                            }}
+                            onClick={handleRemoveProfilePicture}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        )}
+                      </Box>
                     )}
+
+                    <Typography 
+                      variant="h4" 
+                      sx={{ 
+                        mt: 3,
+                        fontWeight: 700,
+                        color: 'text.primary',
+                        textAlign: 'center'
+                      }}
+                    >
+                      {formData.name}
+                    </Typography>
+                    <Typography 
+                      variant="body1"
+                      sx={{
+                        color: 'text.secondary',
+                        mt: 1,
+                        mb: 3,
+                        textAlign: 'center'
+                      }}
+                    >
+                      {formData.subject}
+                    </Typography>
                   </Box>
-                )}
-              </Box>
-              <Typography variant="h5" gutterBottom>
-                {formData.name}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Teacher ID: {user?.username}
-              </Typography>
-            </Box>
+                </Grid>
 
-            {message && (
-              <Alert severity={message.type} sx={{ mb: 3 }}>
-                {message.text}
-              </Alert>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <Grid container spacing={3}>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    disabled={!isEditing}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Email"
-                    name="email"
-                    value={formData.email}
-                    disabled
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="phoneNumber"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                    disabled={!isEditing}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Subject"
-                    name="subject"
-                    value={formData.subject}
-                    onChange={handleChange}
-                    disabled={!isEditing}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    multiline
-                    rows={3}
-                    disabled={!isEditing}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                    {!isEditing ? (
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => setIsEditing(true)}
+                {/* Profile Details Section */}
+                <Grid item xs={12} md={8}>
+                  <Box sx={{ mt: { xs: 2, md: 12 } }}>
+                    {message && (
+                      <Alert 
+                        severity={message.type} 
+                        sx={{ 
+                          mb: 3,
+                          borderRadius: 2,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                        }}
                       >
-                        Edit Profile
-                      </Button>
-                    ) : (
-                      <>
-                        <Button
-                          variant="outlined"
-                          onClick={() => setIsEditing(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          type="submit"
-                        >
-                          Save Changes
-                        </Button>
-                      </>
+                        {message.text}
+                      </Alert>
                     )}
+
+                    {!isEditing ? (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                      >
+                        <Paper 
+                          elevation={0}
+                          sx={{ 
+                            p: 3, 
+                            mb: 3,
+                            borderRadius: 2,
+                            backgroundColor: '#fff',
+                            boxShadow: '0 2px 12px rgba(0,0,0,0.08)'
+                          }}
+                        >
+                          <Grid container spacing={3}>
+                            <Grid item xs={12} sm={6}>
+                              <Paper 
+                                elevation={0}
+                                sx={{ 
+                                  p: 2, 
+                                  mb: 2,
+                                  borderRadius: 2,
+                                  backgroundColor: '#f8f9fa',
+                                }}
+                              >
+                                <Typography variant="overline" color="primary.main">Name</Typography>
+                                <Typography variant="h6">{formData.name}</Typography>
+                              </Paper>
+                              <Paper 
+                                elevation={0}
+                                sx={{ 
+                                  p: 2, 
+                                  mb: 2,
+                                  borderRadius: 2,
+                                  backgroundColor: '#f8f9fa',
+                                }}
+                              >
+                                <Typography variant="overline" color="primary.main">Username</Typography>
+                                <Typography variant="h6">{formData.username}</Typography>
+                              </Paper>
+                              <Paper 
+                                elevation={0}
+                                sx={{ 
+                                  p: 2, 
+                                  mb: 2,
+                                  borderRadius: 2,
+                                  backgroundColor: '#f8f9fa',
+                                }}
+                              >
+                                <Typography variant="overline" color="primary.main">Email</Typography>
+                                <Typography variant="h6">{formData.email}</Typography>
+                              </Paper>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <Paper 
+                                elevation={0}
+                                sx={{ 
+                                  p: 2, 
+                                  mb: 2,
+                                  borderRadius: 2,
+                                  backgroundColor: '#f8f9fa',
+                                }}
+                              >
+                                <Typography variant="overline" color="primary.main">Phone Number</Typography>
+                                <Typography variant="h6">{formData.phoneNumber}</Typography>
+                              </Paper>
+                              <Paper 
+                                elevation={0}
+                                sx={{ 
+                                  p: 2,
+                                  borderRadius: 2,
+                                  backgroundColor: '#f8f9fa',
+                                }}
+                              >
+                                <Typography variant="overline" color="primary.main">Address</Typography>
+                                <Typography variant="h6" sx={{ wordBreak: 'break-word' }}>
+                                  {formData.address}
+                                </Typography>
+                              </Paper>
+                            </Grid>
+                          </Grid>
+                        </Paper>
+
+                        <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
+                          <Button
+                            variant="contained"
+                            onClick={() => setOpenPasswordDialog(true)}
+                            startIcon={<LockResetIcon />}
+                            sx={{
+                              borderRadius: 2,
+                              textTransform: 'none',
+                              px: 3,
+                              py: 1.5,
+                            }}
+                          >
+                            Change Password
+                          </Button>
+                          <Button
+                            variant="contained"
+                            color="secondary"
+                            onClick={() => setIsEditing(true)}
+                            startIcon={<EditIcon />}
+                            sx={{
+                              borderRadius: 2,
+                              textTransform: 'none',
+                              px: 3,
+                              py: 1.5,
+                            }}
+                          >
+                            Edit Profile
+                          </Button>
+                        </Box>
+                      </motion.div>
+                    ) : (
+                      // Edit Form View
+                      <Paper 
+                        elevation={0}
+                        sx={{ 
+                          p: 3,
+                          borderRadius: 2,
+                          backgroundColor: '#fff',
+                          boxShadow: '0 2px 12px rgba(0,0,0,0.08)'
+                        }}
+                      >
+                        <form onSubmit={handleSubmit}>
+                          <Grid container spacing={3}>
+                            <Grid item xs={12} sm={6}>
+                              <TextField
+                                fullWidth
+                                label="Name"
+                                name="name"
+                                value={formData.name}
+                                onChange={handleChange}
+                                variant="outlined"
+                                sx={{ mb: 2 }}
+                              />
+                              <TextField
+                                fullWidth
+                                label="Username"
+                                name="username"
+                                value={formData.username}
+                                disabled
+                                variant="outlined"
+                                sx={{ mb: 2 }}
+                              />
+                              <TextField
+                                fullWidth
+                                label="Email"
+                                name="email"
+                                value={formData.email}
+                                disabled
+                                variant="outlined"
+                                sx={{ mb: 2 }}
+                              />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <TextField
+                                fullWidth
+                                label="Phone Number"
+                                name="phoneNumber"
+                                value={formData.phoneNumber}
+                                onChange={handleChange}
+                                variant="outlined"
+                                sx={{ mb: 2 }}
+                              />
+                              <TextField
+                                fullWidth
+                                label="Address"
+                                name="address"
+                                value={formData.address}
+                                onChange={handleChange}
+                                multiline
+                                rows={3}
+                                variant="outlined"
+                              />
+                            </Grid>
+                            <Grid item xs={12}>
+                              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                                <Button
+                                  variant="outlined"
+                                  onClick={() => setIsEditing(false)}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  variant="contained"
+                                  color="primary"
+                                  type="submit"
+                                >
+                                  Save Changes
+                                </Button>
+                              </Box>
+                            </Grid>
+                          </Grid>
+                        </form>
+                      </Paper>
+                    )}
+
+                    {/* Password Change Dialog */}
+                    <Dialog 
+                      open={openPasswordDialog} 
+                      onClose={() => setOpenPasswordDialog(false)}
+                      maxWidth="xs"
+                      fullWidth
+                    >
+                      <DialogTitle>Change Password</DialogTitle>
+                      <DialogContent>
+                        {passwordError && (
+                          <Alert severity="error" sx={{ mb: 2 }}>
+                            {passwordError}
+                          </Alert>
+                        )}
+                        <TextField
+                          fullWidth
+                          margin="dense"
+                          label="Current Password"
+                          type="password"
+                          name="currentPassword"
+                          value={passwordData.currentPassword}
+                          onChange={handlePasswordChange}
+                          variant="outlined"
+                        />
+                        <TextField
+                          fullWidth
+                          margin="dense"
+                          label="New Password"
+                          type="password"
+                          name="newPassword"
+                          value={passwordData.newPassword}
+                          onChange={handlePasswordChange}
+                          variant="outlined"
+                        />
+                        <TextField
+                          fullWidth
+                          margin="dense"
+                          label="Confirm New Password"
+                          type="password"
+                          name="confirmPassword"
+                          value={passwordData.confirmPassword}
+                          onChange={handlePasswordChange}
+                          variant="outlined"
+                        />
+                      </DialogContent>
+                      <DialogActions>
+                        <Button onClick={() => setOpenPasswordDialog(false)}>Cancel</Button>
+                        <Button 
+                          onClick={handlePasswordUpdate} 
+                          variant="contained" 
+                          color="primary"
+                        >
+                          Update Password
+                        </Button>
+                      </DialogActions>
+                    </Dialog>
                   </Box>
                 </Grid>
               </Grid>
-            </form>
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={() => setOpenPasswordDialog(true)}
-              sx={{ mt: 2 }}
-            >
-              Change Password
-            </Button>
-            <Dialog open={openPasswordDialog} onClose={() => setOpenPasswordDialog(false)}>
-              <DialogTitle>Change Password</DialogTitle>
-              <DialogContent>
-                {passwordError && (
-                  <Alert severity="error" sx={{ mb: 2 }}>
-                    {passwordError}
-                  </Alert>
-                )}
-                <TextField
-                  fullWidth
-                  margin="dense"
-                  label="Current Password"
-                  type="password"
-                  name="currentPassword"
-                  value={passwordData.currentPassword}
-                  onChange={handlePasswordChange}
-                />
-                <TextField
-                  fullWidth
-                  margin="dense"
-                  label="New Password"
-                  type="password"
-                  name="newPassword"
-                  value={passwordData.newPassword}
-                  onChange={handlePasswordChange}
-                />
-                <TextField
-                  fullWidth
-                  margin="dense"
-                  label="Confirm New Password"
-                  type="password"
-                  name="confirmPassword"
-                  value={passwordData.confirmPassword}
-                  onChange={handlePasswordChange}
-                />
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={() => setOpenPasswordDialog(false)}>Cancel</Button>
-                <Button onClick={handlePasswordUpdate} variant="contained" color="primary">
-                  Update Password
-                </Button>
-              </DialogActions>
-            </Dialog>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
       </Box>
     </TeacherLayout>
   );
