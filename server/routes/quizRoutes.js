@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Quiz = require('../models/Quiz');
-const Batch = require('../models/Batch'); // Add this line to import Batch model
+const Batch = require('../models/Batch');
+const Student = require('../models/Student'); // Add this import
 const { protect } = require('../middleware/authMiddleware');
 
 // Get quizzes by batch
@@ -59,28 +60,40 @@ router.get('/:quizId', protect, async (req, res) => {
       });
     }
 
-    // Get all students enrolled in the batch
-    const batch = await Batch.findById(quiz.batchId).populate('students');
-    
+    // Get all students from the batch
+    const students = await Student.find({
+      'teachersInfo.batchId': quiz.batchId
+    }).select('name email _id');
+
     // Create a map of submitted students
     const submittedStudentsMap = new Map(
       quiz.students.map(s => [s.studentId.toString(), s])
     );
 
-    // Create array of non-submitted students
-    const nonSubmittedStudents = batch.students.filter(student => 
-      !submittedStudentsMap.has(student._id.toString())
-    ).map(student => ({
-      _id: student._id,
-      name: student.name,
-      email: student.email
-    }));
+    // Separate students into submitted and not submitted
+    const submittedStudents = [];
+    const nonSubmittedStudents = [];
+
+    students.forEach(student => {
+      const submission = submittedStudentsMap.get(student._id.toString());
+      if (submission) {
+        submittedStudents.push({
+          ...submission.toObject(),
+          name: student.name,
+          email: student.email
+        });
+      } else {
+        nonSubmittedStudents.push(student);
+      }
+    });
 
     res.json({
       success: true,
       data: {
         ...quiz.toObject(),
-        nonSubmittedStudents
+        submittedStudents,
+        nonSubmittedStudents,
+        totalStudents: students.length
       }
     });
   } catch (error) {

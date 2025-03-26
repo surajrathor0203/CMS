@@ -22,12 +22,14 @@ import {
   IconButton,
   TextField as GradeTextField,
   Tooltip,
+  Tabs,
+  Tab
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit'; // Fixed import path
 import GradeIcon from '@mui/icons-material/Grade';
 import TeacherLayout from '../components/TeacherLayout';
-import { editAssignment, getAssignmentById, gradeAssignment } from '../services/api';
+import { editAssignment, getAssignmentById, gradeAssignment, getStudentsByBatch } from '../services/api';
 import { toast } from 'react-toastify';
 
 export default function AssignmentDetail() {
@@ -51,19 +53,45 @@ export default function AssignmentDetail() {
     grade: '',
     feedback: ''
   });
+  const [activeTab, setActiveTab] = useState(0);
+  const [allStudents, setAllStudents] = useState([]);
+  const [submittedStudents, setSubmittedStudents] = useState([]);
+  const [notSubmittedStudents, setNotSubmittedStudents] = useState([]);
 
   useEffect(() => {
-    const fetchAssignmentDetails = async () => {
+    const fetchData = async () => {
       try {
-        const response = await getAssignmentById(assignment._id);
-        setAssignmentDetails(response.data);
+        // Fetch assignment details
+        const assignmentResponse = await getAssignmentById(assignment._id);
+        setAssignmentDetails(assignmentResponse.data);
+
+        // Fetch all students in the batch
+        const studentsResponse = await getStudentsByBatch(batchId);
+        setAllStudents(studentsResponse.data);
+
+        // Process students into submitted and not submitted lists
+        const submissions = assignmentResponse.data.submissions || [];
+        const submittedIds = submissions.map(sub => sub.studentId);
+        
+        const submitted = studentsResponse.data.filter(student => 
+          submittedIds.includes(student._id)
+        );
+
+        const notSubmitted = studentsResponse.data.filter(student => 
+          !submittedIds.includes(student._id)
+        );
+
+        setSubmittedStudents(submitted);
+        setNotSubmittedStudents(notSubmitted);
+
       } catch (error) {
-        console.error('Error fetching assignment details:', error);
+        console.error('Error fetching data:', error);
+        toast.error('Error loading data');
       }
     };
 
-    fetchAssignmentDetails();
-  }, [assignment._id]);
+    fetchData();
+  }, [assignment._id, batchId]);
 
   if (!assignment) {
     return (
@@ -148,6 +176,10 @@ export default function AssignmentDetail() {
     }
   };
 
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
   return (
     <TeacherLayout title='Assignment Details'>
       <Box sx={{ p: 3, maxWidth: '1200px', margin: '0 auto' }}> {/* Changed maxWidth from 800px to 1200px */}
@@ -212,56 +244,92 @@ export default function AssignmentDetail() {
             <Typography variant="h6" gutterBottom>
               Submissions ({assignmentDetails?.submissions?.length || 0})
             </Typography>
+
+            <Tabs value={activeTab} onChange={handleTabChange} sx={{ mb: 2 }}>
+              <Tab label={`Submitted (${submittedStudents.length})`} />
+              <Tab label={`Not Submitted (${notSubmittedStudents.length})`} />
+            </Tabs>
+
             <TableContainer component={Paper} sx={{ width: '100%' }}> {/* Added width 100% */}
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Student ID</TableCell>
-                    <TableCell>Submitted At</TableCell>
-                    <TableCell>File</TableCell>
-                    <TableCell>Grade/10</TableCell>
-                    <TableCell>Feedback</TableCell>
+                    <TableCell>Student Name</TableCell>  {/* Changed from Student ID */}
+                    {activeTab === 0 && (
+                      <>
+                        <TableCell>Submitted At</TableCell>
+                        <TableCell>File</TableCell>
+                        <TableCell>Grade/10</TableCell>
+                        <TableCell>Feedback</TableCell>
+                      </>
+                    )}
+                    {activeTab === 1 && (
+                      <>
+                        <TableCell>Email</TableCell>
+                        <TableCell>Phone</TableCell>
+                      </>
+                    )}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {assignmentDetails?.submissions?.length > 0 ? (
-                    assignmentDetails.submissions.map((submission) => (
-                      <TableRow key={submission._id}>
-                        <TableCell>{submission.studentId}</TableCell>
-                        <TableCell>
-                          {new Date(submission.submittedAt).toLocaleString()}
+                  {activeTab === 0 ? (
+                    // Submitted Students
+                    submittedStudents.length > 0 ? (
+                      assignmentDetails?.submissions.map((submission) => (
+                        <TableRow key={submission._id}>
+                          <TableCell>{submission.studentName}</TableCell>  {/* Changed from studentId */}
+                          <TableCell>
+                            {new Date(submission.submittedAt).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              size="small"
+                              startIcon={<DownloadIcon />}
+                              onClick={() => window.open(submission.fileUrl, '_blank')}
+                            >
+                              Download
+                            </Button>
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {submission.grade || 'Not graded'}
+                              <Tooltip title="Grade Submission">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleGradeOpen(submission)}
+                                >
+                                  <GradeIcon />
+                                </IconButton>
+                              </Tooltip>
+                            </Box>
+                          </TableCell>
+                          <TableCell>{submission.feedback || '-'}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} align="center">
+                          No submissions yet
                         </TableCell>
-                        <TableCell>
-                          <Button
-                            size="small"
-                            startIcon={<DownloadIcon />}
-                            onClick={() => window.open(submission.fileUrl, '_blank')}
-                          >
-                            Download
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {submission.grade || 'Not graded'}
-                            <Tooltip title="Grade Submission">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleGradeOpen(submission)}
-                              >
-                                <GradeIcon />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
-                        <TableCell>{submission.feedback || '-'}</TableCell>
                       </TableRow>
-                    ))
+                    )
                   ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} align="center">
-                        No submissions yet
-                      </TableCell>
-                    </TableRow>
+                    // Not Submitted Students
+                    notSubmittedStudents.length > 0 ? (
+                      notSubmittedStudents.map((student) => (
+                        <TableRow key={student._id}>
+                          <TableCell>{student.name}</TableCell>
+                          <TableCell>{student.email}</TableCell>
+                          <TableCell>{student.phone}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={3} align="center">
+                          All students have submitted
+                        </TableCell>
+                      </TableRow>
+                    )
                   )}
                 </TableBody>
               </Table>

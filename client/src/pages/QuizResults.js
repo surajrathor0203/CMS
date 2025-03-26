@@ -126,23 +126,23 @@ const QuizResults = () => {
             
             <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
               <Chip 
-                label={`Total Students: ${totalStudents}`} 
+                label={`Total Students: ${quiz?.totalStudents || 0}`} 
                 color="primary" 
               />
               <Chip 
-                label={`Submitted: ${quiz?.students?.length || 0}`} 
+                label={`Submitted: ${quiz?.submittedStudents?.length || 0}`} 
                 color="success" 
               />
               <Chip 
-                label={`Pending: ${totalStudents - (quiz?.students?.length || 0)}`} 
+                label={`Pending: ${quiz?.nonSubmittedStudents?.length || 0}`} 
                 color="warning" 
               />
             </Box>
 
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
               <Tabs value={activeTab} onChange={handleTabChange}>
-                <Tab label="Submitted" />
-                <Tab label="Not Submitted" />
+                <Tab label={`Submitted (${quiz?.submittedStudents?.length || 0})`} />
+                <Tab label={`Not Submitted (${quiz?.nonSubmittedStudents?.length || 0})`} />
               </Tabs>
             </Box>
 

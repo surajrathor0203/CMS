@@ -6,6 +6,10 @@ const studentSubmissionSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    studentName: {
+        type: String,
+        required: true
+    },
     fileUrl: {
         type: String,
         required: true

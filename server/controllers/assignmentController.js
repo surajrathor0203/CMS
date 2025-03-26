@@ -1,6 +1,7 @@
 const Assignment = require('../models/Assignment');
 const s3 = require('../config/s3Config');
 const { v4: uuidv4 } = require('uuid');
+const Student = require('../models/Student'); // Add this import at the top
 
 exports.createAssignment = async (req, res) => {
     try {
@@ -277,6 +278,15 @@ exports.submitAssignment = async (req, res) => {
             });
         }
 
+        // Fetch student name
+        const student = await Student.findById(studentId);
+        if (!student) {
+            return res.status(404).json({
+                success: false,
+                message: 'Student not found'
+            });
+        }
+
         const assignment = await Assignment.findOne({
             "assignments._id": assignmentId
         });
@@ -328,6 +338,7 @@ exports.submitAssignment = async (req, res) => {
 
         const submission = {
             studentId,
+            studentName: student.name, // Add student name
             fileUrl: uploadResult.Location,
             fileName,
             submittedAt: new Date()

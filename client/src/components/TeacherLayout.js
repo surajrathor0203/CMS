@@ -18,6 +18,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import TeacherSidebar from './TeacherSidebar';
+import PaymentReceiptPopup from './PaymentReceiptPopup';
 
 const drawerWidth = 240;
 
@@ -33,6 +34,8 @@ export default function TeacherLayout({
   const navigate = useNavigate(); // Add this
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notificationAnchor, setNotificationAnchor] = useState(null);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [receiptPopupOpen, setReceiptPopupOpen] = useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -59,6 +62,11 @@ export default function TeacherLayout({
     } catch (error) {
       console.error(`Error ${action}ing payment:`, error);
     }
+  };
+
+  const handlePaymentClick = (payment) => {
+    setSelectedPayment(payment);
+    setReceiptPopupOpen(true);
   };
 
   return (
@@ -114,10 +122,13 @@ export default function TeacherLayout({
             PaperProps={{
               elevation: 3,
               sx: { 
-                width: 320,
-                maxHeight: '80vh'
+                width: 400,  // Increased from 320 to 400
+                maxHeight: '80vh',
+                overflowY: 'auto'
               }
             }}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           >
             {pendingCount > 0 ? (
               <>
@@ -164,6 +175,16 @@ export default function TeacherLayout({
                         >
                           Reject
                         </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePaymentClick(payment);
+                          }}
+                        >
+                          View Receipt
+                        </Button>
                       </Box>
                     </Box>
                   </MenuItem>
@@ -199,6 +220,12 @@ export default function TeacherLayout({
           {children}
         </Container>
       </Box>
+
+      <PaymentReceiptPopup
+        open={receiptPopupOpen}
+        onClose={() => setReceiptPopupOpen(false)}
+        payment={selectedPayment}
+      />
     </Box>
   );
 }
