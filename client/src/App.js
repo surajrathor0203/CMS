@@ -21,6 +21,8 @@ import AssignmentSubmissionPage from './pages/AssignmentSubmissionPage';
 import TeacherLibrary from './pages/TeacherLibrary';
 import StudentLibrary from './pages/StudentLibrary';
 import StudentDetails from './pages/StudentDetails';
+import InstallmentDetailsPage from './pages/InstallmentDetailsPage';
+import TotalAccountingPage from './pages/TotalAccountingPage';
 import './App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -128,6 +130,24 @@ function App() {
             element={
               <ProtectedRoute 
                 element={<StudentDetails />} 
+                allowedRoles={['teacher']} 
+              />
+            } 
+          />
+          <Route 
+            path="/teacher-dashboard/batch/:batchId/installment/:installmentNumber" 
+            element={
+              <ProtectedRoute 
+                element={<InstallmentDetailsPage />} 
+                allowedRoles={['teacher']} 
+              />
+            } 
+          />
+          <Route 
+            path="/teacher/accounting" 
+            element={
+              <ProtectedRoute 
+                element={<TotalAccountingPage />} 
                 allowedRoles={['teacher']} 
               />
             } 

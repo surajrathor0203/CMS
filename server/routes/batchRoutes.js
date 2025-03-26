@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose'); // Add this import
 const Batch = require('../models/Batch');
 const auth = require('../middleware/auth');
 const { protect } = require('../middleware/authMiddleware'); // Add this import
@@ -511,6 +512,117 @@ router.post('/:batchId/students/:studentId/toggle-lock', auth, async (req, res) 
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get batches with accounting details
+router.get('/accounting/:teacherId', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    
+    const batches = await Batch.aggregate([
+      { 
+        $match: { teacher: new mongoose.Types.ObjectId(teacherId) }
+      },
+      {
+        // First lookup to get all students from Student collection
+        $lookup: {
+          from: 'students',
+          pipeline: [
+            {
+              $match: {
+                'teachersInfo.teacherId': new mongoose.Types.ObjectId(teacherId)
+              }
+            },
+            {
+              $unwind: '$teachersInfo'
+            },
+            {
+              $match: {
+                'teachersInfo.teacherId': new mongoose.Types.ObjectId(teacherId)
+              }
+            }
+          ],
+          as: 'enrolledStudents'
+        }
+      },
+      {
+        // Filter enrolledStudents to only include those in current batch
+        $addFields: {
+          enrolledStudents: {
+            $filter: {
+              input: '$enrolledStudents',
+              as: 'student',
+              cond: {
+                $eq: ['$$student.teachersInfo.batchId', '$$ROOT._id']
+              }
+            }
+          },
+          totalStudents: {
+            $size: {
+              $filter: {
+                input: '$enrolledStudents',
+                as: 'student',
+                cond: {
+                  $eq: ['$$student.teachersInfo.batchId', '$$ROOT._id']
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          totalFees: {
+            $multiply: [
+              '$fees',
+              '$totalStudents'
+            ]
+          },
+          totalPaid: {
+            $reduce: {
+              input: '$studentPayments',
+              initialValue: 0,
+              in: {
+                $add: [
+                  '$$value',
+                  {
+                    $reduce: {
+                      input: '$$this.payments',
+                      initialValue: 0,
+                      in: {
+                        $add: [
+                          '$$value',
+                          {
+                            $cond: [
+                              { $eq: ['$$this.status', 'approved'] },
+                              '$$this.amount',
+                              0
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      data: batches
+    });
+
+  } catch (error) {
+    console.error('Error getting batches accounting:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching batches accounting data'
+    });
   }
 });
 

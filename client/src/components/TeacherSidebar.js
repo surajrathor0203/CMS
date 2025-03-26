@@ -19,6 +19,7 @@ import {
   BookOpen,
   User,
   Book,
+  Wallet, // Add this import
 } from 'lucide-react';
 import { getUserFromCookie } from '../utils/cookies';
 import { logout } from '../utils/auth';
@@ -68,6 +69,7 @@ const theme = {
   const menuItems = [
     { text: 'Dashboard', icon: <BookOpen size={24} />, path: '/teacher-dashboard' },
     { text: 'Library', icon: <Book size={24} />, path: '/teacher/library' },
+    { text: 'Total Accounting', icon: <Wallet size={24} />, path: '/teacher/accounting' }, // Add this line
     { text: 'Settings', icon: <Settings size={24} />, path: '/teacher/settings' }, 
   ];
 

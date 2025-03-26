@@ -699,3 +699,12 @@ export const toggleStudentLock = async (batchId, studentId) => {
     throw error.response?.data || error;
   }
 };
+
+export const getBatchesAccounting = async (teacherId) => {
+  try {
+    const response = await api.get(`/batch/accounting/${teacherId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

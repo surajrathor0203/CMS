@@ -29,7 +29,8 @@ import {
   Tabs,
   Tab,
   CircularProgress,
-  Chip
+  Chip,
+  LinearProgress
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -61,6 +62,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import PaidIcon from '@mui/icons-material/Paid';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
 const theme = {
   primary: '#2e7d32',
@@ -103,6 +105,7 @@ export default function BatchPage() {
   const [quizToDelete, setQuizToDelete] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingPayments, setPendingPayments] = useState([]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -165,10 +168,8 @@ export default function BatchPage() {
         const payments = response.data || [];
         setPendingCount(payments.length);
         
-        // Set the active tab based on pending payments
-        if (payments.length > 0) {
-          setActiveTab('verify');
-        } else if (activeTab === null) {
+        // Remove setting activeTab to verify, always default to activity
+        if (activeTab === null) {
           setActiveTab('activity');
         }
       } catch (error) {
@@ -179,6 +180,20 @@ export default function BatchPage() {
     };
 
     checkPendingPayments();
+  }, [batchId]);
+
+  useEffect(() => {
+    const fetchPendingPayments = async () => {
+      try {
+        const response = await getPendingPayments(batchId);
+        setPendingPayments(response.data || []);
+      } catch (error) {
+        console.error('Error fetching pending payments:', error);
+        setPendingPayments([]);
+      }
+    };
+
+    fetchPendingPayments();
   }, [batchId]);
 
   const formatTime = (isoString) => {
@@ -405,6 +420,48 @@ export default function BatchPage() {
     );
   });
 
+  const handleNotificationClick = () => {
+    // Do nothing - removed setActiveTab('verify')
+  };
+
+  const handleApprovePayment = async (payment) => {
+    try {
+      await verifyPayment(
+        batchId,
+        payment.paymentId,
+        'approved',
+        payment.studentId
+      );
+      toast.success('Payment approved successfully');
+      // Refresh pending payments
+      const response = await getPendingPayments(batchId);
+      setPendingPayments(response.data || []);
+      setPendingCount((response.data || []).length);
+    } catch (error) {
+      console.error('Error approving payment:', error);
+      toast.error('Failed to approve payment');
+    }
+  };
+
+  const handleRejectPayment = async (payment) => {
+    try {
+      await verifyPayment(
+        batchId,
+        payment.paymentId,
+        'rejected',
+        payment.studentId
+      );
+      toast.success('Payment rejected');
+      // Refresh pending payments
+      const response = await getPendingPayments(batchId);
+      setPendingPayments(response.data || []);
+      setPendingCount((response.data || []).length);
+    } catch (error) {
+      console.error('Error rejecting payment:', error);
+      toast.error('Failed to reject payment');
+    }
+  };
+
   if (loading || activeTab === null) {
     return (
       <TeacherLayout>
@@ -504,181 +561,162 @@ export default function BatchPage() {
     </Box>
   );
 
-  const InstallmentVerificationSection = () => {
-    const [pendingPayments, setPendingPayments] = useState([]);
-    const [selectedPayment, setSelectedPayment] = useState(null);
-    const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-  
-    const fetchPendingPayments = useCallback(async () => {
-      try {
-        setIsLoading(true);
-        const response = await getPendingPayments(batchId);
-        const payments = response.data || [];
-        setPendingPayments(payments);
-        setPendingCount(payments.length); // Update the count here
-      } catch (error) {
-        console.error('Error fetching pending payments:', error);
-        toast.error('Failed to fetch pending payments');
-        setPendingCount(0);
-      } finally {
-        setIsLoading(false);
-      }
-    }, [batchId]);
+  const BatchAccountingSection = () => {
+    const [accountingData, setAccountingData] = useState({
+      totalPaid: 0,
+      totalFees: 0,
+      installmentBreakdown: []
+    });
   
     useEffect(() => {
-      fetchPendingPayments();
-    }, [fetchPendingPayments]);
+      if (!students || !batch) return;
   
-    const handleVerify = (payment) => {
-      setSelectedPayment(payment);
-      setVerifyDialogOpen(true);
-    };
+      // Calculate total fees
+      const totalFees = batch.fees * students.length;
+      let totalPaid = 0;
+      let installmentBreakdown = new Array(batch.numberOfInstallments).fill(0);
   
-    const handleApprovePayment = async () => {
-      try {
-        await verifyPayment(
-          batchId,
-          selectedPayment.paymentId,
-          'approved',
-          selectedPayment.studentId
-        );
-        toast.success('Payment approved successfully');
-        setVerifyDialogOpen(false);
-        // Redirect to student details page
-        navigate(`/teacher-dashboard/batch/${batchId}/student/${selectedPayment.studentId}`);
-      } catch (error) {
-        console.error('Error approving payment:', error);
-        toast.error('Failed to approve payment');
-      }
-    };
+      // Calculate paid amounts for each installment
+      batch.studentPayments.forEach(payment => {
+        if (payment.payments) {
+          payment.payments.forEach(p => {
+            if (p.status === 'approved') {
+              totalPaid += p.amount;
+              if (p.installmentNumber && p.installmentNumber <= batch.numberOfInstallments) {
+                installmentBreakdown[p.installmentNumber - 1] += p.amount;
+              }
+            }
+          });
+        }
+      });
   
-    const handleRejectPayment = async () => {
-      try {
-        await verifyPayment(
-          batchId,
-          selectedPayment.paymentId,
-          'rejected',
-          selectedPayment.studentId
-        );
-        toast.success('Payment rejected');
-        setVerifyDialogOpen(false);
-        // Redirect to student details page
-        navigate(`/teacher-dashboard/batch/${batchId}/student/${selectedPayment.studentId}`);
-      } catch (error) {
-        console.error('Error rejecting payment:', error);
-        toast.error('Failed to reject payment');
-      }
-    };
-  
-    if (isLoading) {
-      return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-          <CircularProgress />
-        </Box>
-      );
-    }
+      setAccountingData({
+        totalPaid,
+        totalFees,
+        installmentBreakdown
+      });
+    }, [students, batch]);
   
     return (
       <Box>
         <Typography variant="h6" color={theme.primary} gutterBottom>
-          Pending Installment Verifications
+          Batch Accounting Overview
         </Typography>
         <Divider sx={{ mb: 2 }} />
-        
-        {pendingPayments.length > 0 ? (
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Student Name</TableCell>
-                  <TableCell>Amount</TableCell>
-                  <TableCell>Installment</TableCell>
-                  <TableCell>Submission Date</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {pendingPayments.map((payment) => (
-                  <TableRow key={payment._id}>
-                    <TableCell>{payment.studentName}</TableCell>
-                    <TableCell>₹{payment.amount}</TableCell>
-                    <TableCell>{payment.installmentNumber}</TableCell>
-                    <TableCell>
-                      {new Date(payment.paymentDate).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => window.open(payment.receiptUrl, '_blank')}
-                          startIcon={<DownloadIcon />}
-                        >
-                          View Receipt
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="contained"
-                          onClick={() => handleVerify(payment)}
-                          startIcon={<PaidIcon />}
-                          sx={{ bgcolor: theme.primary }}
-                        >
-                          Verify
-                        </Button>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        ) : (
-          <Typography variant="body1" color="text.secondary" textAlign="center">
-            No pending installments to verify
-          </Typography>
-        )}
   
-        <Dialog
-          open={verifyDialogOpen}
-          onClose={() => setVerifyDialogOpen(false)}
-        >
-          <DialogTitle>Verify Payment</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              Please verify the payment of ₹{selectedPayment?.amount} from {selectedPayment?.studentName}
-            </DialogContentText>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              onClick={() => setVerifyDialogOpen(false)}
-              color="inherit"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleRejectPayment}
-              color="error"
-              startIcon={<CancelIcon />}
-            >
-              Reject
-            </Button>
-            <Button
-              onClick={handleApprovePayment}
-              variant="contained"
-              color="success"
-              startIcon={<CheckCircleIcon />}
-            >
-              Approve
-            </Button>
-          </DialogActions>
-        </Dialog>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Card elevation={2}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Overall Payment Status
+                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body1">
+                    Total Paid: ₹{accountingData.totalPaid.toLocaleString()} / ₹{accountingData.totalFees.toLocaleString()}
+                  </Typography>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={(accountingData.totalPaid / accountingData.totalFees) * 100}
+                    sx={{ 
+                      mt: 1, 
+                      height: 10, 
+                      borderRadius: 5,
+                      backgroundColor: theme.light,
+                      '& .MuiLinearProgress-bar': {
+                        backgroundColor: theme.primary
+                      }
+                    }}
+                  />
+                  <Typography variant="body2" sx={{ mt: 0.5, color: 'text.secondary' }}>
+                    {((accountingData.totalPaid / accountingData.totalFees) * 100).toFixed(1)}% paid
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+  
+          <Grid item xs={12}>
+            <Card elevation={2}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Installment Breakdown
+                </Typography>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Installment</TableCell>
+                        <TableCell>Due Date</TableCell>
+                        <TableCell>Amount Collected</TableCell>
+                        <TableCell>Expected Amount</TableCell>
+                        <TableCell>Status</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {accountingData.installmentBreakdown.map((amount, index) => {
+                        const expectedAmount = (batch.fees / batch.numberOfInstallments) * students.length;
+                        const percentage = (amount / expectedAmount) * 100;
+                        
+                        return (
+                          <TableRow key={index}>
+                            <TableCell>Installment {index + 1}</TableCell>
+                            <TableCell>
+                              {new Date(batch.installmentDates[index]).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>₹{amount.toLocaleString()}</TableCell>
+                            <TableCell>₹{expectedAmount.toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <LinearProgress 
+                                  variant="determinate" 
+                                  value={percentage}
+                                  sx={{ 
+                                    width: 100,
+                                    height: 8,
+                                    borderRadius: 4,
+                                    backgroundColor: theme.light,
+                                    '& .MuiLinearProgress-bar': {
+                                      backgroundColor: theme.primary
+                                    }
+                                  }}
+                                />
+                                <Typography variant="body2">
+                                  {percentage.toFixed(1)}%
+                                </Typography>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => navigate(`/teacher-dashboard/batch/${batchId}/installment/${index + 1}`)}
+                                  sx={{ color: theme.primary }}
+                                >
+                                  <ArrowForwardIcon />
+                                </IconButton>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
       </Box>
     );
   };
 
   return (
-    <TeacherLayout title={batch.name}>
+    <TeacherLayout 
+      title={batch.name}
+      pendingCount={pendingCount}
+      onNotificationClick={handleNotificationClick}
+      pendingPayments={pendingPayments}
+      onApprovePayment={handleApprovePayment}
+      onRejectPayment={handleRejectPayment}
+      batchId={batchId} // Add this prop
+    >
       <Box sx={{ p: 3 }}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
@@ -744,22 +782,7 @@ export default function BatchPage() {
               >
                 <Tab label="Batch Activity" value="activity" />
                 <Tab label="Students" value="students" />
-                <Tab 
-                  label={
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      Verify Installment
-                      {pendingCount > 0 && (
-                        <Chip
-                          label={pendingCount}
-                          color="error"
-                          size="small"
-                          sx={{ ml: 1, height: 20, minWidth: 20 }}
-                        />
-                      )}
-                    </Box>
-                  } 
-                  value="verify" 
-                />
+                <Tab label="Accounting" value="accounting" />
               </Tabs>
             </Box>
           </Grid>
@@ -1041,11 +1064,11 @@ export default function BatchPage() {
             </Grid>
           )}
 
-          {activeTab === 'verify' && (
+          {activeTab === 'accounting' && (
             <Grid item xs={12}>
               <Card elevation={2}>
                 <CardContent>
-                  <InstallmentVerificationSection />
+                  <BatchAccountingSection />
                 </CardContent>
               </Card>
             </Grid>
