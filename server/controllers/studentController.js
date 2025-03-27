@@ -5,56 +5,72 @@ const { generatePassword } = require('../utils/passwordGenerator');
 const { sendStudentWelcomeEmail } = require('../utils/emailService');
 const { generateUsername } = require('../utils/usernameGenerator');
 const s3 = require('../config/s3Config');
+const Quiz = require('../models/Quiz');
+const Assignment = require('../models/Assignment');
 
 const createStudents = async (students, batchDetails) => {
   const results = [];
   const errors = [];
+  const batchSize = 5; // Process 5 students at a time
 
-  for (let student of students) {
-    try {
-      if (student.exists) {
-        // Handle existing student
-        const existingStudent = await Student.findOne({ email: student.email });
-        
-        if (!existingStudent.teachersInfo.some(
-          info => info.batchId.toString() === student.teachersInfo[0].batchId &&
-                 info.teacherId.toString() === student.teachersInfo[0].teacherId
-        )) {
-          existingStudent.teachersInfo.push({
-            ...student.teachersInfo[0],
-            batchName: batchDetails.name
-          });
-          await existingStudent.save();
+  // Process students in batches
+  for (let i = 0; i < students.length; i += batchSize) {
+    const batch = students.slice(i, i + batchSize);
+    
+    // Process each batch in parallel
+    const batchPromises = batch.map(async (student) => {
+      try {
+        if (student.exists) {
+          const existingStudent = await Student.findOne({ email: student.email });
           
-          // Send email reminder
-          await sendStudentWelcomeEmail(existingStudent, null, batchDetails);
-          results.push(existingStudent);
+          if (!existingStudent.teachersInfo.some(
+            info => info.batchId.toString() === student.teachersInfo[0].batchId &&
+                   info.teacherId.toString() === student.teachersInfo[0].teacherId
+          )) {
+            existingStudent.teachersInfo.push({
+              ...student.teachersInfo[0],
+              batchName: batchDetails.name
+            });
+            await existingStudent.save();
+            
+            // Send email in background
+            sendStudentWelcomeEmail(existingStudent, null, batchDetails).catch(console.error);
+            return { success: true, student: existingStudent };
+          }
+          return { success: false, error: `Student ${student.email} is already in this batch` };
         } else {
-          errors.push(`Student ${student.email} is already in this batch`);
-        }
-      } else {
-        // Generate username from name for new students
-        const username = await generateUsername(student.name);
-        
-        // Create new student with generated username
-        const plainPassword = generatePassword();
-        const newStudent = await Student.create({
-          ...student,
-          username,
-          password: plainPassword,
-          teachersInfo: [{
-            ...student.teachersInfo[0],
-            batchName: batchDetails.name
-          }]
-        });
+          const username = await generateUsername(student.name);
+          const plainPassword = generatePassword();
+          const newStudent = await Student.create({
+            ...student,
+            username,
+            password: plainPassword,
+            teachersInfo: [{
+              ...student.teachersInfo[0],
+              batchName: batchDetails.name
+            }]
+          });
 
-        // Send welcome email with credentials
-        await sendStudentWelcomeEmail(newStudent, plainPassword, batchDetails);
-        results.push(newStudent);
+          // Send email in background
+          sendStudentWelcomeEmail(newStudent, plainPassword, batchDetails).catch(console.error);
+          return { success: true, student: newStudent };
+        }
+      } catch (error) {
+        return { success: false, error: `Error processing student ${student.email}: ${error.message}` };
       }
-    } catch (error) {
-      errors.push(`Error processing student ${student.email}: ${error.message}`);
-    }
+    });
+
+    // Wait for current batch to complete
+    const batchResults = await Promise.all(batchPromises);
+    
+    // Process results
+    batchResults.forEach(result => {
+      if (result.success) {
+        results.push(result.student);
+      } else {
+        errors.push(result.error);
+      }
+    });
   }
 
   return {
@@ -113,43 +129,236 @@ const deleteFromBatch = async (req, res) => {
     try {
         const { studentId, batchId } = req.params;
         const student = await Student.findById(studentId);
+        const batch = await Batch.findById(batchId);
 
-        if (!student) {
-            return res.status(404).json({ message: 'Student not found' });
+        if (!student || !batch) {
+            return res.status(404).json({ message: 'Student or batch not found' });
         }
 
-        // Check how many teachersInfo objects exist
+        // Delete from lockedStudents
+        batch.lockedStudents = batch.lockedStudents.filter(
+            locked => locked.studentId.toString() !== studentId
+        );
+
+        // Remove student payments completely
+        batch.studentPayments = batch.studentPayments.filter(payment => {
+            if (payment.student.toString() === studentId) {
+                // Delete payment receipts from S3 before filtering out
+                payment.payments.forEach(async (p) => {
+                    if (p.s3Key) {
+                        try {
+                            await s3.deleteObject({
+                                Bucket: process.env.AWS_BUCKET_NAME,
+                                Key: p.s3Key
+                            }).promise();
+                        } catch (s3Error) {
+                            console.error('Error deleting payment receipt:', s3Error);
+                        }
+                    }
+                });
+                return false; // Filter out this payment
+            }
+            return true; // Keep other payments
+        });
+
+        // Delete quiz attempts
+        const batchQuizzes = await Quiz.find({ batchId });
+        for (const quiz of batchQuizzes) {
+            quiz.students = quiz.students.filter(
+                attempt => attempt.studentId.toString() !== studentId
+            );
+            await quiz.save();
+        }
+
+        // Delete assignment submissions
+        const batchAssignments = await Assignment.find({ batchId });
+        for (const assignment of batchAssignments) {
+            for (const assignmentItem of assignment.assignments) {
+                // Find submissions to delete from S3
+                const studentSubmissions = assignmentItem.submissions.filter(
+                    sub => sub.studentId.toString() === studentId
+                );
+
+                // Delete files from S3
+                for (const submission of studentSubmissions) {
+                    if (submission.fileName) {
+                        try {
+                            await s3.deleteObject({
+                                Bucket: process.env.AWS_BUCKET_NAME,
+                                Key: `submissions/${submission.fileName}`
+                            }).promise();
+                        } catch (s3Error) {
+                            console.error('Error deleting submission file:', s3Error);
+                        }
+                    }
+                }
+
+                // Remove submissions from assignment
+                assignmentItem.submissions = assignmentItem.submissions.filter(
+                    sub => sub.studentId.toString() !== studentId
+                );
+            }
+            await assignment.save();
+        }
+
+        // Save batch changes
+        await batch.save();
+
+        // Existing deletion logic with added S3 cleanup
         if (student.teachersInfo.length <= 1) {
-            // If only one batch or less, delete the entire student
+            // Delete student's profile picture from S3 if exists
+            if (student.profilePicture?.s3Key) {
+                try {
+                    await s3.deleteObject({
+                        Bucket: process.env.AWS_BUCKET_NAME,
+                        Key: student.profilePicture.s3Key
+                    }).promise();
+                } catch (s3Error) {
+                    console.error('Error deleting profile picture:', s3Error);
+                }
+            }
+
             await Student.findByIdAndDelete(studentId);
-            // Also remove from the batch
             await Batch.findByIdAndUpdate(batchId, {
                 $pull: { students: studentId }
             });
             return res.json({ 
-                message: 'Student deleted completely',
+                message: 'Student and all associated data deleted successfully',
                 type: 'full_delete'
             });
         } else {
-            // Remove only the specific batch info
             student.teachersInfo = student.teachersInfo.filter(
                 info => info.batchId.toString() !== batchId
             );
             await student.save();
             
-            // Also remove from the batch
             await Batch.findByIdAndUpdate(batchId, {
                 $pull: { students: studentId }
             });
             
             return res.json({ 
-                message: 'Student removed from batch only',
+                message: 'Student removed from batch and associated data cleaned up',
                 type: 'batch_remove'
             });
         }
     } catch (error) {
         console.error('Error in deleteFromBatch:', error);
         res.status(500).json({ message: 'Error removing student from batch' });
+    }
+};
+
+// Modify deleteMultipleStudents to include cleanup
+const deleteMultipleStudents = async (studentIds, batchId) => {
+    try {
+        const batch = await Batch.findById(batchId);
+        if (!batch) {
+            throw new Error('Batch not found');
+        }
+
+        // Remove from lockedStudents
+        batch.lockedStudents = batch.lockedStudents.filter(
+            locked => !studentIds.includes(locked.studentId.toString())
+        );
+
+        // Remove student payments completely for all selected students
+        batch.studentPayments = batch.studentPayments.filter(payment => {
+            if (studentIds.includes(payment.student.toString())) {
+                // Delete payment receipts from S3 before filtering out
+                payment.payments.forEach(async (p) => {
+                    if (p.s3Key) {
+                        try {
+                            await s3.deleteObject({
+                                Bucket: process.env.AWS_BUCKET_NAME,
+                                Key: p.s3Key
+                            }).promise();
+                        } catch (s3Error) {
+                            console.error('Error deleting payment receipt:', s3Error);
+                        }
+                    }
+                });
+                return false; // Filter out this payment
+            }
+            return true; // Keep other payments
+        });
+
+        // Delete quiz attempts
+        const batchQuizzes = await Quiz.find({ batchId });
+        for (const quiz of batchQuizzes) {
+            quiz.students = quiz.students.filter(
+                attempt => !studentIds.includes(attempt.studentId.toString())
+            );
+            await quiz.save();
+        }
+
+        // Delete assignment submissions
+        const batchAssignments = await Assignment.find({ batchId });
+        for (const assignment of batchAssignments) {
+            for (const assignmentItem of assignment.assignments) {
+                // Find submissions to delete from S3
+                const studentsSubmissions = assignmentItem.submissions.filter(
+                    sub => studentIds.includes(sub.studentId.toString())
+                );
+
+                // Delete files from S3
+                for (const submission of studentsSubmissions) {
+                    if (submission.fileName) {
+                        try {
+                            await s3.deleteObject({
+                                Bucket: process.env.AWS_BUCKET_NAME,
+                                Key: `submissions/${submission.fileName}`
+                            }).promise();
+                        } catch (s3Error) {
+                            console.error('Error deleting submission file:', s3Error);
+                        }
+                    }
+                }
+
+                // Remove submissions from assignment
+                assignmentItem.submissions = assignmentItem.submissions.filter(
+                    sub => !studentIds.includes(sub.studentId.toString())
+                );
+            }
+            await assignment.save();
+        }
+
+        // Save batch changes
+        await batch.save();
+
+        // Delete students or remove batch info with added S3 cleanup
+        for (const studentId of studentIds) {
+            const student = await Student.findById(studentId);
+            if (student) {
+                if (student.teachersInfo.length <= 1) {
+                    // Delete student's profile picture from S3 if exists
+                    if (student.profilePicture?.s3Key) {
+                        try {
+                            await s3.deleteObject({
+                                Bucket: process.env.AWS_BUCKET_NAME,
+                                Key: student.profilePicture.s3Key
+                            }).promise();
+                        } catch (s3Error) {
+                            console.error('Error deleting profile picture:', s3Error);
+                        }
+                    }
+                    await Student.findByIdAndDelete(studentId);
+                } else {
+                    student.teachersInfo = student.teachersInfo.filter(
+                        info => info.batchId.toString() !== batchId
+                    );
+                    await student.save();
+                }
+            }
+        }
+
+        // Remove students from batch
+        await Batch.findByIdAndUpdate(batchId, {
+            $pull: { students: { $in: studentIds } }
+        });
+
+        return true;
+    } catch (error) {
+        console.error('Error in deleteMultipleStudents:', error);
+        throw error;
     }
 };
 
@@ -334,6 +543,7 @@ module.exports = {
     checkEmail,
     getStudentsByBatch,
     deleteFromBatch,
+    deleteMultipleStudents,
     getStudentBatches,
     getStudentProfile,
     updateStudentProfile,

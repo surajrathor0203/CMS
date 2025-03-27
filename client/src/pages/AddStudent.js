@@ -143,13 +143,23 @@ const AddStudent = () => {
         subject: userData.user.subject
       };
 
-      // Update progress as each student is processed
-      const updateProgress = (count) => {
-        setProcessedCount(count);
-      };
+      // Start progress update interval
+      const progressInterval = setInterval(() => {
+        setProcessedCount(prev => {
+          if (prev < students.length) {
+            return prev + 1;
+          }
+          clearInterval(progressInterval);
+          return prev;
+        });
+      }, 500);
 
       const response = await createMultipleStudents(studentsData, batchDetails);
       
+      // Clear interval when done
+      clearInterval(progressInterval);
+      setProcessedCount(students.length);
+
       if (response.success) {
         setSnackbar({
           open: true,

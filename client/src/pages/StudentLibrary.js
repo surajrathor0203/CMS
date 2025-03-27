@@ -14,6 +14,7 @@ import { getAllBooks, getBookAccessUrl } from '../services/api';
 import { getUserFromCookie } from '../utils/cookies';
 import StudentLayout from '../components/StudentLayout';
 import { toast } from 'react-toastify';
+import Loading from '../components/Loading';
 
 const theme = {
   primary: '#2e7d32',
@@ -180,15 +181,18 @@ const BookCard = ({ book, onOpen }) => {
 export default function StudentLibrary() {
   const [books, setBooks] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchBooks = async () => {
+      setLoading(true);
       try {
         const response = await getAllBooks();
         setBooks(response.data);
       } catch (error) {
         toast.error('Failed to fetch books');
       }
+      setLoading(false);
     };
     fetchBooks();
   }, []);
@@ -215,46 +219,50 @@ export default function StudentLibrary() {
 
   return (
     <StudentLayout title="Library">
-      <Box>
-        <TextField
-          fullWidth
-          variant="outlined"
-          placeholder="Search books by title, author, subject or teacher..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: <Search size={20} style={{ marginRight: 8 }} />,
-          }}
-          sx={{ 
-            mb: 4,
-            '& .MuiOutlinedInput-root': {
-              '&.Mui-focused fieldset': {
-                borderColor: theme.primary,
+      {loading ? (
+        <Loading message="Loading library..." />
+      ) : (
+        <Box>
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Search books by title, author, subject or teacher..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            InputProps={{
+              startAdornment: <Search size={20} style={{ marginRight: 8 }} />,
+            }}
+            sx={{ 
+              mb: 4,
+              '& .MuiOutlinedInput-root': {
+                '&.Mui-focused fieldset': {
+                  borderColor: theme.primary,
+                },
               },
-            },
-          }}
-        />
+            }}
+          />
 
-        <Grid container spacing={3}>
-          {filteredBooks.map((book) => (
-            <Grid item xs={12} key={book._id}>
-              <BookCard 
-                book={book} 
-                onOpen={handleOpenBook}
-              />
-            </Grid>
-          ))}
-          {filteredBooks.length === 0 && (
-            <Grid item xs={12}>
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography variant="h6" color="text.secondary">
-                  No books found. Try adjusting your search.
-                </Typography>
-              </Box>
-            </Grid>
-          )}
-        </Grid>
-      </Box>
+          <Grid container spacing={3}>
+            {filteredBooks.map((book) => (
+              <Grid item xs={12} key={book._id}>
+                <BookCard 
+                  book={book} 
+                  onOpen={handleOpenBook}
+                />
+              </Grid>
+            ))}
+            {filteredBooks.length === 0 && (
+              <Grid item xs={12}>
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="h6" color="text.secondary">
+                    No books found. Try adjusting your search.
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
+          </Grid>
+        </Box>
+      )}
     </StudentLayout>
   );
 }

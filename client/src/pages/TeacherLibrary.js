@@ -13,13 +13,15 @@ import {
   DialogActions,
   Chip,
   Stack,
-  Divider
+  Divider,
+  CircularProgress,
 } from '@mui/material';
 import { Upload, Trash2, FileText, Search } from 'lucide-react';
 import { uploadBook, getBooks, getAllBooks, deleteBook, getBookAccessUrl } from '../services/api';
 import { getUserFromCookie } from '../utils/cookies';
 import TeacherLayout from '../components/TeacherLayout';
 import { toast } from 'react-toastify';
+import Loading from '../components/Loading';
 
 const theme = {
     primary: '#2e7d32', // dark green
@@ -223,6 +225,8 @@ export default function TeacherLibrary() {
   });
   const [tagInput, setTagInput] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // Add this state
+  const [loading, setLoading] = useState(true);
+  const [uploadLoading, setUploadLoading] = useState(false);
 
   const userData = getUserFromCookie();
   const teacherId = userData?.user?.id;
@@ -247,8 +251,10 @@ export default function TeacherLibrary() {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       await fetchAllBooks();
       await fetchMyBooks();
+      setLoading(false);
     };
     fetchData();
   }, [teacherId]);
@@ -259,6 +265,8 @@ export default function TeacherLibrary() {
         toast.error('Please fill in all required fields');
         return;
       }
+
+      setUploadLoading(true);
 
       // Add teacher name to upload data
       const uploadDataWithTeacher = {
@@ -286,6 +294,8 @@ export default function TeacherLibrary() {
     } catch (error) {
       console.error('Upload error:', error);
       toast.error(error.message || 'Failed to upload book');
+    } finally {
+      setUploadLoading(false);
     }
   };
 
@@ -338,238 +348,252 @@ export default function TeacherLibrary() {
 
   return (
     <TeacherLayout title="Library">
-      <Box>
-        <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Button
-            variant="contained"
-            startIcon={<Upload />}
-            onClick={() => setOpenUpload(true)}
-            sx={{
-              bgcolor: theme.primary,
-              '&:hover': {
-                bgcolor: theme.light,
-              }
-            }}
-          >
-            Upload Book
-          </Button>
-        </Box>
-
-        <TextField
-          fullWidth
-          variant="outlined"
-          placeholder="Search books by title, author, subject or uploader..." // Updated placeholder
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: <Search size={20} style={{ marginRight: 8 }} />,
-          }}
-          sx={{ 
-            mb: 4,
-            '& .MuiOutlinedInput-root': {
-              '&.Mui-focused fieldset': {
-                borderColor: theme.primary,
-              },
-            },
-          }}
-        />
-
-        {/* Add Tab Selection */}
-        <Box sx={{ mb: 4, display: 'flex', gap: 2 }}>
-          <Button
-            variant={activeTab === 'all' ? 'contained' : 'outlined'}
-            onClick={() => setActiveTab('all')}
-            sx={{
-              bgcolor: activeTab === 'all' ? theme.primary : 'transparent',
-              '&:hover': {
-                bgcolor: activeTab === 'all' ? theme.light : 'rgba(46, 125, 50, 0.1)',
-              }
-            }}
-          >
-            All Books
-          </Button>
-          <Button
-            variant={activeTab === 'my-uploads' ? 'contained' : 'outlined'}
-            onClick={() => setActiveTab('my-uploads')}
-            sx={{
-              bgcolor: activeTab === 'my-uploads' ? theme.primary : 'transparent',
-              '&:hover': {
-                bgcolor: activeTab === 'my-uploads' ? theme.light : 'rgba(46, 125, 50, 0.1)',
-              }
-            }}
-          >
-            My Uploads
-          </Button>
-        </Box>
-
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          {activeTab === 'all' ? 'All Books' : 'My Uploads'}
-        </Typography>
-
-        <Grid container spacing={3}>
-          {filteredBooks.map((book) => (
-            <Grid item xs={12} key={book._id}>
-              <BookCard 
-                book={book} 
-                onDelete={activeTab === 'my-uploads' ? handleDelete : null}
-                onOpen={handleOpenBook}
-              />
-            </Grid>
-          ))}
-          {filteredBooks.length === 0 && (
-            <Grid item xs={12}>
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography variant="h6" color="text.secondary">
-                  {activeTab === 'my-uploads' 
-                    ? "You haven't uploaded any books yet."
-                    : "No books found. Adjust your search or try different filters."}
-                </Typography>
-              </Box>
-            </Grid>
-          )}
-        </Grid>
-
-        <Dialog open={openUpload} onClose={() => setOpenUpload(false)} maxWidth="sm" fullWidth>
-          <DialogTitle sx={{ bgcolor: theme.background }}>Upload New Book</DialogTitle>
-          <DialogContent>
-            <TextField
-              fullWidth
-              required
-              label="Book Title"
-              margin="normal"
-              value={uploadData.title}
-              onChange={(e) => setUploadData({ ...uploadData, title: e.target.value })}
-            />
-            <TextField
-              fullWidth
-              required
-              label="Author Name"
-              margin="normal"
-              value={uploadData.authorName}
-              onChange={(e) => setUploadData({ ...uploadData, authorName: e.target.value })}
-            />
-            
-            {/* Subject and Tags in same row with better alignment */}
-            <Box sx={{ 
-              display: 'flex', 
-              gap: 2, 
-              mt: 2,
-              alignItems: 'flex-start' // Align items at the top
-            }}>
-              <Box sx={{ flex: 1 }}>
-                <TextField
-                  fullWidth
-                  required
-                  label="Subject"
-                  size="small"
-                  value={uploadData.subject}
-                  onChange={(e) => setUploadData({ ...uploadData, subject: e.target.value })}
-                />
-              </Box>
-              <Box sx={{ flex: 2 }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Tags (Press Enter to add)"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyPress={handleAddTag}
-                />
-                <Stack 
-                  direction="row" 
-                  spacing={0.5} 
-                  sx={{ 
-                    mt: 0.5,
-                    flexWrap: 'wrap',
-                    gap: 0.5,
-                    minHeight: 32
-                  }}
-                >
-                  {uploadData.authorTags.map((tag, index) => (
-                    <Chip
-                      key={index}
-                      label={tag}
-                      onDelete={() => handleRemoveTag(tag)}
-                      color="primary"
-                      variant="outlined"
-                      size="small"
-                    />
-                  ))}
-                </Stack>
-              </Box>
-            </Box>
-
-            {/* Description field */}
-            <TextField
-              fullWidth
-              label="Book Description"
-              margin="normal"
-              multiline
-              rows={4}
-              value={uploadData.description}
-              onChange={(e) => setUploadData({ ...uploadData, description: e.target.value })}
-              placeholder="Enter a detailed description of the book..."
-              sx={{ mt: 3 }}
-            />
-
-            <Divider sx={{ my: 2 }} />
-            
+      {loading ? (
+        <Loading message="Loading library..." />
+      ) : (
+        <Box>
+          <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Button
-              variant="outlined"
-              component="label"
-              fullWidth
-              sx={{ mt: 2 }}
-            >
-              Upload Cover Image (Optional)
-              <input
-                type="file"
-                hidden
-                accept="image/*"
-                onChange={(e) => setUploadData({ ...uploadData, coverImage: e.target.files[0] })}
-              />
-            </Button>
-            {uploadData.coverImage && (
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                Cover image: {uploadData.coverImage.name}
-              </Typography>
-            )}
-            <Button
-              variant="outlined"
-              component="label"
-              fullWidth
-              sx={{ mt: 2 }}
-            >
-              Upload PDF Book (Required)
-              <input
-                type="file"
-                hidden
-                accept=".pdf"
-                onChange={(e) => setUploadData({ ...uploadData, file: e.target.files[0] })}
-              />
-            </Button>
-            {uploadData.file && (
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                Book file: {uploadData.file.name}
-              </Typography>
-            )}
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenUpload(false)}>Cancel</Button>
-            <Button 
-              onClick={handleUpload} 
               variant="contained"
+              startIcon={<Upload />}
+              onClick={() => setOpenUpload(true)}
               sx={{
                 bgcolor: theme.primary,
                 '&:hover': {
                   bgcolor: theme.light,
                 }
               }}
+              disabled={uploadLoading}
             >
-              Upload
+              Upload Book
             </Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
+          </Box>
+
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Search books by title, author, subject or uploader..." // Updated placeholder
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            InputProps={{
+              startAdornment: <Search size={20} style={{ marginRight: 8 }} />,
+            }}
+            sx={{ 
+              mb: 4,
+              '& .MuiOutlinedInput-root': {
+                '&.Mui-focused fieldset': {
+                  borderColor: theme.primary,
+                },
+              },
+            }}
+          />
+
+          {/* Add Tab Selection */}
+          <Box sx={{ mb: 4, display: 'flex', gap: 2 }}>
+            <Button
+              variant={activeTab === 'all' ? 'contained' : 'outlined'}
+              onClick={() => setActiveTab('all')}
+              sx={{
+                bgcolor: activeTab === 'all' ? theme.primary : 'transparent',
+                '&:hover': {
+                  bgcolor: activeTab === 'all' ? theme.light : 'rgba(46, 125, 50, 0.1)',
+                }
+              }}
+            >
+              All Books
+            </Button>
+            <Button
+              variant={activeTab === 'my-uploads' ? 'contained' : 'outlined'}
+              onClick={() => setActiveTab('my-uploads')}
+              sx={{
+                bgcolor: activeTab === 'my-uploads' ? theme.primary : 'transparent',
+                '&:hover': {
+                  bgcolor: activeTab === 'my-uploads' ? theme.light : 'rgba(46, 125, 50, 0.1)',
+                }
+              }}
+            >
+              My Uploads
+            </Button>
+          </Box>
+
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            {activeTab === 'all' ? 'All Books' : 'My Uploads'}
+          </Typography>
+
+          <Grid container spacing={3}>
+            {filteredBooks.map((book) => (
+              <Grid item xs={12} key={book._id}>
+                <BookCard 
+                  book={book} 
+                  onDelete={activeTab === 'my-uploads' ? handleDelete : null}
+                  onOpen={handleOpenBook}
+                />
+              </Grid>
+            ))}
+            {filteredBooks.length === 0 && (
+              <Grid item xs={12}>
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <Typography variant="h6" color="text.secondary">
+                    {activeTab === 'my-uploads' 
+                      ? "You haven't uploaded any books yet."
+                      : "No books found. Adjust your search or try different filters."}
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
+          </Grid>
+
+          <Dialog open={openUpload} onClose={() => setOpenUpload(false)} maxWidth="sm" fullWidth>
+            <DialogTitle sx={{ bgcolor: theme.background }}>Upload New Book</DialogTitle>
+            <DialogContent>
+              <TextField
+                fullWidth
+                required
+                label="Book Title"
+                margin="normal"
+                value={uploadData.title}
+                onChange={(e) => setUploadData({ ...uploadData, title: e.target.value })}
+                disabled={uploadLoading}
+              />
+              <TextField
+                fullWidth
+                required
+                label="Author Name"
+                margin="normal"
+                value={uploadData.authorName}
+                onChange={(e) => setUploadData({ ...uploadData, authorName: e.target.value })}
+                disabled={uploadLoading}
+              />
+              
+              {/* Subject and Tags in same row with better alignment */}
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 2, 
+                mt: 2,
+                alignItems: 'flex-start' // Align items at the top
+              }}>
+                <Box sx={{ flex: 1 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Subject"
+                    size="small"
+                    value={uploadData.subject}
+                    onChange={(e) => setUploadData({ ...uploadData, subject: e.target.value })}
+                    disabled={uploadLoading}
+                  />
+                </Box>
+                <Box sx={{ flex: 2 }}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Tags (Press Enter to add)"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyPress={handleAddTag}
+                    disabled={uploadLoading}
+                  />
+                  <Stack 
+                    direction="row" 
+                    spacing={0.5} 
+                    sx={{ 
+                      mt: 0.5,
+                      flexWrap: 'wrap',
+                      gap: 0.5,
+                      minHeight: 32
+                    }}
+                  >
+                    {uploadData.authorTags.map((tag, index) => (
+                      <Chip
+                        key={index}
+                        label={tag}
+                        onDelete={() => handleRemoveTag(tag)}
+                        color="primary"
+                        variant="outlined"
+                        size="small"
+                        disabled={uploadLoading}
+                      />
+                    ))}
+                  </Stack>
+                </Box>
+              </Box>
+
+              {/* Description field */}
+              <TextField
+                fullWidth
+                label="Book Description"
+                margin="normal"
+                multiline
+                rows={4}
+                value={uploadData.description}
+                onChange={(e) => setUploadData({ ...uploadData, description: e.target.value })}
+                placeholder="Enter a detailed description of the book..."
+                sx={{ mt: 3 }}
+                disabled={uploadLoading}
+              />
+
+              <Divider sx={{ my: 2 }} />
+              
+              <Button
+                variant="outlined"
+                component="label"
+                fullWidth
+                sx={{ mt: 2 }}
+                disabled={uploadLoading}
+              >
+                Upload Cover Image (Optional)
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={(e) => setUploadData({ ...uploadData, coverImage: e.target.files[0] })}
+                />
+              </Button>
+              {uploadData.coverImage && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  Cover image: {uploadData.coverImage.name}
+                </Typography>
+              )}
+              <Button
+                variant="outlined"
+                component="label"
+                fullWidth
+                sx={{ mt: 2 }}
+                disabled={uploadLoading}
+              >
+                Upload PDF Book (Required)
+                <input
+                  type="file"
+                  hidden
+                  accept=".pdf"
+                  onChange={(e) => setUploadData({ ...uploadData, file: e.target.files[0] })}
+                />
+              </Button>
+              {uploadData.file && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  Book file: {uploadData.file.name}
+                </Typography>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setOpenUpload(false)} disabled={uploadLoading}>Cancel</Button>
+              <Button 
+                onClick={handleUpload} 
+                variant="contained"
+                sx={{
+                  bgcolor: theme.primary,
+                  '&:hover': {
+                    bgcolor: theme.light,
+                  }
+                }}
+                disabled={uploadLoading}
+              >
+                {uploadLoading ? <CircularProgress size={24} /> : 'Upload'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </Box>
+      )}
     </TeacherLayout>
   );
 }

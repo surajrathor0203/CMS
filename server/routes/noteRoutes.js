@@ -17,10 +17,13 @@ const upload = multer({
 router.post('/upload', auth, upload.single('file'), async (req, res) => {
   try {
     const file = req.file;
-    const { batchId } = req.body;
+    const { title, batchId } = req.body;
 
-    if (!file) {
-      return res.status(400).json({ message: 'No file uploaded' });
+    if (!file || !title || !batchId) {
+      return res.status(400).json({
+        success: false,
+        message: 'File, title and batchId are required'
+      });
     }
 
     // Create unique file name
@@ -51,7 +54,7 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
 
     // Add new note item to the notes array with s3Key
     note.notes.push({
-      title: file.originalname,
+      title,
       fileUrl: s3Upload.Location, // Use the S3 URL directly
       s3Key: fileName // Store the S3 key
     });
@@ -59,13 +62,16 @@ router.post('/upload', auth, upload.single('file'), async (req, res) => {
     await note.save();
 
     res.status(201).json({
-      message: 'Note uploaded successfully',
-      note
+      success: true,
+      data: note
     });
 
   } catch (error) {
     console.error('Error uploading note:', error);
-    res.status(500).json({ message: 'Error uploading note', error: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error uploading note'
+    });
   }
 });
 

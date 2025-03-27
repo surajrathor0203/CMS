@@ -7,6 +7,10 @@ const { protect } = require('../middleware/authMiddleware'); // Add this import
 const s3 = require('../config/s3Config');
 const multer = require('multer');
 const upload = multer();
+const Quiz = require('../models/Quiz');
+const Assignment = require('../models/Assignment');
+const Note = require('../models/Note');
+const Student = require('../models/Student');
 
 // Get all batches for a teacher
 router.get('/', auth, async (req, res) => {
@@ -235,8 +239,6 @@ router.put('/:id', upload.single('qrCode'), async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
   try {
     const teacherId = req.query.teacherId;
-    
-    // First get the batch to get the S3 key
     const batch = await Batch.findOne({ 
       _id: req.params.id, 
       teacher: teacherId 
@@ -249,7 +251,7 @@ router.delete('/:id', auth, async (req, res) => {
       });
     }
 
-    // Delete file from S3 if exists
+    // 1. Delete QR code and payment receipts from S3
     if (batch.payment?.s3Key) {
       try {
         await s3.deleteObject({
@@ -261,13 +263,115 @@ router.delete('/:id', auth, async (req, res) => {
       }
     }
 
-    // Delete the batch
+    for (const studentPayment of batch.studentPayments) {
+      for (const payment of studentPayment.payments) {
+        if (payment.s3Key) {
+          try {
+            await s3.deleteObject({
+              Bucket: process.env.AWS_BUCKET_NAME,
+              Key: payment.s3Key
+            }).promise();
+          } catch (error) {
+            console.error('Error deleting payment receipt:', error);
+          }
+        }
+      }
+    }
+
+    // 2. Delete all assignments and their files
+    const assignments = await Assignment.find({ batchId: batch._id });
+    for (const assignment of assignments) {
+      for (const assignmentItem of assignment.assignments) {
+        // Delete main assignment file if exists
+        if (assignmentItem.fileName) {
+          try {
+            await s3.deleteObject({
+              Bucket: process.env.AWS_BUCKET_NAME,
+              Key: `assignments/${assignmentItem.fileName}`
+            }).promise();
+          } catch (error) {
+            console.error('Error deleting assignment file:', error);
+          }
+        }
+
+        // Delete submission files
+        if (assignmentItem.submissions) {
+          for (const submission of assignmentItem.submissions) {
+            if (submission.fileName) {
+              try {
+                await s3.deleteObject({
+                  Bucket: process.env.AWS_BUCKET_NAME,
+                  Key: `submissions/${submission.fileName}`
+                }).promise();
+              } catch (error) {
+                console.error('Error deleting submission file:', error);
+              }
+            }
+          }
+        }
+      }
+      await Assignment.findByIdAndDelete(assignment._id);
+    }
+
+    // 3. Delete all notes and their files
+    const notes = await Note.find({ batchId: batch._id });
+    for (const note of notes) {
+      for (const noteItem of note.notes) {
+        if (noteItem.s3Key) {
+          try {
+            await s3.deleteObject({
+              Bucket: process.env.AWS_BUCKET_NAME,
+              Key: noteItem.s3Key
+            }).promise();
+          } catch (error) {
+            console.error('Error deleting note file:', error);
+          }
+        }
+      }
+      await Note.findByIdAndDelete(note._id);
+    }
+
+    // 4. Delete all quizzes
+    await Quiz.deleteMany({ batchId: batch._id });
+
+    // 5. Remove batch reference from all students
+    const students = await Student.find({ 'teachersInfo.batchId': batch._id });
+    for (const student of students) {
+      if (student.teachersInfo.length <= 1) {
+        // If this is the student's only batch, delete the student
+        if (student.profilePicture?.s3Key) {
+          try {
+            await s3.deleteObject({
+              Bucket: process.env.AWS_BUCKET_NAME,
+              Key: student.profilePicture.s3Key
+            }).promise();
+          } catch (error) {
+            console.error('Error deleting student profile picture:', error);
+          }
+        }
+        await Student.findByIdAndDelete(student._id);
+      } else {
+        // Remove only this batch from student's teachersInfo
+        student.teachersInfo = student.teachersInfo.filter(
+          info => info.batchId.toString() !== batch._id.toString()
+        );
+        await student.save();
+      }
+    }
+
+    // 6. Finally delete the batch
     await Batch.findByIdAndDelete(batch._id);
 
-    res.json({ success: true, message: 'Batch deleted successfully' });
+    res.json({ 
+      success: true, 
+      message: 'Batch and all associated data deleted successfully' 
+    });
   } catch (error) {
     console.error('Error deleting batch:', error);
-    res.status(500).json({ success: false, message: 'Error deleting batch' });
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error deleting batch and associated data' 
+    });
   }
 });
 

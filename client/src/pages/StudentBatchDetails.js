@@ -44,7 +44,8 @@ import {
   Download as DownloadIcon,
   CloudUpload as UploadIcon,
   Lock as LockIcon,
-  LockOpen as UnlockIcon
+  LockOpen as UnlockIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { toast } from 'react-toastify';
@@ -59,6 +60,8 @@ const theme = {
     primary: '#333',
     secondary: '#666'
   },
+  success: '#4caf50', // Add success color
+  error: '#f44336',   // Add error color
   borderRadius: 12,
   shadow: '0 4px 6px rgba(0,0,0,0.1)'
 };
@@ -147,6 +150,71 @@ const VisuallyHiddenInput = styled('input')({
   whiteSpace: 'nowrap',
   width: 1,
 });
+
+const ProgressCard = styled(StyledCard)(({ theme }) => ({
+  background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+  borderRadius: theme.spacing(2),
+  position: 'relative',
+  overflow: 'hidden',
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '4px',
+    background: 'linear-gradient(90deg, #2196f3, #00bcd4)',
+  }
+}));
+
+const CircularProgressBox = styled(Box)(({ theme }) => ({
+  position: 'relative',
+  display: 'inline-flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginBottom: theme.spacing(2),
+}));
+
+const ProgressValue = styled(Typography)(({ theme }) => ({
+  position: 'absolute',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '1.5rem',
+  fontWeight: 'bold',
+  color: theme.palette.primary.main,
+}));
+
+const ActivityTimeline = styled(List)(({ theme }) => ({
+  position: 'relative',
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    left: '16px',
+    top: 0,
+    bottom: 0,
+    width: '2px',
+    background: theme.palette.divider,
+    zIndex: 1,
+  }
+}));
+
+const TimelineItem = styled(ListItem)(({ theme }) => ({
+  position: 'relative',
+  paddingLeft: theme.spacing(5),
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    left: '12px',
+    top: '50%',
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    background: theme.palette.primary.main,
+    transform: 'translateY(-50%)',
+    zIndex: 2,
+  }
+}));
 
 export default function StudentBatchDetails() {
   const { batchId } = useParams();
@@ -275,17 +343,30 @@ export default function StudentBatchDetails() {
             {notes.map((note) => (
               <ListItem
                 key={note._id}
+                onClick={() => window.open(note.fileUrl, '_blank')}
+                sx={{
+                  cursor: 'pointer',
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                  },
+                }}
                 secondaryAction={
                   <IconButton 
                     edge="end" 
-                    onClick={() => window.open(note.fileUrl, '_blank')}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent the ListItem click
+                      window.open(note.fileUrl, '_blank');
+                    }}
                     title="Download Note"
                   >
                     <DownloadIcon />
                   </IconButton>
                 }
               >
-                <ListItemText primary={note.title} />
+                <ListItemText 
+                  primary={note.title}
+                  // secondary={new Date(note.uploadedAt).toLocaleDateString()}
+                />
               </ListItem>
             ))}
           </List>
@@ -372,7 +453,9 @@ export default function StudentBatchDetails() {
         score: studentAttempt.score,
         totalQuestions: studentAttempt.totalQuestions,
         correctAnswers: studentAttempt.correctAnswers,
-        submittedAt: studentAttempt.submittedAt
+        submittedAt: studentAttempt.submittedAt,
+        questions: quiz.questions,  // Add questions
+        answers: studentAttempt.answers || []  // Add student's answers
       });
       setShowScoreDialog(true);
       return;
@@ -484,27 +567,123 @@ const QuizCard = ({ quiz }) => {
   );
 };
 
-const QuizResultDialog = () => (
-  <Dialog open={showScoreDialog} onClose={() => setShowScoreDialog(false)}>
-    <DialogTitle>{selectedQuizResult?.title} - Results</DialogTitle>
-    <DialogContent>
-      <Box sx={{ py: 2 }}>
-        <Typography variant="h6" gutterBottom>
-          Score: {selectedQuizResult?.correctAnswers} out of {selectedQuizResult?.totalQuestions}
-        </Typography>
-        <Typography variant="body1">
-          Percentage: {((selectedQuizResult?.correctAnswers / selectedQuizResult?.totalQuestions) * 100).toFixed(2)}%
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          Submitted: {new Date(selectedQuizResult?.submittedAt).toLocaleString()}
-        </Typography>
-      </Box>
-    </DialogContent>
-    <DialogActions>
-      <Button onClick={() => setShowScoreDialog(false)}>Close</Button>
-    </DialogActions>
-  </Dialog>
-);
+const QuizResultDialog = () => {
+  const [showReview, setShowReview] = useState(false);
+
+  return (
+    <Dialog 
+      open={showScoreDialog} 
+      onClose={() => setShowScoreDialog(false)}
+      maxWidth={showReview ? "md" : "xs"}
+      fullWidth
+    >
+      {!showReview ? (
+        <>
+          <DialogTitle>{selectedQuizResult?.title} - Results</DialogTitle>
+          <DialogContent>
+            <Box sx={{ py: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Score: {selectedQuizResult?.correctAnswers} out of {selectedQuizResult?.totalQuestions}
+              </Typography>
+              <Typography variant="body1">
+                Percentage: {((selectedQuizResult?.correctAnswers / selectedQuizResult?.totalQuestions) * 100).toFixed(2)}%
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                Submitted: {new Date(selectedQuizResult?.submittedAt).toLocaleString()}
+              </Typography>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button 
+              onClick={() => setShowReview(true)}
+              color="primary"
+            >
+              Review Quiz
+            </Button>
+            <Button onClick={() => setShowScoreDialog(false)}>Close</Button>
+          </DialogActions>
+        </>
+      ) : (
+        <>
+          <DialogTitle>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="h6">{selectedQuizResult?.title} - Review</Typography>
+              <IconButton onClick={() => setShowReview(false)} size="small">
+                <ArrowBackIcon />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ py: 2 }}>
+              {selectedQuizResult?.questions?.map((question, index) => (
+                <Box key={index} sx={{ mb: 4 }}>
+                  <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+                    {index + 1}. {question.question}
+                  </Typography>
+                  <Box sx={{ pl: 2 }}>
+                    {question.options.map((option, optIndex) => (
+                      <Box
+                        key={optIndex}
+                        sx={{
+                          p: 1,
+                          mb: 1,
+                          borderRadius: 1,
+                          border: '1px solid',
+                          borderColor: 
+                            selectedQuizResult.answers[index] === optIndex
+                              ? question.correctAnswer === optIndex
+                                ? 'success.main'
+                                : 'error.main'
+                              : question.correctAnswer === optIndex
+                                ? 'success.main'
+                                : 'divider',
+                          bgcolor: 
+                            selectedQuizResult.answers[index] === optIndex
+                              ? question.correctAnswer === optIndex
+                                ? 'success.lighter'
+                                : 'error.lighter'
+                              : question.correctAnswer === optIndex
+                                ? 'success.lighter'
+                                : 'transparent',
+                        }}
+                      >
+                        <Typography variant="body2">
+                          {option}
+                          {selectedQuizResult.answers[index] === optIndex && (
+                            <Chip 
+                              label="Your Answer" 
+                              size="small" 
+                              color={question.correctAnswer === optIndex ? "success" : "error"}
+                              sx={{ ml: 1 }}
+                            />
+                          )}
+                          {question.correctAnswer === optIndex && (
+                            <Chip 
+                              label="Correct Answer" 
+                              size="small" 
+                              color="success"
+                              sx={{ ml: 1 }}
+                            />
+                          )}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowReview(false)} color="primary">
+              Back to Results
+            </Button>
+            <Button onClick={() => setShowScoreDialog(false)}>Close</Button>
+          </DialogActions>
+        </>
+      )}
+    </Dialog>
+  );
+};
 
 const ExpiredQuizDialog = () => (
   <Dialog open={showExpiredDialog} onClose={() => setShowExpiredDialog(false)}>
@@ -993,50 +1172,92 @@ const QuizProgressSection = ({ quizzes }) => {
 
   return (
     <Box sx={{ mb: 4 }}>
-      <Typography variant="h6" gutterBottom>
-        Quiz Performance
+      <Typography variant="h5" gutterBottom fontWeight="bold" color="primary">
+        Quiz Performance Overview
       </Typography>
       <Grid container spacing={3}>
+        {/* New Total Quizzes Card */}
         <Grid item xs={12} md={4}>
-          <StyledCard>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+          <ProgressCard>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Box sx={{ position: 'relative', display: 'inline-block', mb: 2 }}>
+                <Typography 
+                  variant="h2" 
+                  color="primary" 
+                  sx={{ 
+                    fontWeight: 'bold',
+                    background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}
+                >
+                  {totalQuizzes}
+                </Typography>
+              </Box>
+              <Typography variant="h6" gutterBottom>
                 Total Quizzes
               </Typography>
-              <Typography variant="h4">
-                {totalQuizzes}
+              <Typography variant="body2" color="textSecondary">
+                {attemptedQuizzes} attempted, {totalQuizzes - attemptedQuizzes} remaining
               </Typography>
             </CardContent>
-          </StyledCard>
+          </ProgressCard>
         </Grid>
+
+        {/* Existing Completion Rate Card */}
         <Grid item xs={12} md={4}>
-          <StyledCard>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+          <ProgressCard>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <CircularProgressBox>
+                <CircularProgress
+                  variant="determinate"
+                  value={parseFloat(quizProgress)}
+                  size={120}
+                  thickness={4}
+                  sx={{ color: theme.primary }}
+                />
+                <ProgressValue sx={{ color: theme.primary }}>
+                  {quizProgress}%
+                </ProgressValue>
+              </CircularProgressBox>
+              <Typography variant="h6" gutterBottom>
                 Completion Rate
-              </Typography>
-              <Typography variant="h4">
-                {quizProgress}%
               </Typography>
               <Typography variant="body2" color="textSecondary">
                 {attemptedQuizzes} of {totalQuizzes} quizzes completed
               </Typography>
             </CardContent>
-          </StyledCard>
+          </ProgressCard>
         </Grid>
+        
+        {/* Existing Average Score Card */}
         <Grid item xs={12} md={4}>
-          <StyledCard>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+          <ProgressCard>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <CircularProgressBox>
+                <CircularProgress
+                  variant="determinate"
+                  value={parseFloat(getAverageScore())}
+                  size={120}
+                  thickness={4}
+                  sx={{ color: theme.success }}
+                />
+                <ProgressValue sx={{ color: theme.success }}>
+                  {getAverageScore()}%
+                </ProgressValue>
+              </CircularProgressBox>
+              <Typography variant="h6" gutterBottom>
                 Average Score
               </Typography>
-              <Typography variant="h4">
-                {getAverageScore()}%
+              <Typography variant="body2" color="textSecondary">
+                Across all attempted quizzes
               </Typography>
             </CardContent>
-          </StyledCard>
+          </ProgressCard>
         </Grid>
       </Grid>
+
+      {/* Rest of the existing QuizProgressSection code... */}
     </Box>
   );
 };
@@ -1059,7 +1280,7 @@ const AssignmentProgressSection = ({ assignments }) => {
       return submission !== undefined;
     });
 
-    if (gradedAssignments.length === 0) return 'N/A';
+    if (gradedAssignments.length === 0) return 0;
 
     const totalGrade = gradedAssignments.reduce((acc, assignment) => {
       const submission = assignment.submissions.find(
@@ -1073,50 +1294,139 @@ const AssignmentProgressSection = ({ assignments }) => {
 
   return (
     <Box sx={{ mb: 4 }}>
-      <Typography variant="h6" gutterBottom>
-        Assignment Performance
+      <Typography variant="h5" gutterBottom fontWeight="bold" color="primary">
+        Assignment Performance Overview
       </Typography>
       <Grid container spacing={3}>
+        {/* Total Assignments Card */}
         <Grid item xs={12} md={4}>
-          <StyledCard>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+          <ProgressCard>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <Box sx={{ position: 'relative', display: 'inline-block', mb: 2 }}>
+                <Typography 
+                  variant="h2" 
+                  color="primary" 
+                  sx={{ 
+                    fontWeight: 'bold',
+                    background: 'linear-gradient(45deg, #FF6B6B 30%, #FF8E53 90%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}
+                >
+                  {totalAssignments}
+                </Typography>
+              </Box>
+              <Typography variant="h6" gutterBottom>
                 Total Assignments
               </Typography>
-              <Typography variant="h4">
-                {totalAssignments}
+              <Typography variant="body2" color="textSecondary">
+                {submittedAssignments} submitted, {totalAssignments - submittedAssignments} pending
               </Typography>
             </CardContent>
-          </StyledCard>
+          </ProgressCard>
         </Grid>
+
+        {/* Submission Rate Card */}
         <Grid item xs={12} md={4}>
-          <StyledCard>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+          <ProgressCard>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <CircularProgressBox>
+                <CircularProgress
+                  variant="determinate"
+                  value={parseFloat(assignmentProgress)}
+                  size={120}
+                  thickness={4}
+                  sx={{ color: theme.primary }}
+                />
+                <ProgressValue sx={{ color: theme.primary }}>
+                  {assignmentProgress}%
+                </ProgressValue>
+              </CircularProgressBox>
+              <Typography variant="h6" gutterBottom>
                 Submission Rate
-              </Typography>
-              <Typography variant="h4">
-                {assignmentProgress}%
               </Typography>
               <Typography variant="body2" color="textSecondary">
                 {submittedAssignments} of {totalAssignments} assignments submitted
               </Typography>
             </CardContent>
-          </StyledCard>
+          </ProgressCard>
         </Grid>
+
+        {/* Average Grade Card */}
         <Grid item xs={12} md={4}>
-          <StyledCard>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+          <ProgressCard>
+            <CardContent sx={{ textAlign: 'center' }}>
+              <CircularProgressBox>
+                <CircularProgress
+                  variant="determinate"
+                  value={parseFloat(getAverageGrade())}
+                  size={120}
+                  thickness={4}
+                  sx={{ color: theme.success }}
+                />
+                <ProgressValue sx={{ color: theme.success }}>
+                  {getAverageGrade()}%
+                </ProgressValue>
+              </CircularProgressBox>
+              <Typography variant="h6" gutterBottom>
                 Average Grade
               </Typography>
-              <Typography variant="h4">
-                {getAverageGrade()}
+              <Typography variant="body2" color="textSecondary">
+                Across all graded assignments
               </Typography>
             </CardContent>
-          </StyledCard>
+          </ProgressCard>
         </Grid>
       </Grid>
+
+      {/* Recent Assignment Timeline */}
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h6" gutterBottom color="primary">
+          Recent Assignment Activity
+        </Typography>
+        <ActivityTimeline>
+          {assignments
+            .filter(assignment => assignment.submissions?.some(sub => sub.studentId === studentId))
+            .map(assignment => {
+              const submission = assignment.submissions.find(
+                sub => sub.studentId === studentId
+              );
+              const grade = submission.grade || 0;
+              
+              return (
+                <TimelineItem key={assignment._id}>
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle1" fontWeight="medium">
+                          {assignment.title}
+                        </Typography>
+                        {submission.grade ? (
+                          <AnimatedChip
+                            label={`${grade}%`}
+                            color={grade >= 60 ? 'success' : 'error'}
+                            size="small"
+                          />
+                        ) : (
+                          <AnimatedChip
+                            label="Submitted"
+                            color="primary"
+                            size="small"
+                          />
+                        )}
+                      </Box>
+                    }
+                    secondary={
+                      <Typography variant="body2" color="textSecondary">
+                        Submitted on {new Date(submission.submittedAt).toLocaleDateString()}
+                      </Typography>
+                    }
+                  />
+                </TimelineItem>
+              );
+            })}
+        </ActivityTimeline>
+      </Box>
     </Box>
   );
 };
@@ -1363,81 +1673,52 @@ const AssignmentProgressSection = ({ assignments }) => {
               <StyledCard>
                 <CardContent>
                   <QuizProgressSection quizzes={quizzes} />
-                  <Divider sx={{ my: 4 }} />
-                  <AssignmentProgressSection assignments={assignments} />
                   
-                  {/* Detailed Lists */}
+                  {/* Recent Quiz Activity */}
                   <Box sx={{ mt: 4 }}>
-                    <Typography variant="h6" gutterBottom>
-                      Recent Activity
+                    <Typography variant="h6" gutterBottom color="primary">
+                      Recent Quiz Activity
                     </Typography>
                     <List>
-                      {/* Quiz Attempts */}
-                      {quizzes.filter(quiz => 
-                        quiz.students?.some(student => student.studentId === studentId)
-                      ).map(quiz => {
-                        const studentAttempt = quiz.students.find(
-                          student => student.studentId === studentId
-                        );
-                        return (
-                          <ListItem key={quiz._id} divider>
-                            <ListItemText
-                              primary={quiz.title}
-                              secondary={
-                                <>
-                                  <Typography component="span" variant="body2">
-                                    Score: {studentAttempt.correctAnswers}/{studentAttempt.totalQuestions}
-                                    {' '}({((studentAttempt.correctAnswers/studentAttempt.totalQuestions)*100).toFixed(1)}%)
+                      {quizzes
+                        .filter(quiz => quiz.students?.some(student => student.studentId === studentId))
+                        .map(quiz => {
+                          const studentAttempt = quiz.students.find(
+                            student => student.studentId === studentId
+                          );
+                          const score = ((studentAttempt.correctAnswers/studentAttempt.totalQuestions)*100).toFixed(1);
+                          
+                          return (
+                            <TimelineItem key={quiz._id}>
+                              <ListItemText
+                                primary={
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Typography variant="subtitle1" fontWeight="medium">
+                                      {quiz.title}
+                                    </Typography>
+                                    <AnimatedChip
+                                      label={`${score}%`}
+                                      color={score >= 60 ? 'success' : 'error'}
+                                      size="small"
+                                    />
+                                  </Box>
+                                }
+                                secondary={
+                                  <Typography variant="body2" color="textSecondary">
+                                    Completed on {new Date(studentAttempt.submittedAt).toLocaleDateString()}
                                   </Typography>
-                                  <br />
-                                  <Typography component="span" variant="body2" color="textSecondary">
-                                    Submitted: {new Date(studentAttempt.submittedAt).toLocaleString()}
-                                  </Typography>
-                                </>
-                              }
-                            />
-                            <AnimatedChip
-                              label={`${((studentAttempt.correctAnswers/studentAttempt.totalQuestions)*100).toFixed(1)}%`}
-                              color={studentAttempt.correctAnswers/studentAttempt.totalQuestions >= 0.6 ? 'success' : 'error'}
-                            />
-                          </ListItem>
-                        );
-                      })}
-                      
-                      {/* Assignment Submissions */}
-                      {assignments.filter(assignment => 
-                        assignment.submissions?.some(sub => sub.studentId === studentId)
-                      ).map(assignment => {
-                        const submission = assignment.submissions.find(
-                          sub => sub.studentId === studentId
-                        );
-                        return (
-                          <ListItem key={assignment._id} divider>
-                            <ListItemText
-                              primary={assignment.title}
-                              secondary={
-                                <>
-                                  <Typography component="span" variant="body2">
-                                    Status: {submission.grade ? `Graded (${submission.grade}%)` : 'Submitted'}
-                                  </Typography>
-                                  <br />
-                                  <Typography component="span" variant="body2" color="textSecondary">
-                                    Submitted: {new Date(submission.submittedAt).toLocaleString()}
-                                  </Typography>
-                                </>
-                              }
-                            />
-                            {submission.grade && (
-                              <AnimatedChip
-                                label={`${submission.grade}%`}
-                                color={submission.grade >= 60 ? 'success' : 'error'}
+                                }
                               />
-                            )}
-                          </ListItem>
-                        );
+                            </TimelineItem>
+                          );
                       })}
                     </List>
                   </Box>
+
+                  <Divider sx={{ my: 4 }} />
+                  <AssignmentProgressSection assignments={assignments} />
+                  
+                  {/* Remove the old Recent Activity section */}
                 </CardContent>
               </StyledCard>
             </Grid>

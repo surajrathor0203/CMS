@@ -23,6 +23,7 @@ import StudentLibrary from './pages/StudentLibrary';
 import StudentDetails from './pages/StudentDetails';
 import InstallmentDetailsPage from './pages/InstallmentDetailsPage';
 import TotalAccountingPage from './pages/TotalAccountingPage';
+import TeacherGenerateTest from './pages/TeacherGenerateTest';
 import './App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -148,6 +149,15 @@ function App() {
             element={
               <ProtectedRoute 
                 element={<TotalAccountingPage />} 
+                allowedRoles={['teacher']} 
+              />
+            } 
+          />
+          <Route 
+            path="/teacher/generate-test" 
+            element={
+              <ProtectedRoute 
+                element={<TeacherGenerateTest />} 
                 allowedRoles={['teacher']} 
               />
             } 

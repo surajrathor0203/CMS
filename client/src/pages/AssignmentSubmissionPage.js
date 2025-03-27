@@ -161,7 +161,7 @@ export default function AssignmentSubmissionPage() {
     }
 
     return (
-        <StudentLayout>
+        <StudentLayout title='assignment submission'>
             <Box sx={{ p: 3 }}>
                 <Card>
                     <CardContent>

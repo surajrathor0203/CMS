@@ -11,7 +11,8 @@ const {
   getStudentBatches,
   getStudentProfile,
   updateStudentProfile,
-  updateStudentPassword  // Add this import
+  updateStudentPassword,
+  deleteMultipleStudents  // Add this import
 } = require('../controllers/studentController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -142,5 +143,32 @@ router.get('/:studentId/batches', protect, getStudentBatches);
 router.get('/profile/:id', protect, getStudentProfile);
 router.put('/profile/:id', protect, upload.single('file'), updateStudentProfile);
 router.put('/profile/:id/password', protect, updateStudentPassword); // Add this line
+
+// Add this new route before module.exports
+router.post('/delete-multiple', protect, async (req, res) => {
+  try {
+    const { studentIds, batchId } = req.body;
+    
+    if (!studentIds || !Array.isArray(studentIds) || !batchId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid request: studentIds array and batchId are required'
+      });
+    }
+
+    await deleteMultipleStudents(studentIds, batchId);
+
+    res.json({
+      success: true,
+      message: 'Students deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting multiple students:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error deleting students'
+    });
+  }
+});
 
 module.exports = router;

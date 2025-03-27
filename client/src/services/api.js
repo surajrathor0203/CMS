@@ -229,6 +229,18 @@ export const deleteStudentFromBatch = async (studentId, batchId) => {
   return response.data;
 };
 
+export const deleteMultipleStudents = async (studentIds, batchId) => {
+  try {
+    const response = await api.post(`/students/delete-multiple`, {
+      studentIds,
+      batchId
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
 export const getStudentBatches = async (studentId) => {
   try {
     const response = await api.get(`/students/${studentId}/batches`);
@@ -296,12 +308,8 @@ export const updateTeacherPassword = async (teacherId, passwordData) => {
   }
 };
 
-export const uploadNote = async (file, batchId) => {
+export const uploadNote = async (formData) => {
   try {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('batchId', batchId);
-
     const response = await api.post('/notes/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -703,6 +711,15 @@ export const toggleStudentLock = async (batchId, studentId) => {
 export const getBatchesAccounting = async (teacherId) => {
   try {
     const response = await api.get(`/batch/accounting/${teacherId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const sendChatMessage = async (message) => {
+  try {
+    const response = await api.post('/ai/chat', { message });
     return response.data;
   } catch (error) {
     throw error.response?.data || error;

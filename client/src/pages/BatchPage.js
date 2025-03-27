@@ -30,7 +30,8 @@ import {
   Tab,
   CircularProgress,
   Chip,
-  LinearProgress
+  LinearProgress,
+  Checkbox
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -50,7 +51,8 @@ import {
   getQuizzesByBatch,
   deleteQuiz,
   getPendingPayments,
-  verifyPayment
+  verifyPayment,
+  deleteMultipleStudents
 } from '../services/api';
 import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -146,8 +148,6 @@ export default function BatchPage() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [studentToDelete, setStudentToDelete] = useState(null);
   const [activeTab, setActiveTab] = useState(null);
   const [notesUploadOpen, setNotesUploadOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -172,6 +172,9 @@ export default function BatchPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingPayments, setPendingPayments] = useState([]);
+  const [noteTitle, setNoteTitle] = useState('');
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [deleteMultipleDialogOpen, setDeleteMultipleDialogOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -294,23 +297,6 @@ export default function BatchPage() {
     setPage(0);
   };
 
-  const handleDeleteClick = (student) => {
-    setStudentToDelete(student);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    try {
-      await deleteStudentFromBatch(studentToDelete._id, batchId);
-      // Refresh the students list
-      const studentsResponse = await getStudentsByBatch(batchId);
-      setStudents(studentsResponse.data);
-      setDeleteDialogOpen(false);
-    } catch (err) {
-      setError('Failed to delete student');
-    }
-  };
-
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
@@ -324,11 +310,16 @@ export default function BatchPage() {
   };
 
   const handleUploadSubmit = async () => {
-    if (!selectedFile || !batchId) return;
+    if (!selectedFile || !batchId || !noteTitle) return;
 
     try {
       setUploadLoading(true);
-      await uploadNote(selectedFile, batchId);
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('batchId', batchId);
+      formData.append('title', noteTitle);
+
+      await uploadNote(formData);
       
       // Refresh notes
       const notesResponse = await getNotesByBatch(batchId);
@@ -336,6 +327,7 @@ export default function BatchPage() {
       
       setNotesUploadOpen(false);
       setSelectedFile(null);
+      setNoteTitle('');
     } catch (error) {
       setError('Failed to upload note');
     } finally {
@@ -525,6 +517,46 @@ export default function BatchPage() {
     } catch (error) {
       console.error('Error rejecting payment:', error);
       toast.error('Failed to reject payment');
+    }
+  };
+
+  const handleSelectAll = (event) => {
+    if (event.target.checked) {
+      setSelectedStudents(filteredStudents.map(student => student._id));
+    } else {
+      setSelectedStudents([]);
+    }
+  };
+
+  const handleSelectStudent = (studentId) => {
+    setSelectedStudents(prev => {
+      if (prev.includes(studentId)) {
+        return prev.filter(id => id !== studentId);
+      } else {
+        return [...prev, studentId];
+      }
+    });
+  };
+
+  const handleDeleteMultipleStudents = async () => {
+    try {
+      setActionLoading(true);
+      
+      await deleteMultipleStudents(selectedStudents, batchId);
+      
+      // Refresh the students list
+      const studentsResponse = await getStudentsByBatch(batchId);
+      setStudents(studentsResponse.data);
+      
+      // Clear selection
+      setSelectedStudents([]);
+      setDeleteMultipleDialogOpen(false);
+      toast.success('Selected students and their data deleted successfully');
+    } catch (error) {
+      console.error('Error deleting students:', error);
+      toast.error('Failed to delete some students');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -847,7 +879,19 @@ export default function BatchPage() {
           {/* Content based on active tab */}
           {activeTab === 'students' && (
             <Grid item xs={12}>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  {selectedStudents.length > 0 && (
+                    <Button
+                      variant="contained"
+                      color="error"
+                      onClick={() => setDeleteMultipleDialogOpen(true)}
+                      startIcon={<DeleteIcon />}
+                    >
+                      Delete Selected ({selectedStudents.length})
+                    </Button>
+                  )}
+                </Box>
                 <GradientButton
                   startIcon={<AddIcon />}
                   onClick={handleAddStudentClick}
@@ -884,6 +928,13 @@ export default function BatchPage() {
                         <Table stickyHeader aria-label="students table">
                           <TableHead>
                             <TableRow>
+                              <TableCell padding="checkbox">
+                                <Checkbox
+                                  indeterminate={selectedStudents.length > 0 && selectedStudents.length < filteredStudents.length}
+                                  checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0}
+                                  onChange={handleSelectAll}
+                                />
+                              </TableCell>
                               <TableCell>Name</TableCell>
                               <TableCell>Email</TableCell>
                               <TableCell>Phone</TableCell>
@@ -893,57 +944,51 @@ export default function BatchPage() {
                           <TableBody>
                             {filteredStudents
                               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                              .map((student) => {
-                                const teacherInfo = student.teachersInfo?.find(info => info.batchId === batchId);
-                                return (
-                                  <TableRow
-                                    key={student._id}
-                                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                                  >
-                                    <TableCell component="th" scope="row">
-                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Avatar 
-                                          src={student.profilePicture?.url}
-                                          sx={{ 
-                                            bgcolor: theme.primary, 
-                                            width: 35, 
-                                            height: 35,
-                                            '& img': {
-                                              objectFit: 'cover',
-                                              width: '100%',
-                                              height: '100%'
-                                            }
-                                          }}
-                                        >
-                                          {(!student.profilePicture?.url) && (student.name?.[0]?.toUpperCase() || 'S')}
-                                        </Avatar>
-                                        {student.name}
-                                      </Box>
-                                    </TableCell>
-                                    <TableCell>{student.email}</TableCell>
-                                    <TableCell>{student.phone}</TableCell>
-                                    <TableCell>
-                                      <Box sx={{ display: 'flex', gap: 1 }}>
-                                        <Button
-                                          variant="outlined"
-                                          size="small"
-                                          onClick={() => navigate(`/teacher-dashboard/batch/${batchId}/student/${student._id}`)}
-                                          sx={{ color: theme.primary, borderColor: theme.primary }}
-                                        >
-                                          Detail
-                                        </Button>
-                                        <StyledIconButton
-                                          onClick={() => handleDeleteClick(student)}
-                                          color="error"
-                                          size="small"
-                                        >
-                                          <DeleteIcon />
-                                        </StyledIconButton>
-                                      </Box>
-                                    </TableCell>
-                                  </TableRow>
-                                );
-                              })}
+                              .map((student) => (
+                                <TableRow
+                                  key={student._id}
+                                  selected={selectedStudents.includes(student._id)}
+                                >
+                                  <TableCell padding="checkbox">
+                                    <Checkbox
+                                      checked={selectedStudents.includes(student._id)}
+                                      onChange={() => handleSelectStudent(student._id)}
+                                    />
+                                  </TableCell>
+                                  <TableCell component="th" scope="row">
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Avatar 
+                                        src={student.profilePicture?.url}
+                                        sx={{ 
+                                          bgcolor: theme.primary, 
+                                          width: 35, 
+                                          height: 35,
+                                          '& img': {
+                                            objectFit: 'cover',
+                                            width: '100%',
+                                            height: '100%'
+                                          }
+                                        }}
+                                      >
+                                        {(!student.profilePicture?.url) && (student.name?.[0]?.toUpperCase() || 'S')}
+                                      </Avatar>
+                                      {student.name}
+                                    </Box>
+                                  </TableCell>
+                                  <TableCell>{student.email}</TableCell>
+                                  <TableCell>{student.phone}</TableCell>
+                                  <TableCell>
+                                    <Button
+                                      variant="outlined"
+                                      size="small"
+                                      onClick={() => navigate(`/teacher-dashboard/batch/${batchId}/student/${student._id}`)}
+                                      sx={{ color: theme.primary, borderColor: theme.primary }}
+                                    >
+                                      Detail
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
                           </TableBody>
                         </Table>
                       </TableContainer>
@@ -1119,24 +1164,6 @@ export default function BatchPage() {
         </Grid>
       </Box>
       <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-      >
-        <DialogTitle>Confirm Deletion</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to remove {studentToDelete?.name} from this batch?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" autoFocus>
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
         open={deleteNoteDialogOpen}
         onClose={() => !noteActionLoading && setDeleteNoteDialogOpen(false)}
       >
@@ -1176,8 +1203,18 @@ export default function BatchPage() {
         <DialogTitle>Upload Notes</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 2 }}>
-            Please select a file to upload as notes for this batch.
+            Please enter a title and select a file to upload as notes for this batch.
           </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Note Title"
+            fullWidth
+            value={noteTitle}
+            onChange={(e) => setNoteTitle(e.target.value)}
+            required
+            sx={{ mb: 2 }}
+          />
           <input
             type="file"
             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
@@ -1193,14 +1230,18 @@ export default function BatchPage() {
         </DialogContent>
         <DialogActions>
           <Button 
-            onClick={() => setNotesUploadOpen(false)}
+            onClick={() => {
+              setNotesUploadOpen(false);
+              setNoteTitle('');
+              setSelectedFile(null);
+            }}
             disabled={uploadLoading}
           >
             Cancel
           </Button>
           <GradientButton
             onClick={handleUploadSubmit}
-            disabled={!selectedFile || uploadLoading}
+            disabled={!selectedFile || !noteTitle || uploadLoading}
           >
             {uploadLoading ? 'Uploading...' : 'Upload'}
           </GradientButton>
@@ -1333,6 +1374,34 @@ export default function BatchPage() {
             disabled={actionLoading}
           >
             {actionLoading ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={deleteMultipleDialogOpen}
+        onClose={() => !actionLoading && setDeleteMultipleDialogOpen(false)}
+      >
+        <DialogTitle>Confirm Multiple Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to remove {selectedStudents.length} selected students from this batch?
+            This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setDeleteMultipleDialogOpen(false)}
+            disabled={actionLoading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteMultipleStudents}
+            color="error" 
+            disabled={actionLoading}
+            startIcon={actionLoading ? <CircularProgress size={20} /> : <DeleteIcon />}
+          >
+            {actionLoading ? 'Deleting...' : 'Delete Selected'}
           </Button>
         </DialogActions>
       </Dialog>
