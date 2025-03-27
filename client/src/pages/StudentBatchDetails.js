@@ -1,6 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getStudentBatchDetails, getNotesByBatch, getQuizzesByBatch, getAssignmentsByBatch, getPayments, submitPayment } from '../services/api';
+import { 
+  getStudentBatchDetails, 
+  getNotesByBatch, 
+  getQuizzesByBatch, 
+  getAssignmentsByBatch, 
+  getPayments, 
+  submitPayment 
+} from '../services/api';
 import StudentLayout from '../components/StudentLayout';
 import {
   Typography,
@@ -29,37 +36,104 @@ import {
   FormControl,
   InputLabel
 } from '@mui/material';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import PersonIcon from '@mui/icons-material/Person';
-import SubjectIcon from '@mui/icons-material/Subject';
-import DownloadIcon from '@mui/icons-material/Download';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import LockIcon from '@mui/icons-material/Lock'; // Add this import
-import LockOpenIcon from '@mui/icons-material/LockOpen'; // Add this import
+import {
+  CalendarToday as CalendarIcon,
+  AccessTime as TimeIcon,
+  Person as PersonIcon,
+  Subject as SubjectIcon,
+  Download as DownloadIcon,
+  CloudUpload as UploadIcon,
+  Lock as LockIcon,
+  LockOpen as UnlockIcon
+} from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { toast } from 'react-toastify';
 import { getUserFromCookie } from '../utils/cookies';
 
-// Same theme as BatchPage
+// Enhanced Theme
 const theme = {
   primary: '#2e7d32',
-  light: '#81c784',
-  background: '#e8f5e9',
+  secondary: '#1976d2',
+  background: '#f4f6f8',
+  text: {
+    primary: '#333',
+    secondary: '#666'
+  },
+  borderRadius: 12,
+  shadow: '0 4px 6px rgba(0,0,0,0.1)'
 };
 
-const UploadBox = styled(Box)(({ theme }) => ({
-  border: `2px dashed ${theme.palette.divider}`,
+// Styled Components
+const StyledCard = styled(Card)(({ theme }) => ({
+  borderRadius: theme.spacing(2),
+  boxShadow: theme.shadows[2],
+  transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+  '&:hover': {
+    transform: 'translateY(-5px)',
+    boxShadow: theme.shadows[4]
+  }
+}));
+
+const StyledTabs = styled(Tabs)(({ theme }) => ({
+  borderBottom: `2px solid ${theme.palette.divider}`,
+  '& .MuiTab-root': {
+    fontWeight: 600,
+    textTransform: 'capitalize',
+    fontSize: '1rem',
+    color: theme.palette.text.secondary,
+    '&.Mui-selected': {
+      color: theme.palette.primary.main,
+      fontWeight: 700
+    }
+  },
+  '& .MuiTabs-indicator': {
+    height: 3,
+    backgroundColor: theme.palette.primary.main
+  }
+}));
+
+const GradientButton = styled(Button)(({ theme }) => ({
+  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+  color: 'white',
+  borderRadius: theme.spacing(2),
+  padding: theme.spacing(1.5, 3),
+  fontWeight: 600,
+  textTransform: 'none',
+  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 6px 8px rgba(0,0,0,0.15)'
+  }
+}));
+
+const StyledIconButton = styled(IconButton)(({ theme }) => ({
+  backgroundColor: theme.palette.grey[100],
+  '&:hover': {
+    backgroundColor: theme.palette.grey[200]
+  }
+}));
+
+const AnimatedChip = styled(Chip)(({ theme }) => ({
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'scale(1.05)'
+  }
+}));
+
+const StyledUploadBox = styled(Box)(({ theme }) => ({
+  border: `2px dashed ${theme.palette.primary.main}`,
   borderRadius: theme.shape.borderRadius,
   padding: theme.spacing(3),
   textAlign: 'center',
-  marginBottom: theme.spacing(3),
   backgroundColor: theme.palette.background.default,
   cursor: 'pointer',
+  transition: 'all 0.3s ease',
   '&:hover': {
-    borderColor: theme.palette.primary.main,
+    borderColor: theme.palette.primary.dark,
     backgroundColor: theme.palette.action.hover,
-  },
+    transform: 'translateY(-2px)'
+  }
 }));
 
 const VisuallyHiddenInput = styled('input')({
@@ -101,9 +175,7 @@ export default function StudentBatchDetails() {
   const [showExpiredDialog, setShowExpiredDialog] = useState(false);
   const [expiredQuiz, setExpiredQuiz] = useState(null);
 
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
 
   useEffect(() => {
@@ -360,21 +432,13 @@ const QuizCard = ({ quiz }) => {
   const quizStatus = getQuizStatus(quiz);
 
   return (
-    <Card 
-      elevation={2}
-      sx={{ 
-        cursor: 'pointer',
-        '&:hover': { boxShadow: 6 },
-        position: 'relative' // Add this for absolute positioning of status chip
-      }}
-      onClick={() => handleQuizClick(quiz)}
-    >
+    <StyledCard onClick={() => handleQuizClick(quiz)}>
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
           <Typography variant="h6" component="h3">
             {quiz.title}
           </Typography>
-          <Chip 
+          <AnimatedChip 
             label={quizStatus.label}
             color={quizStatus.color}
             size="small"
@@ -392,7 +456,7 @@ const QuizCard = ({ quiz }) => {
         </Typography>
         {studentAttempt && (
           <Box sx={{ mt: 2 }}>
-            <Chip 
+            <AnimatedChip 
               label={`Score: ${studentAttempt.correctAnswers}/${studentAttempt.totalQuestions}`}
               color="success"
               size="small"
@@ -416,7 +480,7 @@ const QuizCard = ({ quiz }) => {
           </Box>
         )}
       </CardContent>
-    </Card>
+    </StyledCard>
   );
 };
 
@@ -497,7 +561,7 @@ const getTimeRemaining = (endTime) => {
 };
 
 const PaymentDetailsCard = ({ batchDetails, paymentHistory }) => (
-  <Card elevation={2}>
+  <StyledCard>
     <CardContent>
       <Typography variant="h6" color={theme.primary} gutterBottom>
         Fee Payment Details
@@ -603,10 +667,11 @@ const PaymentDetailsCard = ({ batchDetails, paymentHistory }) => (
         </Typography>
       )}
     </CardContent>
-  </Card>
+  </StyledCard>
 );
 
 const PaymentSection = () => {
+  const [loading, setLoading] = useState(false); // Add loading state
   const [formData, setFormData] = useState({
     amount: '',
     receipt: null,
@@ -674,7 +739,7 @@ const PaymentSection = () => {
 
       {/* Payment Form Section */}
       <Grid item xs={12}>
-        <Card elevation={3} sx={{ borderRadius: 2 }}>
+        <StyledCard>
           <CardContent sx={{ p: 3 }}>
             <Typography variant="h5" color="primary" fontWeight="bold" gutterBottom>
               Submit Payment
@@ -737,8 +802,8 @@ const PaymentSection = () => {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 Upload Payment Receipt*
               </Typography>
-              <UploadBox>
-                <CloudUploadIcon color="action" sx={{ fontSize: 40, mb: 1 }} />
+              <StyledUploadBox>
+                <UploadIcon color="action" sx={{ fontSize: 40, mb: 1 }} />
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   Drag and drop a file here or
                 </Typography>
@@ -764,25 +829,25 @@ const PaymentSection = () => {
                 <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
                   PNG, JPG, PDF up to 10MB
                 </Typography>
-              </UploadBox>
+              </StyledUploadBox>
               
               {formData.receipt && (
                 <Paper variant="outlined" sx={{ p: 1, mb: 3, display: 'flex', alignItems: 'center' }}>
                   <Typography variant="body2" sx={{ flex: 1 }}>
                     {formData.receipt.name}
                   </Typography>
-                  <IconButton 
+                  <StyledIconButton 
                     size="small" 
                     color="error"
                     onClick={() => setFormData(prev => ({ ...prev, receipt: null }))}
                   >
                     ×
-                  </IconButton>
+                  </StyledIconButton>
                 </Paper>
               )}
 
               {/* Submit Button */}
-              <Button 
+              <GradientButton 
                 type="submit" 
                 variant="contained" 
                 fullWidth
@@ -798,15 +863,15 @@ const PaymentSection = () => {
                     Submitting...
                   </>
                 ) : 'Submit Payment'}
-              </Button>
+              </GradientButton>
             </form>
           </CardContent>
-        </Card>
+        </StyledCard>
       </Grid>
 
       {/* Payment History Section */}
       <Grid item xs={12}>
-        <Card elevation={3} sx={{ borderRadius: 2 }}>
+        <StyledCard>
           <CardContent sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h5" color="primary" fontWeight="bold">
@@ -834,13 +899,13 @@ const PaymentSection = () => {
                     key={index}
                     divider={index < paymentHistory.length - 1}
                     secondaryAction={
-                      <IconButton 
+                      <StyledIconButton 
                         edge="end" 
                         color="primary"
                         onClick={() => window.open(payment.receiptUrl, '_blank')}
                       >
                         <DownloadIcon />
-                      </IconButton>
+                      </StyledIconButton>
                     }
                     sx={{ py: 2 }}
                   >
@@ -856,7 +921,7 @@ const PaymentSection = () => {
                             Date: {new Date(payment.paymentDate).toLocaleDateString()}
                           </Typography>
                           <Box sx={{ mt: 1, mb: 1 }}>
-                            <Chip 
+                            <AnimatedChip 
                               size="small" 
                               label={payment.status} 
                               color={
@@ -878,26 +943,183 @@ const PaymentSection = () => {
               </List>
             )}
           </CardContent>
-        </Card>
+        </StyledCard>
       </Grid>
     </Grid>
   );
 }
 
-const fetchPaymentHistory = async () => {
+const fetchPaymentHistory = useCallback(async () => {
   try {
     const response = await getPayments(batchId, studentId);
     setPaymentHistory(response.data.payments || []);
   } catch (error) {
     toast.error('Failed to fetch payment history');
   }
-};
+}, [batchId, studentId]); // Add dependencies
 
 useEffect(() => {
   if (studentId) {
     fetchPaymentHistory();
   }
-}, [studentId]);
+}, [studentId, fetchPaymentHistory]);
+
+const QuizProgressSection = ({ quizzes }) => {
+  const totalQuizzes = quizzes.length;
+  const attemptedQuizzes = quizzes.filter(quiz => 
+    quiz.students?.some(student => student.studentId === studentId)
+  ).length;
+
+  const quizProgress = totalQuizzes > 0 
+    ? ((attemptedQuizzes / totalQuizzes) * 100).toFixed(1) 
+    : 0;
+
+  const getAverageScore = () => {
+    const attemptedQuizzesData = quizzes.filter(quiz => 
+      quiz.students?.some(student => student.studentId === studentId)
+    );
+
+    if (attemptedQuizzesData.length === 0) return 0;
+
+    const totalScore = attemptedQuizzesData.reduce((acc, quiz) => {
+      const studentAttempt = quiz.students.find(
+        student => student.studentId === studentId
+      );
+      return acc + (studentAttempt.score / studentAttempt.totalQuestions * 100);
+    }, 0);
+
+    return (totalScore / attemptedQuizzesData.length).toFixed(1);
+  };
+
+  return (
+    <Box sx={{ mb: 4 }}>
+      <Typography variant="h6" gutterBottom>
+        Quiz Performance
+      </Typography>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={4}>
+          <StyledCard>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Total Quizzes
+              </Typography>
+              <Typography variant="h4">
+                {totalQuizzes}
+              </Typography>
+            </CardContent>
+          </StyledCard>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <StyledCard>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Completion Rate
+              </Typography>
+              <Typography variant="h4">
+                {quizProgress}%
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {attemptedQuizzes} of {totalQuizzes} quizzes completed
+              </Typography>
+            </CardContent>
+          </StyledCard>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <StyledCard>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Average Score
+              </Typography>
+              <Typography variant="h4">
+                {getAverageScore()}%
+              </Typography>
+            </CardContent>
+          </StyledCard>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+};
+
+const AssignmentProgressSection = ({ assignments }) => {
+  const totalAssignments = assignments.length;
+  const submittedAssignments = assignments.filter(assignment => 
+    assignment.submissions?.some(sub => sub.studentId === studentId)
+  ).length;
+
+  const assignmentProgress = totalAssignments > 0 
+    ? ((submittedAssignments / totalAssignments) * 100).toFixed(1) 
+    : 0;
+
+  const getAverageGrade = () => {
+    const gradedAssignments = assignments.filter(assignment => {
+      const submission = assignment.submissions?.find(
+        sub => sub.studentId === studentId && sub.grade !== undefined
+      );
+      return submission !== undefined;
+    });
+
+    if (gradedAssignments.length === 0) return 'N/A';
+
+    const totalGrade = gradedAssignments.reduce((acc, assignment) => {
+      const submission = assignment.submissions.find(
+        sub => sub.studentId === studentId
+      );
+      return acc + (submission.grade || 0);
+    }, 0);
+
+    return (totalGrade / gradedAssignments.length).toFixed(1);
+  };
+
+  return (
+    <Box sx={{ mb: 4 }}>
+      <Typography variant="h6" gutterBottom>
+        Assignment Performance
+      </Typography>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={4}>
+          <StyledCard>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Total Assignments
+              </Typography>
+              <Typography variant="h4">
+                {totalAssignments}
+              </Typography>
+            </CardContent>
+          </StyledCard>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <StyledCard>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Submission Rate
+              </Typography>
+              <Typography variant="h4">
+                {assignmentProgress}%
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {submittedAssignments} of {totalAssignments} assignments submitted
+              </Typography>
+            </CardContent>
+          </StyledCard>
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <StyledCard>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Average Grade
+              </Typography>
+              <Typography variant="h4">
+                {getAverageGrade()}
+              </Typography>
+            </CardContent>
+          </StyledCard>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+};
 
   if (batchLoading) {
     return (
@@ -921,18 +1143,22 @@ useEffect(() => {
 
   return (
     <StudentLayout title={batchDetails?.name || 'Batch Details'}>
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ 
+        p: 3, 
+        backgroundColor: theme.background,
+        minHeight: '100vh'
+      }}>
         <Grid container spacing={3}>
           {/* Batch Information Card */}
           <Grid item xs={12}>
-            <Card elevation={2}>
+            <StyledCard>
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Typography variant="h6" color={theme.primary}>
                     Batch Information
                   </Typography>
-                  <Chip
-                    icon={isLocked ? <LockIcon /> : <LockOpenIcon />}
+                  <AnimatedChip
+                    icon={isLocked ? <LockIcon /> : <UnlockIcon />}
                     label={isLocked ? 'Account Locked' : 'Account Active'}
                     color={isLocked ? 'error' : 'success'}
                     variant="outlined"
@@ -952,7 +1178,7 @@ useEffect(() => {
 
                   <Grid item xs={12} md={4}>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <AccessTimeIcon sx={{ color: theme.primary, mr: 1 }} />
+                      <TimeIcon sx={{ color: theme.primary, mr: 1 }} />
                       <Typography variant="body1">
                         Time: {formatTime(batchDetails?.startTime)} - {formatTime(batchDetails?.endTime)}
                       </Typography>
@@ -961,7 +1187,7 @@ useEffect(() => {
 
                   <Grid item xs={12} md={4}>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <CalendarTodayIcon sx={{ color: theme.primary, mr: 1 }} />
+                      <CalendarIcon sx={{ color: theme.primary, mr: 1 }} />
                       <Typography variant="body1">
                         Opening Date: {formatDate(batchDetails?.openingDate)}
                       </Typography>
@@ -978,7 +1204,7 @@ useEffect(() => {
                   </Grid>
                 </Grid>
               </CardContent>
-            </Card>
+            </StyledCard>
           </Grid>
 
           {/* Add Payment Section here, after the batch information card */}
@@ -986,43 +1212,28 @@ useEffect(() => {
 
           {/* Tabs Section */}
           <Grid item xs={12}>
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-              <Tabs 
-                value={activeTab} 
-                onChange={handleTabChange}
-                sx={{
-                  '& .MuiTab-root': { 
-                    fontWeight: 'bold',
-                    '&.Mui-disabled': {
-                      color: 'rgba(0, 0, 0, 0.38)' // Grayed out color for disabled tabs
-                    }
-                  },
-                  '& .Mui-selected': { color: theme.primary },
-                  '& .MuiTabs-indicator': { backgroundColor: theme.primary }
-                }}
-              >
-                <Tab 
-                  label="Batch Activity" 
-                  value="activity"
-                  disabled={isLocked}
-                />
-                <Tab 
-                  label="My Progress" 
-                  value="progress"
-                  disabled={isLocked}
-                />
-                <Tab 
-                  label="Fee Payment" 
-                  value="payment"
-                />
-              </Tabs>
-            </Box>
+            <StyledTabs value={activeTab} onChange={handleTabChange}>
+              <Tab 
+                label="Batch Activity" 
+                value="activity"
+                disabled={isLocked}
+              />
+              <Tab 
+                label="My Progress" 
+                value="progress"
+                disabled={isLocked}
+              />
+              <Tab 
+                label="Fee Payment" 
+                value="payment"
+              />
+            </StyledTabs>
           </Grid>
 
           {/* Content based on active tab */}
           {activeTab === 'activity' && (
             <Grid item xs={12}>
-              <Card elevation={2}>
+              <StyledCard>
                 <CardContent>
                   {/* Notes Section */}
                   <NotesSection />
@@ -1077,12 +1288,7 @@ useEffect(() => {
                       <Grid container spacing={2}>
                         {assignments.map((assignment) => (
                           <Grid item xs={12} sm={6} md={4} key={assignment._id}>
-                            <Card 
-                              elevation={2}
-                              sx={{ 
-                                cursor: 'pointer',
-                                '&:hover': { boxShadow: 6 }
-                              }}
+                            <StyledCard 
                               onClick={() => handleAssignmentClick(assignment)}
                             >
                               <CardContent>
@@ -1101,7 +1307,7 @@ useEffect(() => {
                                 </Typography>
                                 {assignment.fileUrl && (
                                   <Box sx={{ mb: 2 }}>
-                                    <IconButton 
+                                    <StyledIconButton 
                                       size="small" 
                                       onClick={(e) => {
                                         e.stopPropagation(); // Prevent card click
@@ -1110,13 +1316,13 @@ useEffect(() => {
                                       title="Download Assignment"
                                     >
                                       <DownloadIcon />
-                                    </IconButton>
+                                    </StyledIconButton>
                                   </Box>
                                 )}
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                   <Box>
                                     {isAssignmentOverdue(assignment.endTime) ? (
-                                      <Chip 
+                                      <AnimatedChip 
                                         label="Overdue" 
                                         color="error" 
                                         size="small" 
@@ -1127,14 +1333,14 @@ useEffect(() => {
                                       </Box>
                                     )}
                                   </Box>
-                                  <Chip
+                                  <AnimatedChip
                                     label={assignment.submitted ? 'Submitted' : 'Not Submitted'}
                                     color={assignment.submitted ? 'success' : 'warning'}
                                     size="small"
                                   />
                                 </Box>
                               </CardContent>
-                            </Card>
+                            </StyledCard>
                           </Grid>
                         ))}
                         {assignments.length === 0 && (
@@ -1148,19 +1354,92 @@ useEffect(() => {
                     )}
                   </Box>
                 </CardContent>
-              </Card>
+              </StyledCard>
             </Grid>
           )}
 
           {activeTab === 'progress' && (
             <Grid item xs={12}>
-              <Card elevation={2}>
+              <StyledCard>
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    My Progress Coming Soon...
-                  </Typography>
+                  <QuizProgressSection quizzes={quizzes} />
+                  <Divider sx={{ my: 4 }} />
+                  <AssignmentProgressSection assignments={assignments} />
+                  
+                  {/* Detailed Lists */}
+                  <Box sx={{ mt: 4 }}>
+                    <Typography variant="h6" gutterBottom>
+                      Recent Activity
+                    </Typography>
+                    <List>
+                      {/* Quiz Attempts */}
+                      {quizzes.filter(quiz => 
+                        quiz.students?.some(student => student.studentId === studentId)
+                      ).map(quiz => {
+                        const studentAttempt = quiz.students.find(
+                          student => student.studentId === studentId
+                        );
+                        return (
+                          <ListItem key={quiz._id} divider>
+                            <ListItemText
+                              primary={quiz.title}
+                              secondary={
+                                <>
+                                  <Typography component="span" variant="body2">
+                                    Score: {studentAttempt.correctAnswers}/{studentAttempt.totalQuestions}
+                                    {' '}({((studentAttempt.correctAnswers/studentAttempt.totalQuestions)*100).toFixed(1)}%)
+                                  </Typography>
+                                  <br />
+                                  <Typography component="span" variant="body2" color="textSecondary">
+                                    Submitted: {new Date(studentAttempt.submittedAt).toLocaleString()}
+                                  </Typography>
+                                </>
+                              }
+                            />
+                            <AnimatedChip
+                              label={`${((studentAttempt.correctAnswers/studentAttempt.totalQuestions)*100).toFixed(1)}%`}
+                              color={studentAttempt.correctAnswers/studentAttempt.totalQuestions >= 0.6 ? 'success' : 'error'}
+                            />
+                          </ListItem>
+                        );
+                      })}
+                      
+                      {/* Assignment Submissions */}
+                      {assignments.filter(assignment => 
+                        assignment.submissions?.some(sub => sub.studentId === studentId)
+                      ).map(assignment => {
+                        const submission = assignment.submissions.find(
+                          sub => sub.studentId === studentId
+                        );
+                        return (
+                          <ListItem key={assignment._id} divider>
+                            <ListItemText
+                              primary={assignment.title}
+                              secondary={
+                                <>
+                                  <Typography component="span" variant="body2">
+                                    Status: {submission.grade ? `Graded (${submission.grade}%)` : 'Submitted'}
+                                  </Typography>
+                                  <br />
+                                  <Typography component="span" variant="body2" color="textSecondary">
+                                    Submitted: {new Date(submission.submittedAt).toLocaleString()}
+                                  </Typography>
+                                </>
+                              }
+                            />
+                            {submission.grade && (
+                              <AnimatedChip
+                                label={`${submission.grade}%`}
+                                color={submission.grade >= 60 ? 'success' : 'error'}
+                              />
+                            )}
+                          </ListItem>
+                        );
+                      })}
+                    </List>
+                  </Box>
                 </CardContent>
-              </Card>
+              </StyledCard>
             </Grid>
           )}
 

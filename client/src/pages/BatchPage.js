@@ -63,12 +63,78 @@ import PaidIcon from '@mui/icons-material/Paid';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { styled } from '@mui/material/styles';
 
+// Enhanced Theme
 const theme = {
   primary: '#2e7d32',
-  light: '#81c784',
-  background: '#e8f5e9',
+  secondary: '#1976d2',
+  background: '#f4f6f8',
+  text: {
+    primary: '#333',
+    secondary: '#666'
+  },
+  borderRadius: 12,
+  shadow: '0 4px 6px rgba(0,0,0,0.1)'
 };
+
+// Styled Components
+const StyledCard = styled(Card)(({ theme }) => ({
+  borderRadius: theme.spacing(2),
+  boxShadow: theme.shadows[2],
+  transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+  '&:hover': {
+    transform: 'translateY(-5px)',
+    boxShadow: theme.shadows[4]
+  }
+}));
+
+const StyledTabs = styled(Tabs)(({ theme }) => ({
+  borderBottom: `2px solid ${theme.palette.divider}`,
+  '& .MuiTab-root': {
+    fontWeight: 600,
+    textTransform: 'capitalize',
+    fontSize: '1rem',
+    color: theme.palette.text.secondary,
+    '&.Mui-selected': {
+      color: theme.palette.primary.main,
+      fontWeight: 700
+    }
+  },
+  '& .MuiTabs-indicator': {
+    height: 3,
+    backgroundColor: theme.palette.primary.main
+  }
+}));
+
+const GradientButton = styled(Button)(({ theme }) => ({
+  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+  color: 'white',
+  borderRadius: theme.spacing(2),
+  padding: theme.spacing(1.5, 3),
+  fontWeight: 600,
+  textTransform: 'none',
+  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 6px 8px rgba(0,0,0,0.15)'
+  }
+}));
+
+const StyledIconButton = styled(IconButton)(({ theme }) => ({
+  backgroundColor: theme.palette.grey[100],
+  '&:hover': {
+    backgroundColor: theme.palette.grey[200]
+  }
+}));
+
+const AnimatedChip = styled(Chip)(({ theme }) => ({
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'scale(1.05)'
+  }
+}));
 
 export default function BatchPage() {
   const { batchId } = useParams();
@@ -492,15 +558,13 @@ export default function BatchPage() {
         <Typography variant="h6" color={theme.primary}>
           Notes
         </Typography>
-        <Button
-          variant="contained"
+        <GradientButton
           startIcon={<UploadFileIcon />}
           onClick={handleNotesUpload}
-          sx={{ bgcolor: theme.primary }}
           size="small"
         >
           Upload Notes
-        </Button>
+        </GradientButton>
       </Box>
       <Divider sx={{ mb: 2 }} />
       {Array.isArray(notes) && notes.length > 0 ? ( // Add Array.isArray check
@@ -525,28 +589,28 @@ export default function BatchPage() {
                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                       disabled={noteActionLoading}
                     />
-                    <IconButton
+                    <StyledIconButton
                       size="small"
                       onClick={() => document.getElementById(`update-note-${note._id}`).click()}
                       disabled={noteActionLoading}
                     >
                       <EditIcon />
-                    </IconButton>
-                    <IconButton
+                    </StyledIconButton>
+                    <StyledIconButton
                       size="small"
                       onClick={() => window.open(note.fileUrl, '_blank')}
                       disabled={noteActionLoading}
                     >
                       <DownloadIcon />
-                    </IconButton>
-                    <IconButton
+                    </StyledIconButton>
+                    <StyledIconButton
                       size="small"
                       color="error"
                       onClick={() => handleDeleteNoteClick(note)}
                       disabled={noteActionLoading}
                     >
                       <DeleteIcon />
-                    </IconButton>
+                    </StyledIconButton>
                   </TableCell>
                 </TableRow>
               ))}
@@ -606,7 +670,7 @@ export default function BatchPage() {
   
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
-            <Card elevation={2}>
+            <StyledCard>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   Overall Payment Status
@@ -633,11 +697,11 @@ export default function BatchPage() {
                   </Typography>
                 </Box>
               </CardContent>
-            </Card>
+            </StyledCard>
           </Grid>
   
           <Grid item xs={12}>
-            <Card elevation={2}>
+            <StyledCard>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
                   Installment Breakdown
@@ -684,13 +748,13 @@ export default function BatchPage() {
                                 <Typography variant="body2">
                                   {percentage.toFixed(1)}%
                                 </Typography>
-                                <IconButton
+                                <StyledIconButton
                                   size="small"
                                   onClick={() => navigate(`/teacher-dashboard/batch/${batchId}/installment/${index + 1}`)}
                                   sx={{ color: theme.primary }}
                                 >
                                   <ArrowForwardIcon />
-                                </IconButton>
+                                </StyledIconButton>
                               </Box>
                             </TableCell>
                           </TableRow>
@@ -700,7 +764,7 @@ export default function BatchPage() {
                   </Table>
                 </TableContainer>
               </CardContent>
-            </Card>
+            </StyledCard>
           </Grid>
         </Grid>
       </Box>
@@ -717,12 +781,12 @@ export default function BatchPage() {
       onRejectPayment={handleRejectPayment}
       batchId={batchId} // Add this prop
     >
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ p: 3, backgroundColor: theme.background, minHeight: '100vh' }}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <Card elevation={2}>
+            <StyledCard>
               <CardContent>
-                <Typography variant="h6" gutterBottom color={theme.primary}>
+                <Typography variant="h6" color={theme.primary} gutterBottom>
                   Batch Information
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
@@ -765,42 +829,33 @@ export default function BatchPage() {
                   </Grid>
                 </Grid>
               </CardContent>
-            </Card>
+            </StyledCard>
           </Grid>
 
           {/* Tabs */}
           <Grid item xs={12}>
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-              <Tabs 
-                value={activeTab} 
-                onChange={handleTabChange}
-                sx={{
-                  '& .MuiTab-root': { fontWeight: 'bold' },
-                  '& .Mui-selected': { color: theme.primary },
-                  '& .MuiTabs-indicator': { backgroundColor: theme.primary }
-                }}
-              >
-                <Tab label="Batch Activity" value="activity" />
-                <Tab label="Students" value="students" />
-                <Tab label="Accounting" value="accounting" />
-              </Tabs>
-            </Box>
+            <StyledTabs 
+              value={activeTab} 
+              onChange={handleTabChange}
+            >
+              <Tab label="Batch Activity" value="activity" />
+              <Tab label="Students" value="students" />
+              <Tab label="Accounting" value="accounting" />
+            </StyledTabs>
           </Grid>
 
           {/* Content based on active tab */}
           {activeTab === 'students' && (
             <Grid item xs={12}>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                <Button
-                  variant="contained"
+                <GradientButton
                   startIcon={<AddIcon />}
                   onClick={handleAddStudentClick}
-                  sx={{ bgcolor: theme.primary }}
                 >
                   Add New Student
-                </Button>
+                </GradientButton>
               </Box>
-              <Card elevation={2}>
+              <StyledCard>
                 <CardContent>
                   <Box sx={{ mb: 2 }}>
                     <TextField
@@ -877,13 +932,13 @@ export default function BatchPage() {
                                         >
                                           Detail
                                         </Button>
-                                        <IconButton
+                                        <StyledIconButton
                                           onClick={() => handleDeleteClick(student)}
                                           color="error"
                                           size="small"
                                         >
                                           <DeleteIcon />
-                                        </IconButton>
+                                        </StyledIconButton>
                                       </Box>
                                     </TableCell>
                                   </TableRow>
@@ -908,13 +963,13 @@ export default function BatchPage() {
                     </Typography>
                   )}
                 </CardContent>
-              </Card>
+              </StyledCard>
             </Grid>
           )}
 
           {activeTab === 'activity' && (
             <Grid item xs={12}>
-              <Card elevation={2}>
+              <StyledCard>
                 <CardContent>
                   {/* Notes Section */}
                   <NotesSection />
@@ -925,26 +980,20 @@ export default function BatchPage() {
                       <Typography variant="h6" color={theme.primary}>
                         Quizzes
                       </Typography>
-                      <Button
-                        variant="contained"
+                      <GradientButton
                         startIcon={<AddIcon />}
                         onClick={handleQuizDialogOpen}
-                        sx={{ bgcolor: theme.primary }}
                         size="small"
                       >
                         Create Quiz
-                      </Button>
+                      </GradientButton>
                     </Box>
                     <Divider sx={{ mb: 2 }} />
                     <Grid container spacing={2}>
                       {quizzes.map((quiz) => (
                         <Grid item xs={12} sm={6} md={4} key={quiz._id}>
-                          <Card 
-                            elevation={2}
-                            sx={{ 
-                              cursor: 'pointer',
-                              '&:hover': { boxShadow: 6 }
-                            }}
+                          <StyledCard
+                            sx={{ cursor: 'pointer' }}
                             onClick={() => handleQuizClick(quiz)}
                           >
                             <CardContent>
@@ -968,23 +1017,23 @@ export default function BatchPage() {
                                 Questions: {quiz.questions.length}
                               </Typography>
                               <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
-                                <IconButton
+                                <StyledIconButton
                                   size="small"
                                   onClick={(e) => handleEditQuiz(quiz._id, e)}
                                   color="primary"
                                 >
                                   <EditIcon />
-                                </IconButton>
-                                <IconButton
+                                </StyledIconButton>
+                                <StyledIconButton
                                   size="small"
                                   onClick={(e) => handleDeleteQuizClick(quiz, e)}
                                   color="error"
                                 >
                                   <DeleteIcon />
-                                </IconButton>
+                                </StyledIconButton>
                               </Box>
                             </CardContent>
-                          </Card>
+                          </StyledCard>
                         </Grid>
                       ))}
                     </Grid>
@@ -1002,26 +1051,20 @@ export default function BatchPage() {
                       <Typography variant="h6" color={theme.primary}>
                         Assignments
                       </Typography>
-                      <Button
-                        variant="contained"
+                      <GradientButton
                         startIcon={<AddIcon />}
                         onClick={handleAssignmentDialogOpen}
-                        sx={{ bgcolor: theme.primary }}
                         size="small"
                       >
                         Add Assignment
-                      </Button>
+                      </GradientButton>
                     </Box>
                     <Divider sx={{ mb: 2 }} />
                     <Grid container spacing={2}>
                       {assignments.map((assignment) => (
                         <Grid item xs={12} sm={6} md={4} key={assignment._id}>
-                          <Card 
-                            elevation={2}
-                            sx={{ 
-                              cursor: 'pointer',
-                              '&:hover': { boxShadow: 6 }
-                            }}
+                          <StyledCard
+                            sx={{ cursor: 'pointer' }}
                             onClick={() => handleAssignmentClick(assignment)}
                           >
                             <CardContent>
@@ -1039,16 +1082,16 @@ export default function BatchPage() {
                                 })}
                               </Typography>
                               <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                                <IconButton
+                                <StyledIconButton
                                   size="small"
                                   onClick={(e) => handleDeleteAssignmentClick(assignment, e)}
                                   color="error"
                                 >
                                   <DeleteIcon />
-                                </IconButton>
+                                </StyledIconButton>
                               </Box>
                             </CardContent>
-                          </Card>
+                          </StyledCard>
                         </Grid>
                       ))}
                     </Grid>
@@ -1060,17 +1103,17 @@ export default function BatchPage() {
                     <Divider sx={{ mt: 2 }} />
                   </Box>
                 </CardContent>
-              </Card>
+              </StyledCard>
             </Grid>
           )}
 
           {activeTab === 'accounting' && (
             <Grid item xs={12}>
-              <Card elevation={2}>
+              <StyledCard>
                 <CardContent>
                   <BatchAccountingSection />
                 </CardContent>
-              </Card>
+              </StyledCard>
             </Grid>
           )}
         </Grid>
@@ -1123,6 +1166,12 @@ export default function BatchPage() {
       <Dialog 
         open={notesUploadOpen} 
         onClose={() => !uploadLoading && setNotesUploadOpen(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: theme.borderRadius,
+            p: 1
+          }
+        }}
       >
         <DialogTitle>Upload Notes</DialogTitle>
         <DialogContent>
@@ -1149,14 +1198,12 @@ export default function BatchPage() {
           >
             Cancel
           </Button>
-          <Button 
+          <GradientButton
             onClick={handleUploadSubmit}
             disabled={!selectedFile || uploadLoading}
-            variant="contained"
-            sx={{ bgcolor: theme.primary }}
           >
             {uploadLoading ? 'Uploading...' : 'Upload'}
-          </Button>
+          </GradientButton>
         </DialogActions>
       </Dialog>
       <Dialog 
@@ -1225,17 +1272,15 @@ export default function BatchPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleAssignmentDialogClose}>Cancel</Button>
-          <Button 
+          <GradientButton 
             onClick={handleAssignmentSubmit}
-            variant="contained"
-            sx={{ bgcolor: theme.primary }}
             disabled={!assignmentData.title || 
                      (!assignmentData.question && !assignmentData.file) || 
                      !assignmentData.endTime ||
                      uploadLoading}
           >
             {uploadLoading ? 'Creating...' : 'Create Assignment'}
-          </Button>
+          </GradientButton>
         </DialogActions>
       </Dialog>
       <Dialog
