@@ -23,7 +23,7 @@ exports.sendWelcomeEmail = async (user, plainPassword) => {
           <p><strong>Email:</strong> ${user.email}</p>
           <p><strong>Username:</strong> ${user.username}</p>
           <p><strong>Password:</strong> ${plainPassword}</p>
-          <p><strong>Subject:</strong> ${user.subject}</p>
+          <p><strong>Coaching Name:</strong> ${user.cochingName}</p>
         </div>
 
         <p>Please keep these credentials safe and change your password after your first login.</p>
@@ -48,7 +48,7 @@ exports.sendStudentWelcomeEmail = async (student, plainPassword, batchDetails, i
   const mailOptions = {
     from: process.env.gmail_id,
     to: student.email,
-    subject: isNewAccount ? 'Welcome to CMS - Student Account Created' : 'CMS - Batch Enrollment Update',
+    subject: batchDetails.cochingName,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #2E7D32;">Welcome to CMS!</h2>
@@ -60,6 +60,7 @@ exports.sendStudentWelcomeEmail = async (student, plainPassword, batchDetails, i
           <p><strong>Password:</strong> ${plainPassword || 'Use your existing password'}</p>
           <p><strong>Batch:</strong> ${batchDetails.name}</p>
           <p><strong>Subject:</strong> ${batchDetails.subject}</p>
+          <p><strong>Coaching Name:</strong> ${batchDetails.cochingName}</p>
         </div>
 
         ${isNewAccount ? '<p>Please keep these credentials safe and change your password after your first login.</p>' : ''}

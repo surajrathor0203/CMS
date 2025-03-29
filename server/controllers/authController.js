@@ -18,7 +18,7 @@ const generateToken = (userId) => {
 
 exports.signup = async (req, res) => {
     try {
-        const { name, email, password, phoneNumber, countryCode, subject, address, role } = req.body;
+        const { name, email, password, phoneNumber, countryCode, cochingName, address, role } = req.body;
 
         // Check if user already exists
         const existingUser = await User.findOne({ email });
@@ -37,9 +37,9 @@ exports.signup = async (req, res) => {
             name,
             email,
             password,
-            phoneNumber,   // Changed from phone to phoneNumber
+            phoneNumber,
             countryCode,
-            subject,
+            cochingName,  // Store cochingName instead of subject
             address,
             role,
             username
@@ -113,7 +113,7 @@ exports.login = async (req, res) => {
             email: user.email,
             role: user.role,
             username: user.username,
-            subject: user.subject,
+            cochingName: user.cochingName, // Include cochingName instead of subject
             address: user.address
         };
 
@@ -299,7 +299,7 @@ exports.getTeacherProfile = async (req, res) => {
 
 exports.updateTeacherProfile = async (req, res) => {
   try {
-    const { name, phoneNumber, subject, address } = req.body;
+    const { name, phoneNumber, cochingName, address } = req.body;
     const profilePicture = req.file;
     const removeProfilePicture = req.body.removeProfilePicture === 'true';
     
@@ -313,7 +313,7 @@ exports.updateTeacherProfile = async (req, res) => {
     // Only update the fields that are provided
     if (name) teacher.name = name;
     if (phoneNumber) teacher.phoneNumber = phoneNumber;
-    if (subject) teacher.subject = subject;
+    if (cochingName) teacher.cochingName = cochingName; // Update cochingName instead of subject
     if (address) teacher.address = address;
 
     // Handle profile picture removal

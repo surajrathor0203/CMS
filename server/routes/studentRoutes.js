@@ -35,12 +35,29 @@ router.post('/create-multiple', async (req, res) => {
   try {
     const { students, batchDetails } = req.body;
     
-    if (!students || !Array.isArray(students) || !batchDetails) {
+    // Validate input
+    if (!students || !Array.isArray(students)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid request format: students array and batch details are required'
+        message: 'Invalid request: students array is required'
       });
     }
+
+    if (!batchDetails || !batchDetails.batchId || !batchDetails.teacherId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid request: batchDetails with batchId and teacherId are required'
+      });
+    }
+
+    // Log the incoming request data
+    console.log('Creating students with:', {
+      studentsCount: students.length,
+      batchDetails: {
+        batchId: batchDetails.batchId,
+        teacherId: batchDetails.teacherId
+      }
+    });
 
     const result = await createStudents(students, batchDetails);
     res.status(200).json(result);

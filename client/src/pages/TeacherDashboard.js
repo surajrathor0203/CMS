@@ -217,12 +217,9 @@ export default function TeacherDashboard() {
     };
     let isValid = true;
 
-    // Validate batch name
+    // Only check if name is provided
     if (!batchData.name.trim()) {
       newErrors.name = 'Batch name is required';
-      isValid = false;
-    } else if (batchData.name.length < 3) {
-      newErrors.name = 'Batch name must be at least 3 characters long';
       isValid = false;
     }
 

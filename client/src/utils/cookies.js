@@ -20,7 +20,7 @@ export const setUserCookie = (userData) => {
       ...userData.user,
       // Only set default values if fields are undefined/null
       username: userData.user.username || userData.user.username,
-      subject: userData.user.subject || userData.user.subject,
+      cochingName: userData.user.cochingName || userData.user.cochingName,  // Changed from subject
       address: userData.user.address || userData.user.address
     }
   };

@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema({
     enum: ['teacher', 'student', 'admin'],
     default: 'teacher'
   },
-  subject: String,
+  cochingName: String, // Changed from subject to cochingName
   phoneNumber: {
     type: String,
     required: true,

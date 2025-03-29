@@ -53,6 +53,15 @@ const connectDB = async () => {
             useNewUrlParser: true,
             useUnifiedTopology: true
         });
+        
+        // Drop the name index if it exists
+        try {
+            await conn.connection.collection('batches').dropIndex('name_1');
+        } catch (err) {
+            // Index might not exist, ignore error
+            console.log('No name index to drop or already dropped');
+        }
+        
         console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
         console.error(`Error: ${error.message}`);

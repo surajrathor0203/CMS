@@ -172,10 +172,25 @@ export const addStudent = async (batchId, studentData) => {
 
 export const createMultipleStudents = async (students, batchDetails) => {
   try {
-    const response = await api.post('/students/create-multiple', {
+    const batch = await getBatchById(batchDetails.batchId);
+    if (!batch.success) {
+      throw new Error('Failed to fetch batch details');
+    }
+
+    const payload = {
       students,
-      batchDetails
-    });
+      batchDetails: {
+        ...batchDetails,
+        batchId: batchDetails.batchId,
+        teacherId: batch.data.teacher, // Get teacherId from batch data
+        name: batch.data.name,
+        subject: batch.data.subject
+      }
+    };
+
+    console.log('Sending to server:', payload); // Debug log
+
+    const response = await api.post('/students/create-multiple', payload);
     
     if (response.data.errors?.length > 0) {
       return {

@@ -52,7 +52,8 @@ import {
   deleteQuiz,
   getPendingPayments,
   verifyPayment,
-  deleteMultipleStudents
+  deleteMultipleStudents,
+  toggleStudentLock
 } from '../services/api';
 import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -175,6 +176,7 @@ export default function BatchPage() {
   const [noteTitle, setNoteTitle] = useState('');
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [deleteMultipleDialogOpen, setDeleteMultipleDialogOpen] = useState(false);
+  const [studentFilter, setStudentFilter] = useState('all'); // Add this line
 
   const fetchData = useCallback(async () => {
     try {
@@ -470,12 +472,23 @@ export default function BatchPage() {
 
   const filteredStudents = students.filter(student => {
     const teacherInfo = student.teachersInfo?.find(info => info.batchId === batchId);
-    return (
+    const matchesSearch = (
       student.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       teacherInfo?.subject?.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const isLocked = batch.lockedStudents?.some(ls => ls.studentId === student._id);
+
+    switch (studentFilter) {
+      case 'active':
+        return matchesSearch && !isLocked;
+      case 'locked':
+        return matchesSearch && isLocked;
+      default:
+        return matchesSearch;
+    }
   });
 
   const handleNotificationClick = () => {
@@ -557,6 +570,21 @@ export default function BatchPage() {
       toast.error('Failed to delete some students');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleToggleLock = async (studentId) => {
+    try {
+      await toggleStudentLock(batchId, studentId);
+      // Refresh batch data to get updated locked students
+      const batchResponse = await getBatchById(batchId);
+      if (batchResponse.data) {
+        setBatch(batchResponse.data);
+      }
+      toast.success('Student status updated successfully');
+    } catch (error) {
+      console.error('Error toggling student lock:', error);
+      toast.error('Failed to update student status');
     }
   };
 
@@ -899,6 +927,46 @@ export default function BatchPage() {
                   Add New Student
                 </GradientButton>
               </Box>
+              <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
+                <Button
+                  variant={studentFilter === 'all' ? 'contained' : 'outlined'}
+                  onClick={() => setStudentFilter('all')}
+                  sx={{ 
+                    borderRadius: '20px',
+                    '&.MuiButton-contained': {
+                      background: theme.primary
+                    }
+                  }}
+                >
+                  All Students ({students.length})
+                </Button>
+                <Button
+                  variant={studentFilter === 'active' ? 'contained' : 'outlined'}
+                  onClick={() => setStudentFilter('active')}
+                  color="success"
+                  sx={{ 
+                    borderRadius: '20px',
+                    '&.MuiButton-contained': {
+                      background: '#2e7d32'
+                    }
+                  }}
+                >
+                  Active ({students.filter(s => !batch.lockedStudents?.some(ls => ls.studentId === s._id)).length})
+                </Button>
+                <Button
+                  variant={studentFilter === 'locked' ? 'contained' : 'outlined'}
+                  onClick={() => setStudentFilter('locked')}
+                  color="error"
+                  sx={{ 
+                    borderRadius: '20px',
+                    '&.MuiButton-contained': {
+                      background: '#d32f2f'
+                    }
+                  }}
+                >
+                  Locked ({batch.lockedStudents?.length || 0})
+                </Button>
+              </Box>
               <StyledCard>
                 <CardContent>
                   <Box sx={{ mb: 2 }}>
@@ -938,57 +1006,86 @@ export default function BatchPage() {
                               <TableCell>Name</TableCell>
                               <TableCell>Email</TableCell>
                               <TableCell>Phone</TableCell>
+                              <TableCell>Status</TableCell>
                               <TableCell>Actions</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
                             {filteredStudents
                               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                              .map((student) => (
-                                <TableRow
-                                  key={student._id}
-                                  selected={selectedStudents.includes(student._id)}
-                                >
-                                  <TableCell padding="checkbox">
-                                    <Checkbox
-                                      checked={selectedStudents.includes(student._id)}
-                                      onChange={() => handleSelectStudent(student._id)}
-                                    />
-                                  </TableCell>
-                                  <TableCell component="th" scope="row">
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      <Avatar 
-                                        src={student.profilePicture?.url}
-                                        sx={{ 
-                                          bgcolor: theme.primary, 
-                                          width: 35, 
-                                          height: 35,
-                                          '& img': {
-                                            objectFit: 'cover',
-                                            width: '100%',
-                                            height: '100%'
+                              .map((student) => {
+                                const isLocked = batch.lockedStudents?.some(
+                                  ls => ls.studentId === student._id
+                                );
+                                
+                                return (
+                                  <TableRow
+                                    key={student._id}
+                                    selected={selectedStudents.includes(student._id)}
+                                  >
+                                    <TableCell padding="checkbox">
+                                      <Checkbox
+                                        checked={selectedStudents.includes(student._id)}
+                                        onChange={() => handleSelectStudent(student._id)}
+                                      />
+                                    </TableCell>
+                                    <TableCell component="th" scope="row">
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Avatar 
+                                          src={student.profilePicture?.url}
+                                          sx={{ 
+                                            bgcolor: theme.primary, 
+                                            width: 35, 
+                                            height: 35,
+                                            '& img': {
+                                              objectFit: 'cover',
+                                              width: '100%',
+                                              height: '100%'
+                                            }
+                                          }}
+                                        >
+                                          {(!student.profilePicture?.url) && (student.name?.[0]?.toUpperCase() || 'S')}
+                                        </Avatar>
+                                        {student.name}
+                                      </Box>
+                                    </TableCell>
+                                    <TableCell>{student.email}</TableCell>
+                                    <TableCell>{student.phone}</TableCell>
+                                    <TableCell>
+                                      <Chip
+                                        label={isLocked ? "Locked" : "Active"}
+                                        color={isLocked ? "error" : "success"}
+                                        size="small"
+                                        sx={{
+                                          '& .MuiChip-label': {
+                                            fontWeight: 500
                                           }
                                         }}
-                                      >
-                                        {(!student.profilePicture?.url) && (student.name?.[0]?.toUpperCase() || 'S')}
-                                      </Avatar>
-                                      {student.name}
-                                    </Box>
-                                  </TableCell>
-                                  <TableCell>{student.email}</TableCell>
-                                  <TableCell>{student.phone}</TableCell>
-                                  <TableCell>
-                                    <Button
-                                      variant="outlined"
-                                      size="small"
-                                      onClick={() => navigate(`/teacher-dashboard/batch/${batchId}/student/${student._id}`)}
-                                      sx={{ color: theme.primary, borderColor: theme.primary }}
-                                    >
-                                      Detail
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <Box sx={{ display: 'flex', gap: 1 }}>
+                                        <Button
+                                          variant="outlined"
+                                          size="small"
+                                          onClick={() => navigate(`/teacher-dashboard/batch/${batchId}/student/${student._id}`)}
+                                          sx={{ color: theme.primary, borderColor: theme.primary }}
+                                        >
+                                          Detail
+                                        </Button>
+                                        <Button
+                                          variant="outlined"
+                                          size="small"
+                                          color={isLocked ? "success" : "error"}
+                                          onClick={() => handleToggleLock(student._id)}
+                                        >
+                                          {isLocked ? "Unlock" : "Lock"}
+                                        </Button>
+                                      </Box>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
                           </TableBody>
                         </Table>
                       </TableContainer>

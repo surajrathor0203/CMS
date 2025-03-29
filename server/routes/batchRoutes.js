@@ -41,16 +41,11 @@ router.post('/create', auth, upload.single('qrCode'), async (req, res) => {
       teacher,
       fees,
       numberOfInstallments,
-      installmentDates,  // This will be array of dates only
+      installmentDates,
       upiHolderName,
       upiId,
       upiNumber
     } = req.body;
-
-    // Parse installment dates if they come as string
-    const parsedInstallmentDates = typeof installmentDates === 'string' 
-      ? JSON.parse(installmentDates) 
-      : installmentDates;
 
     // Validate required file
     if (!req.file) {
@@ -73,6 +68,7 @@ router.post('/create', auth, upload.single('qrCode'), async (req, res) => {
     const qrCodeUrl = uploadResult.Location;
     const s3Key = uploadResult.Key;
 
+    // Create new batch
     const batch = new Batch({
       name,
       subject,
@@ -82,7 +78,7 @@ router.post('/create', auth, upload.single('qrCode'), async (req, res) => {
       openingDate,
       fees: parseFloat(fees),
       numberOfInstallments: parseInt(numberOfInstallments),
-      installmentDates: parsedInstallmentDates.map(date => new Date(date)),
+      installmentDates: JSON.parse(installmentDates),
       payment: {
         upiHolderName,
         upiId,
@@ -94,12 +90,23 @@ router.post('/create', auth, upload.single('qrCode'), async (req, res) => {
 
     await batch.save();
     res.status(201).json({ success: true, data: batch });
+
   } catch (error) {
-    console.error('Error creating batch:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || 'Error creating batch'
-    });
+    // Delete uploaded file if batch creation fails
+    if (error.code === 11000) {
+      // Remove this specific error handling for duplicate name
+      console.error('Error creating batch:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || 'Error creating batch'
+      });
+    } else {
+      console.error('Error creating batch:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || 'Error creating batch'
+      });
+    }
   }
 });
 

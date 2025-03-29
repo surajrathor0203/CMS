@@ -1164,7 +1164,7 @@ const QuizProgressSection = ({ quizzes }) => {
       const studentAttempt = quiz.students.find(
         student => student.studentId === studentId
       );
-      return acc + (studentAttempt.score / studentAttempt.totalQuestions * 100);
+      return acc + ((studentAttempt.correctAnswers / studentAttempt.totalQuestions) * 100);
     }, 0);
 
     return (totalScore / attemptedQuizzesData.length).toFixed(1);
@@ -1257,7 +1257,45 @@ const QuizProgressSection = ({ quizzes }) => {
         </Grid>
       </Grid>
 
-      {/* Rest of the existing QuizProgressSection code... */}
+      {/* Recent Quiz Activity */}
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h6" gutterBottom color="primary">
+          Recent Quiz Activity
+        </Typography>
+        <ActivityTimeline>
+          {quizzes
+            .filter(quiz => quiz.students?.some(student => student.studentId === studentId))
+            .map(quiz => {
+              const studentAttempt = quiz.students.find(
+                student => student.studentId === studentId
+              );
+              
+              return (
+                <TimelineItem key={quiz._id}>
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle1" fontWeight="medium">
+                          {quiz.title}
+                        </Typography>
+                        <Chip
+                          label={`${studentAttempt.correctAnswers}/${studentAttempt.totalQuestions}`}
+                          color={studentAttempt.correctAnswers >= (studentAttempt.totalQuestions * 0.6) ? 'success' : 'error'}
+                          size="small"
+                        />
+                      </Box>
+                    }
+                    secondary={
+                      <Typography variant="body2" color="textSecondary">
+                        Completed on {new Date(studentAttempt.submittedAt).toLocaleDateString()}
+                      </Typography>
+                    }
+                  />
+                </TimelineItem>
+              );
+            })}
+        </ActivityTimeline>
+      </Box>
     </Box>
   );
 };
@@ -1289,7 +1327,7 @@ const AssignmentProgressSection = ({ assignments }) => {
       return acc + (submission.grade || 0);
     }, 0);
 
-    return (totalGrade / gradedAssignments.length).toFixed(1);
+    return totalGrade / gradedAssignments.length;
   };
 
   return (
@@ -1359,27 +1397,27 @@ const AssignmentProgressSection = ({ assignments }) => {
               <CircularProgressBox>
                 <CircularProgress
                   variant="determinate"
-                  value={parseFloat(getAverageGrade())}
+                  value={parseFloat(getAverageGrade()) * 10}
                   size={120}
                   thickness={4}
                   sx={{ color: theme.success }}
                 />
                 <ProgressValue sx={{ color: theme.success }}>
-                  {getAverageGrade()}%
+                  {(getAverageGrade() * 10).toFixed(1)}%
                 </ProgressValue>
               </CircularProgressBox>
               <Typography variant="h6" gutterBottom>
                 Average Grade
               </Typography>
               <Typography variant="body2" color="textSecondary">
-                Across all graded assignments
+                Grade: {getAverageGrade().toFixed(1)}/10
               </Typography>
             </CardContent>
           </ProgressCard>
         </Grid>
       </Grid>
 
-      {/* Recent Assignment Timeline */}
+      {/* Recent Assignment Activity */}
       <Box sx={{ mt: 4 }}>
         <Typography variant="h6" gutterBottom color="primary">
           Recent Assignment Activity
@@ -1392,7 +1430,7 @@ const AssignmentProgressSection = ({ assignments }) => {
                 sub => sub.studentId === studentId
               );
               const grade = submission.grade || 0;
-              
+
               return (
                 <TimelineItem key={assignment._id}>
                   <ListItemText
@@ -1402,13 +1440,13 @@ const AssignmentProgressSection = ({ assignments }) => {
                           {assignment.title}
                         </Typography>
                         {submission.grade ? (
-                          <AnimatedChip
-                            label={`${grade}%`}
-                            color={grade >= 60 ? 'success' : 'error'}
+                          <Chip
+                            label={`${grade}/10`}
+                            color={grade >= 6 ? 'success' : 'error'}
                             size="small"
                           />
                         ) : (
-                          <AnimatedChip
+                          <Chip
                             label="Submitted"
                             color="primary"
                             size="small"
@@ -1673,47 +1711,6 @@ const AssignmentProgressSection = ({ assignments }) => {
               <StyledCard>
                 <CardContent>
                   <QuizProgressSection quizzes={quizzes} />
-                  
-                  {/* Recent Quiz Activity */}
-                  <Box sx={{ mt: 4 }}>
-                    <Typography variant="h6" gutterBottom color="primary">
-                      Recent Quiz Activity
-                    </Typography>
-                    <List>
-                      {quizzes
-                        .filter(quiz => quiz.students?.some(student => student.studentId === studentId))
-                        .map(quiz => {
-                          const studentAttempt = quiz.students.find(
-                            student => student.studentId === studentId
-                          );
-                          const score = ((studentAttempt.correctAnswers/studentAttempt.totalQuestions)*100).toFixed(1);
-                          
-                          return (
-                            <TimelineItem key={quiz._id}>
-                              <ListItemText
-                                primary={
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Typography variant="subtitle1" fontWeight="medium">
-                                      {quiz.title}
-                                    </Typography>
-                                    <AnimatedChip
-                                      label={`${score}%`}
-                                      color={score >= 60 ? 'success' : 'error'}
-                                      size="small"
-                                    />
-                                  </Box>
-                                }
-                                secondary={
-                                  <Typography variant="body2" color="textSecondary">
-                                    Completed on {new Date(studentAttempt.submittedAt).toLocaleDateString()}
-                                  </Typography>
-                                }
-                              />
-                            </TimelineItem>
-                          );
-                      })}
-                    </List>
-                  </Box>
 
                   <Divider sx={{ my: 4 }} />
                   <AssignmentProgressSection assignments={assignments} />

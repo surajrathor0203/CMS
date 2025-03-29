@@ -118,47 +118,24 @@ const AddStudent = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    const unverifiedStudents = students.filter(s => !s.isVerified);
-    if (unverifiedStudents.length > 0) {
-      setError('Please verify all email addresses');
-      return;
-    }
-
     setSubmitting(true);
-    setProcessedCount(0);
-    
+
     try {
-      const studentsData = students.map(student => ({
-        ...student,
+      const formattedStudents = students.map(student => ({
+        name: student.name,
+        email: student.email,
+        phone: student.phone,
+        parentPhone: student.parentPhone,
+        address: student.address,
+        exists: student.exists,
         teachersInfo: [{
-          batchId: batchId,
-          teacherId: userData.user.id,
-          subject: userData.user.subject
+          batchId: batchId
         }]
       }));
 
-      const batchDetails = {
-        name: batchName || 'New Batch',
-        subject: userData.user.subject
-      };
-
-      // Start progress update interval
-      const progressInterval = setInterval(() => {
-        setProcessedCount(prev => {
-          if (prev < students.length) {
-            return prev + 1;
-          }
-          clearInterval(progressInterval);
-          return prev;
-        });
-      }, 500);
-
-      const response = await createMultipleStudents(studentsData, batchDetails);
-      
-      // Clear interval when done
-      clearInterval(progressInterval);
-      setProcessedCount(students.length);
+      const response = await createMultipleStudents(formattedStudents, {
+        batchId: batchId,
+      });
 
       if (response.success) {
         setSnackbar({
@@ -166,28 +143,18 @@ const AddStudent = () => {
           message: 'Students added successfully!',
           severity: 'success'
         });
-
-        if (response.partialSuccess) {
-          setError(`Some students were added successfully, but there were issues: ${response.errors.join('; ')}`);
-          setTimeout(() => {
-            navigate(`/teacher-dashboard/batch/${batchId}`);
-          }, 3000);
-        } else {
-          setTimeout(() => {
-            navigate(`/teacher-dashboard/batch/${batchId}`);
-          }, 1000);
-        }
+        navigate(`/teacher-dashboard/batch/${batchId}`);
       } else {
-        setError(response.message || 'Failed to add students');
+        setError(response.message || 'Error adding students');
         setSnackbar({
           open: true,
-          message: 'Failed to add students',
+          message: 'Error adding students',
           severity: 'error'
         });
       }
-    } catch (err) {
-      console.error('Error adding students:', err);
-      setError(err.message || 'Failed to add students');
+    } catch (error) {
+      console.error('Error adding students:', error);
+      setError(error.message || 'Failed to add students');
       setSnackbar({
         open: true,
         message: 'Error adding students',
@@ -238,18 +205,6 @@ const AddStudent = () => {
                         {isVerifying[index] ? 'Verifying...' : student.isVerified ? 'Verified' : 'Verify'}
                       </Button>
                     </Box>
-
-                    {/* <TextField
-                      fullWidth
-                      label="Username"
-                      margin="normal"
-                      value={student.username}
-                      disabled
-                      InputProps={{
-                        readOnly: true,
-                      }}
-                      helperText="Username will be auto-generated"
-                    /> */}
 
                     <TextField
                       fullWidth

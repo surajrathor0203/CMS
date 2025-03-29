@@ -93,7 +93,7 @@ export default function SignUp() {
     name: "",
     email: "",
     password: "",
-    subject: "",
+    cochingName: "",
     phoneNumber: "",
     countryCode: "+91",
     address: "",
@@ -143,9 +143,9 @@ export default function SignUp() {
       newErrors.phoneNumber = 'Invalid phone number (10 digits required)';
     }
 
-    // Subject validation
-    if (!formData.subject.trim()) {
-      newErrors.subject = 'Subject is required';
+    // Coaching Name validation
+    if (!formData.cochingName.trim()) {
+      newErrors.cochingName = 'Coaching name is required';
     }
 
     // Address validation
@@ -341,12 +341,12 @@ export default function SignUp() {
                 margin="normal"
                 required
                 fullWidth
-                name="subject"
-                label="Subject"
-                value={formData.subject}
+                name="cochingName"
+                label="Coaching Name"
+                value={formData.cochingName}
                 onChange={handleChange}
-                error={!!errors.subject}
-                helperText={errors.subject}
+                error={!!errors.cochingName}
+                helperText={errors.cochingName}
                 sx={{ mb: 1.5 }}
                 inputProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
                 InputLabelProps={{ style: { fontSize: isMobile ? 14 : 16 } }}

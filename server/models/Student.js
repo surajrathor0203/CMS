@@ -60,7 +60,12 @@ const studentSchema = new mongoose.Schema({
       ref: 'User',
       required: true
     },
-    subject: {
+    cochingName: {
+      type: String,
+      required: [true, 'Coaching name is required'],
+      trim: true
+    },
+    subject: {  // Add this new field
       type: String,
       required: true,
       trim: true

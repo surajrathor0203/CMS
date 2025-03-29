@@ -1,5 +1,6 @@
 const Student = require('../models/Student');
 const Batch = require('../models/Batch');
+const User = require('../models/User'); // Add this import
 const bcrypt = require('bcryptjs');  // Add this import
 const { generatePassword } = require('../utils/passwordGenerator');
 const { sendStudentWelcomeEmail } = require('../utils/emailService');
@@ -11,74 +12,121 @@ const Assignment = require('../models/Assignment');
 const createStudents = async (students, batchDetails) => {
   const results = [];
   const errors = [];
-  const batchSize = 5; // Process 5 students at a time
+  const batchSize = 5;
 
-  // Process students in batches
-  for (let i = 0; i < students.length; i += batchSize) {
-    const batch = students.slice(i, i + batchSize);
-    
-    // Process each batch in parallel
-    const batchPromises = batch.map(async (student) => {
-      try {
-        if (student.exists) {
-          const existingStudent = await Student.findOne({ email: student.email });
-          
-          if (!existingStudent.teachersInfo.some(
-            info => info.batchId.toString() === student.teachersInfo[0].batchId &&
-                   info.teacherId.toString() === student.teachersInfo[0].teacherId
-          )) {
-            existingStudent.teachersInfo.push({
-              ...student.teachersInfo[0],
-              batchName: batchDetails.name
-            });
-            await existingStudent.save();
+  try {
+    console.log('Received batchDetails:', batchDetails); // Debug log
+
+    if (!batchDetails.batchId || !batchDetails.teacherId) {
+      throw new Error('Missing required batchId or teacherId');
+    }
+
+    // First, get the batch details and teacher details
+    const batch = await Batch.findById(batchDetails.batchId);
+    if (!batch) {
+      throw new Error(`Batch not found with ID: ${batchDetails.batchId}`);
+    }
+
+    const teacher = await User.findById(batchDetails.teacherId);
+    if (!teacher) {
+      throw new Error(`Teacher not found with ID: ${batchDetails.teacherId}`);
+    }
+
+    // Get subject from batch and coaching name from teacher
+    const batchSubject = batch.subject;
+    const teacherCochingName = teacher.cochingName;
+
+    if (!batchSubject) {
+      throw new Error('Batch subject is missing');
+    }
+
+    if (!teacherCochingName) {
+      throw new Error('Teacher coaching name is missing');
+    }
+
+    // Process students in batches
+    for (let i = 0; i < students.length; i += batchSize) {
+      const currentBatch = students.slice(i, i + batchSize);
+      
+      const batchPromises = currentBatch.map(async (student) => {
+        try {
+          if (student.exists) {
+            const existingStudent = await Student.findOne({ email: student.email });
             
-            // Send email in background
-            sendStudentWelcomeEmail(existingStudent, null, batchDetails).catch(console.error);
-            return { success: true, student: existingStudent };
+            if (!existingStudent.teachersInfo.some(
+              info => info.batchId.toString() === batch._id.toString() &&
+                     info.teacherId.toString() === teacher._id.toString()
+            )) {
+              existingStudent.teachersInfo.push({
+                batchId: batch._id,
+                teacherId: teacher._id,
+                cochingName: teacherCochingName,
+                subject: batchSubject
+              });
+              
+              await existingStudent.save();
+              
+              sendStudentWelcomeEmail(existingStudent, null, {
+                ...batchDetails,
+                subject: batchSubject,
+                cochingName: teacherCochingName
+              }, false).catch(console.error);
+              
+              return { success: true, student: existingStudent };
+            }
+            return { success: false, error: `Student ${student.email} is already in this batch` };
+          } else {
+            const username = await generateUsername(student.name);
+            const plainPassword = generatePassword();
+            const newStudent = await Student.create({
+              ...student,
+              username,
+              password: plainPassword,
+              teachersInfo: [{
+                batchId: batch._id,
+                teacherId: teacher._id,
+                cochingName: teacherCochingName,
+                subject: batchSubject
+              }]
+            });
+
+            sendStudentWelcomeEmail(newStudent, plainPassword, {
+              ...batchDetails,
+              subject: batchSubject,
+              cochingName: teacherCochingName
+            }).catch(console.error);
+            
+            return { success: true, student: newStudent };
           }
-          return { success: false, error: `Student ${student.email} is already in this batch` };
-        } else {
-          const username = await generateUsername(student.name);
-          const plainPassword = generatePassword();
-          const newStudent = await Student.create({
-            ...student,
-            username,
-            password: plainPassword,
-            teachersInfo: [{
-              ...student.teachersInfo[0],
-              batchName: batchDetails.name
-            }]
-          });
-
-          // Send email in background
-          sendStudentWelcomeEmail(newStudent, plainPassword, batchDetails).catch(console.error);
-          return { success: true, student: newStudent };
+        } catch (error) {
+          return { 
+            success: false, 
+            error: `Error processing student ${student.email}: ${error.message}` 
+          };
         }
-      } catch (error) {
-        return { success: false, error: `Error processing student ${student.email}: ${error.message}` };
-      }
-    });
+      });
 
-    // Wait for current batch to complete
-    const batchResults = await Promise.all(batchPromises);
-    
-    // Process results
-    batchResults.forEach(result => {
-      if (result.success) {
-        results.push(result.student);
-      } else {
-        errors.push(result.error);
-      }
-    });
+      const batchResults = await Promise.all(batchPromises);
+      
+      batchResults.forEach(result => {
+        if (result.success) {
+          results.push(result.student);
+        } else {
+          errors.push(result.error);
+        }
+      });
+    }
+
+    return {
+      success: true,
+      data: results,
+      errors: errors.length > 0 ? errors : undefined,
+      message: errors.length > 0 ? 'Some students were not processed' : 'All students processed successfully'
+    };
+  } catch (error) {
+    console.error('Error in createStudents:', error); // Better error logging
+    throw new Error(`Failed to process students: ${error.message}`);
   }
-
-  return {
-    success: true,
-    data: results,
-    errors: errors.length > 0 ? errors : undefined,
-    message: errors.length > 0 ? 'Some students were not processed' : 'All students processed successfully'
-  };
 };
 
 const checkEmail = async (req, res) => {
