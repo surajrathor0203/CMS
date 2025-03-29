@@ -54,6 +54,11 @@ const userSchema = new mongoose.Schema({
       default: ''
     }
   },
+  status: {
+    type: String,
+    enum: ['active', 'locked'],
+    default: 'active'
+  },
   createdAt: {
     type: Date,
     default: Date.now

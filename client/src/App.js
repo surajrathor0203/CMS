@@ -24,6 +24,10 @@ import StudentDetails from './pages/StudentDetails';
 import InstallmentDetailsPage from './pages/InstallmentDetailsPage';
 import TotalAccountingPage from './pages/TotalAccountingPage';
 import TeacherGenerateTest from './pages/TeacherGenerateTest';
+import TeachersManagement from './pages/TeachersManagement';
+import TeacherSubscription from './pages/TeacherSubscription';
+import AdminSubscriptionPlans from './pages/AdminSubscriptionPlans';
+import TeacherSubscriptionPayment from './pages/TeacherSubscriptionPayment';
 import './App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -59,6 +63,24 @@ function App() {
             element={
               <ProtectedRoute 
                 element={<AdminDashboard />} 
+                allowedRoles={['admin']} 
+              />
+            } 
+          />
+          <Route 
+            path="/admin-dashboard/teachers" 
+            element={
+              <ProtectedRoute 
+                element={<TeachersManagement />} 
+                allowedRoles={['admin']} 
+              />
+            } 
+          />
+          <Route 
+            path="/admin/subscription-plans" 
+            element={
+              <ProtectedRoute 
+                element={<AdminSubscriptionPlans />} 
                 allowedRoles={['admin']} 
               />
             } 
@@ -158,6 +180,24 @@ function App() {
             element={
               <ProtectedRoute 
                 element={<TeacherGenerateTest />} 
+                allowedRoles={['teacher']} 
+              />
+            } 
+          />
+          <Route 
+            path="/teacher/subscription" 
+            element={
+              <ProtectedRoute 
+                element={<TeacherSubscription />} 
+                allowedRoles={['teacher']} 
+              />
+            } 
+          />
+          <Route 
+            path="/teacher/subscription/payment/:planId" 
+            element={
+              <ProtectedRoute 
+                element={<TeacherSubscriptionPayment />} 
                 allowedRoles={['teacher']} 
               />
             } 

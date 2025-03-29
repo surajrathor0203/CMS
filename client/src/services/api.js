@@ -740,3 +740,74 @@ export const sendChatMessage = async (message) => {
     throw error.response?.data || error;
   }
 };
+
+export const getTeachers = async () => {
+  try {
+    const response = await api.get('/admin/teachers');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const toggleTeacherStatus = async (teacherId) => {
+  try {
+    const response = await api.put(`/admin/teachers/${teacherId}/toggle-status`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getSubscriptionPlans = async () => {
+  try {
+    const response = await api.get('/subscription');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const createSubscriptionPlan = async (planData) => {
+  try {
+    const response = await api.post('/subscription', planData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const updateSubscriptionPlan = async (planId, planData) => {
+  try {
+    const response = await api.put(`/subscription/${planId}`, planData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const deleteSubscriptionPlan = async (planId) => {
+  try {
+    const response = await api.delete(`/subscription/${planId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getSubscriptionPlanById = async (planId) => {
+  try {
+    const response = await api.get(`/subscription/${planId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

@@ -20,7 +20,8 @@ import {
   User,
   Book,
   Wallet,
-  FileText, // Add this import for test icon
+  FileText,
+  CreditCard, // Add this import
 } from 'lucide-react';
 import { getUserFromCookie } from '../utils/cookies';
 import { logout } from '../utils/auth';
@@ -70,8 +71,9 @@ const theme = {
   const menuItems = [
     { text: 'Dashboard', icon: <BookOpen size={24} />, path: '/teacher-dashboard' },
     { text: 'Library', icon: <Book size={24} />, path: '/teacher/library' },
-    // { text: 'Generate Test', icon: <FileText size={24} />, path: '/teacher/generate-test' }, // Add this line
+    { text: 'Generate Test', icon: <FileText size={24} />, path: '/teacher/generate-test' },
     { text: 'Total Accounting', icon: <Wallet size={24} />, path: '/teacher/accounting' },
+    { text: 'Subscription', icon: <CreditCard size={24} />, path: '/teacher/subscription' }, // Add this line
     { text: 'Settings', icon: <Settings size={24} />, path: '/teacher/settings' }, 
   ];
 
