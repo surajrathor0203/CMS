@@ -12,9 +12,11 @@ import {
   DialogContent,
   useMediaQuery,
   CircularProgress,
+  IconButton,
+  InputAdornment,
 } from "@mui/material";
-import { Book, Check, ArrowLeft } from "lucide-react";  // Add ArrowLeft import
-import { useNavigate, useLocation } from "react-router-dom";  // Add useLocation
+import { Book, Check, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { sendResetOTP, verifyResetOTP, resetPassword } from "../services/api";
 
 const theme = createTheme({
@@ -58,14 +60,16 @@ const theme = createTheme({
 export default function ForgotPassword() {
   const navigate = useNavigate();
   const location = useLocation();
-  const searchParams = new URLSearchParams(location.search)
-  const userType = searchParams.get('userType')
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const searchParams = new URLSearchParams(location.search);
+  const userType = searchParams.get("userType");
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [step, setStep] = useState(1); // 1: email, 2: OTP, 3: new password
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [successDialog, setSuccessDialog] = useState(false);
@@ -128,31 +132,32 @@ export default function ForgotPassword() {
       <CssBaseline />
       <Box
         sx={{
-          minHeight: '100vh',
-          width: '100%',
-          background: 'radial-gradient(circle at center, #2E7D32 0%, #4CAF50 40%, #A5D6A7 75%, #ffffff 100%)',
-          display: 'flex',
-          flexDirection: 'column',  // Add this
-          alignItems: 'center',
-          justifyContent: 'center',
+          minHeight: "100vh",
+          width: "100%",
+          background:
+            "radial-gradient(circle at center, #2E7D32 0%, #4CAF50 40%, #A5D6A7 75%, #ffffff 100%)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
           py: 2,
-          position: 'relative',  // Add this
+          position: "relative",
         }}
       >
         <Button
           startIcon={<ArrowLeft size={isMobile ? 16 : 20} />}
-          onClick={() => navigate('/')}
+          onClick={() => navigate("/")}
           sx={{
-            position: 'absolute',
+            position: "absolute",
             left: { xs: 10, sm: 20, md: 40 },
             top: { xs: 10, sm: 20, md: 40 },
             color: "white",
             backgroundColor: "primary.main",
-            fontSize: { xs: '0.875rem', sm: '1rem' },
+            fontSize: { xs: "0.875rem", sm: "1rem" },
             py: { xs: 1, sm: 1.5 },
             px: { xs: 2, sm: 3 },
-            '&:hover': {
-              backgroundColor: '#1B5E20',
+            "&:hover": {
+              backgroundColor: "#1B5E20",
             },
           }}
         >
@@ -168,12 +173,9 @@ export default function ForgotPassword() {
               borderRadius: "24px",
               padding: "40px",
               boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
-              position: "relative", // Add this
+              position: "relative",
             }}
           >
-            {/* Move button here and update styling */}
-           
-            
             <Box
               sx={{
                 backgroundColor: "primary.main",
@@ -184,10 +186,14 @@ export default function ForgotPassword() {
             >
               <Book size={32} color="white" />
             </Box>
-            <Typography component="h1" variant="h5" sx={{ mb: 1, fontWeight: "bold" }}>
+            <Typography
+              component="h1"
+              variant="h5"
+              sx={{ mb: 1, fontWeight: "bold" }}
+            >
               Reset Password
             </Typography>
-            
+
             {error && (
               <Typography color="error" sx={{ mb: 2 }}>
                 {error}
@@ -195,7 +201,11 @@ export default function ForgotPassword() {
             )}
 
             {step === 1 && (
-              <Box component="form" onSubmit={handleSendOTP} sx={{ width: "100%" }}>
+              <Box
+                component="form"
+                onSubmit={handleSendOTP}
+                sx={{ width: "100%" }}
+              >
                 <TextField
                   margin="normal"
                   required
@@ -218,7 +228,11 @@ export default function ForgotPassword() {
             )}
 
             {step === 2 && (
-              <Box component="form" onSubmit={handleVerifyOTP} sx={{ width: "100%" }}>
+              <Box
+                component="form"
+                onSubmit={handleVerifyOTP}
+                sx={{ width: "100%" }}
+              >
                 <TextField
                   margin="normal"
                   required
@@ -240,24 +254,62 @@ export default function ForgotPassword() {
             )}
 
             {step === 3 && (
-              <Box component="form" onSubmit={handleResetPassword} sx={{ width: "100%" }}>
+              <Box
+                component="form"
+                onSubmit={handleResetPassword}
+                sx={{ width: "100%" }}
+              >
                 <TextField
                   margin="normal"
                   required
                   fullWidth
                   label="New Password"
-                  type="password"
+                  type={showNewPassword ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          edge="end"
+                        >
+                          {showNewPassword ? (
+                            <EyeOff size={20} />
+                          ) : (
+                            <Eye size={20} />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
                 <TextField
                   margin="normal"
                   required
                   fullWidth
                   label="Confirm Password"
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() =>
+                            setShowConfirmPassword(!showConfirmPassword)
+                          }
+                          edge="end"
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff size={20} />
+                          ) : (
+                            <Eye size={20} />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
                 <Button
                   type="submit"
@@ -281,22 +333,18 @@ export default function ForgotPassword() {
         </Container>
       </Box>
 
-      <Dialog
-        open={successDialog}
-        maxWidth="xs"
-        fullWidth={isMobile}
-      >
-        <DialogContent sx={{ textAlign: 'center', py: 4 }}>
+      <Dialog open={successDialog} maxWidth="xs" fullWidth={isMobile}>
+        <DialogContent sx={{ textAlign: "center", py: 4 }}>
           <Box
             sx={{
-              backgroundColor: '#E8F5E9',
-              borderRadius: '50%',
+              backgroundColor: "#E8F5E9",
+              borderRadius: "50%",
               width: 80,
               height: 80,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 16px'
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 16px",
             }}
           >
             <Check size={40} color="#2E7D32" />

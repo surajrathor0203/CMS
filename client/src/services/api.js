@@ -73,6 +73,24 @@ export const resetPassword = async (email, otp, newPassword, userType) => {
   }
 };
 
+export const verifyEmail = async (email) => {
+  try {
+    const response = await api.post('/auth/verify-email', { email });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const verifySignupOTP = async (email, otp) => {
+  try {
+    const response = await api.post('/auth/verify-signup-otp', { email, otp });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
 export const createBatch = async (formData) => {
   try {
     const response = await api.post('/batch/create', formData, {
@@ -806,6 +824,49 @@ export const deleteSubscriptionPlan = async (planId) => {
 export const getSubscriptionPlanById = async (planId) => {
   try {
     const response = await api.get(`/subscription/${planId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const submitSubscriptionPayment = async (planId, receiptFile) => {
+  try {
+    const formData = new FormData();
+    formData.append('receipt', receiptFile);
+
+    const response = await api.post(`/subscription/${planId}/submit-payment`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getPendingSubscriptionPayments = async () => {
+  try {
+    const response = await api.get('/subscription/pending-payments');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const verifySubscriptionPayment = async (userId, status) => {
+  try {
+    const response = await api.put(`/subscription/verify-payment/${userId}`, { status });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getPendingPaymentsCount = async () => {
+  try {
+    const response = await api.get('/subscription/pending-payments/count');
     return response.data;
   } catch (error) {
     throw error.response?.data || error;

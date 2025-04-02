@@ -57,11 +57,38 @@ const userSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['active', 'locked'],
-    default: 'active'
+    default: 'locked'
   },
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  subscription: {
+    planId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SubscriptionPlan'
+    },
+    startDate: Date,
+    endDate: Date,
+    status: {
+      type: String,
+      enum: ['active', 'pending', 'expired'],
+      default: 'pending'
+    },
+    paymentDetails: {
+      amount: Number,
+      transactionId: String,
+      paymentDate: Date,
+      receipt: {
+        url: String,
+        key: String
+      },
+      verificationStatus: {
+        type: String,
+        enum: ['pending', 'verified', 'rejected'],
+        default: 'pending'
+      }
+    }
   }
 });
 

@@ -83,25 +83,119 @@ exports.sendStudentWelcomeEmail = async (student, plainPassword, batchDetails, i
   }
 };
 
+exports.sendSignupVerificationEmail = async (email, otp) => {
+  const mailOptions = {
+    from: process.env.gmail_id,
+    to: email,
+    subject: 'Email Verification - CMS Teacher Registration',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="https://your-logo-url.com" alt="CMS Logo" style="max-width: 150px;">
+          </div>
+          
+          <h2 style="color: #2E7D32; text-align: center; margin-bottom: 20px;">Verify Your Email Address</h2>
+          
+          <p style="color: #333; font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
+            Thank you for choosing CMS! To complete your registration, please use the following verification code:
+          </p>
+          
+          <div style="background-color: #E8F5E9; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #2E7D32; font-size: 32px; letter-spacing: 8px; margin: 0; font-family: monospace;">
+              ${otp}
+            </h1>
+          </div>
+          
+          <p style="color: #666; font-size: 14px; text-align: center; margin-bottom: 20px;">
+            This code will expire in 10 minutes for security purposes.
+          </p>
+          
+          <div style="border-top: 1px solid #eee; margin-top: 20px; padding-top: 20px;">
+            <p style="color: #666; font-size: 12px; text-align: center;">
+              If you didn't request this verification code, please ignore this email.
+              <br>Your email address will not be verified without entering the code.
+            </p>
+          </div>
+          
+          <div style="background-color: #f5f5f5; border-radius: 8px; padding: 15px; margin-top: 20px;">
+            <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
+              Need help? Contact our support team at
+              <a href="mailto:support@your-cms.com" style="color: #2E7D32; text-decoration: none;">
+                rathor.suraj0203@gmail.com
+              </a>
+            </p>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+          <p style="color: #666; font-size: 12px; margin: 0;">
+            © ${new Date().getFullYear()} CMS. All rights reserved.
+          </p>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('Signup verification email sent successfully');
+  } catch (error) {
+    console.error('Error sending signup verification email:', error);
+    throw new Error('Failed to send verification email');
+  }
+};
+
 exports.sendOTPEmail = async (email, otp) => {
   const mailOptions = {
     from: process.env.gmail_id,
     to: email,
-    subject: 'Password Reset OTP - CMS',
+    subject: 'Password Reset Verification - CMS',
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #2E7D32;">Password Reset OTP</h2>
-        <p>You have requested to reset your password. Here is your OTP:</p>
-        
-        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <h1 style="color: #2E7D32; text-align: center; letter-spacing: 5px;">${otp}</h1>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="https://your-logo-url.com" alt="CMS Logo" style="max-width: 150px;">
+          </div>
+          
+          <h2 style="color: #2E7D32; text-align: center; margin-bottom: 20px;">Password Reset Code</h2>
+          
+          <p style="color: #333; font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
+            We received a request to reset your password. Use this verification code to complete the process:
+          </p>
+          
+          <div style="background-color: #E8F5E9; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #2E7D32; font-size: 32px; letter-spacing: 8px; margin: 0; font-family: monospace;">
+              ${otp}
+            </h1>
+          </div>
+          
+          <p style="color: #666; font-size: 14px; text-align: center; margin-bottom: 20px;">
+            This code will expire in 10 minutes for security purposes.
+          </p>
+          
+          <div style="border-top: 1px solid #eee; margin-top: 20px; padding-top: 20px;">
+            <p style="color: #666; font-size: 12px; text-align: center;">
+              If you didn't request this password reset, please ignore this email or contact support
+              if you believe this is suspicious activity.
+            </p>
+          </div>
+          
+          <div style="background-color: #f5f5f5; border-radius: 8px; padding: 15px; margin-top: 20px;">
+            <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
+              Need help? Contact our support team at
+              <a href="mailto:support@your-cms.com" style="color: #2E7D32; text-decoration: none;">
+                support@your-cms.com
+              </a>
+            </p>
+          </div>
         </div>
-
-        <p>This OTP will expire in 10 minutes.</p>
-        <p>If you didn't request this, please ignore this email.</p>
         
-        <p style="margin-top: 20px;">Best regards,</p>
-        <p>The CMS Team</p>
+        <div style="text-align: center; margin-top: 20px;">
+          <p style="color: #666; font-size: 12px; margin: 0;">
+            © ${new Date().getFullYear()} CMS. All rights reserved.
+          </p>
+        </div>
       </div>
     `
   };

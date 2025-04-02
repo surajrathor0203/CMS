@@ -4,7 +4,8 @@ const multer = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const crypto = require('crypto');
 const SubscriptionPlan = require('../models/SubscriptionPlan');
-const { isAdmin } = require('../middleware/authMiddleware');
+const { isAdmin, protect } = require('../middleware/authMiddleware');
+const User = require('../models/User'); // Added User model import
 
 // Configure multer for file upload
 const upload = multer({
@@ -35,6 +36,60 @@ const uploadToS3 = async (file, key) => {
   await s3Client.send(command);
   return `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 };
+
+// Get pending payments count
+router.get('/pending-payments/count', isAdmin, async (req, res) => {
+  try {
+    const count = await User.countDocuments({
+      'subscription.paymentDetails.verificationStatus': 'pending',
+      role: 'teacher'
+    });
+    
+    res.json({ success: true, data: count });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get all pending payments
+router.get('/pending-payments', isAdmin, async (req, res) => {
+  try {
+    const pendingPayments = await User.find({
+      'subscription.paymentDetails.verificationStatus': 'pending',
+      role: 'teacher'
+    })
+    .select('name email subscription profilePicture')
+    .populate('subscription.planId');
+
+    console.log('Pending payments found:', pendingPayments); // Debug log
+
+    const formattedPayments = pendingPayments.map(user => ({
+      _id: user._id,
+      teacher: {
+        name: user.name,
+        email: user.email,
+        profilePicture: user.profilePicture
+      },
+      plan: user.subscription?.planId || {},
+      amount: user.subscription?.paymentDetails?.amount,
+      paymentDate: user.subscription?.paymentDetails?.paymentDate,
+      receipt: user.subscription?.paymentDetails?.receipt,
+      transactionId: user.subscription?.paymentDetails?.transactionId
+    }));
+    
+    res.json({ 
+      success: true, 
+      data: formattedPayments 
+    });
+  } catch (error) {
+    console.error('Error fetching pending payments:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching pending payments',
+      error: error.message 
+    });
+  }
+});
 
 // Get all subscription plans (public route)
 router.get('/', async (req, res) => {
@@ -136,6 +191,94 @@ router.delete('/:id', isAdmin, async (req, res) => {
     res.json({ success: true, message: 'Plan deleted successfully' });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+// Add verification endpoint
+router.put('/verify-payment/:userId', isAdmin, async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['verified', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status'
+      });
+    }
+
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Update subscription status
+    user.subscription.paymentDetails.verificationStatus = status;
+    user.subscription.status = status === 'verified' ? 'active' : 'pending';
+    
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `Payment ${status}`,
+      data: {
+        subscriptionStatus: user.subscription.status,
+        verificationStatus: user.subscription.paymentDetails.verificationStatus
+      }
+    });
+  } catch (error) {
+    console.error('Error verifying payment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error verifying payment',
+      error: error.message
+    });
+  }
+});
+
+// Submit payment for subscription plan
+router.post('/:planId/submit-payment', protect, upload.single('receipt'), async (req, res) => {
+  try {
+    const plan = await SubscriptionPlan.findById(req.params.planId);
+    if (!plan) {
+      return res.status(404).json({ success: false, message: 'Plan not found' });
+    }
+
+    let receiptData = {};
+    if (req.file) {
+      const key = `subscription-payments/${req.user.id}/${crypto.randomBytes(16).toString('hex')}`;
+      const url = await uploadToS3(req.file, key);
+      receiptData = { url, key };
+    }
+
+    const user = await User.findById(req.user.id);
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + plan.duration);
+
+    user.subscription = {
+      planId: plan._id,
+      startDate: new Date(),
+      endDate: endDate,
+      status: 'pending',
+      paymentDetails: {
+        amount: plan.price,
+        transactionId: crypto.randomBytes(8).toString('hex'),
+        paymentDate: new Date(),
+        receipt: receiptData,
+        verificationStatus: 'pending'
+      }
+    };
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Payment submitted successfully',
+      data: user.subscription
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

@@ -16,7 +16,7 @@ import {
 import { toast } from 'react-toastify';
 import TeacherLayout from '../components/TeacherLayout';
 import { getUserFromCookie } from '../utils/cookies';
-import { getSubscriptionPlanById } from '../services/api';
+import { getSubscriptionPlanById, submitSubscriptionPayment } from '../services/api';
 
 const TeacherSubscriptionPayment = () => {
   const location = useLocation();
@@ -61,9 +61,13 @@ const TeacherSubscriptionPayment = () => {
 
     setLoading(true);
     try {
-      // TODO: Implement payment submission API
-      toast.success('Payment submitted successfully');
-      navigate('/teacher-dashboard');
+      const response = await submitSubscriptionPayment(planId, paymentFile);
+      if (response.success) {
+        toast.success('Payment submitted successfully. Awaiting verification.');
+        navigate('/teacher-dashboard');
+      } else {
+        throw new Error(response.message || 'Failed to submit payment');
+      }
     } catch (error) {
       toast.error(error.message || 'Failed to submit payment');
     } finally {

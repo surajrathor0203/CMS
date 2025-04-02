@@ -24,10 +24,11 @@ import StudentDetails from './pages/StudentDetails';
 import InstallmentDetailsPage from './pages/InstallmentDetailsPage';
 import TotalAccountingPage from './pages/TotalAccountingPage';
 import TeacherGenerateTest from './pages/TeacherGenerateTest';
-import TeachersManagement from './pages/TeachersManagement';
+import TeachersManagement from './pages/AdminTeachersManagement';
 import TeacherSubscription from './pages/TeacherSubscription';
 import AdminSubscriptionPlans from './pages/AdminSubscriptionPlans';
 import TeacherSubscriptionPayment from './pages/TeacherSubscriptionPayment';
+import AdminSubscriptionVerifications from './pages/AdminSubscriptionVerifications';
 import './App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -81,6 +82,15 @@ function App() {
             element={
               <ProtectedRoute 
                 element={<AdminSubscriptionPlans />} 
+                allowedRoles={['admin']} 
+              />
+            } 
+          />
+          <Route 
+            path="/admin/subscription-verifications" 
+            element={
+              <ProtectedRoute 
+                element={<AdminSubscriptionVerifications />} 
                 allowedRoles={['admin']} 
               />
             } 

@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
-import { getTeachers } from '../services/api';
+import { getTeachers, getPendingPaymentsCount } from '../services/api';
 import {
     Box,
     Grid,
     Paper,
     Typography,
-    CircularProgress
+    CircularProgress,
+    Container,
+    Card,
+    CardContent,
+    Avatar,
+    Button
 } from '@mui/material';
-import { Users, School, BookOpen, CreditCard } from 'lucide-react';
+import { Users, School, BookOpen, CreditCard, BanknoteIcon } from 'lucide-react';
 
 const StatsCard = ({ title, value, icon, link, onNavigate }) => (
     <Paper 
@@ -51,6 +56,7 @@ const AdminDashboard = () => {
         studentCount: 0,
         batchCount: 0
     });
+    const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -66,7 +72,11 @@ const AdminDashboard = () => {
                     teacherCount: teacherResponse.data.length
                 }));
             }
-            // Add other stats fetching here
+
+            const paymentResponse = await getPendingPaymentsCount();
+            if (paymentResponse.success) {
+                setPendingPaymentsCount(paymentResponse.data);
+            }
         } catch (error) {
             console.error('Error fetching stats:', error);
         } finally {
@@ -119,19 +129,51 @@ const AdminDashboard = () => {
 
     return (
         <AdminLayout title="Dashboard">
-            <Grid container spacing={3}>
-                {dashboardItems.map((item, index) => (
-                    <Grid item xs={12} md={4} key={index}>
-                        <StatsCard
-                            title={item.title}
-                            value={stats[item.title.toLowerCase().replace(' ', '')] || ''}
-                            icon={item.icon}
-                            link={item.link}
-                            onNavigate={handleNavigate}
-                        />
+            <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                <Grid container spacing={3}>
+                    {/* Subscription Payment Verification Card */}
+                    <Grid item xs={12} md={4}>
+                        <Card>
+                            <CardContent>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                                    <Avatar sx={{ bgcolor: '#2e7d32', mr: 2 }}>
+                                        <BanknoteIcon size={24} />
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="h6">Pending Verifications</Typography>
+                                        <Typography variant="h4" color="primary">
+                                            {pendingPaymentsCount}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                                <Button 
+                                    variant="contained" 
+                                    fullWidth
+                                    onClick={() => navigate('/admin/subscription-verifications')}
+                                    sx={{ 
+                                        bgcolor: '#2e7d32',
+                                        '&:hover': { bgcolor: '#1b5e20' }
+                                    }}
+                                >
+                                    View Payments
+                                </Button>
+                            </CardContent>
+                        </Card>
                     </Grid>
-                ))}
-            </Grid>
+
+                    {dashboardItems.map((item, index) => (
+                        <Grid item xs={12} md={4} key={index}>
+                            <StatsCard
+                                title={item.title}
+                                value={stats[item.title.toLowerCase().replace(' ', '')] || ''}
+                                icon={item.icon}
+                                link={item.link}
+                                onNavigate={handleNavigate}
+                            />
+                        </Grid>
+                    ))}
+                </Grid>
+            </Container>
         </AdminLayout>
     );
 };

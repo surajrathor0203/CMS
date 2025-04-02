@@ -1,6 +1,10 @@
 const User = require('../models/User');
 const Student = require('../models/Student');
-const { sendWelcomeEmail, sendOTPEmail } = require('../utils/emailService');
+const { 
+  sendWelcomeEmail, 
+  sendOTPEmail, 
+  sendSignupVerificationEmail 
+} = require('../utils/emailService');
 const { generateUsername } = require('../utils/usernameGenerator');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -9,6 +13,7 @@ const s3 = require('../config/s3Config');
 
 // Store OTPs with expiry (in memory - consider using Redis in production)
 const otpStore = new Map();
+const signupOTPStore = new Map();
 
 const generateToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
@@ -16,9 +21,97 @@ const generateToken = (userId) => {
   });
 };
 
+exports.verifyEmail = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        // Check if email already exists
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({
+                success: false,
+                message: 'User already exists with this email'
+            });
+        }
+
+        // Generate OTP
+        const otp = generateOTP();
+        
+        // Store OTP with expiry
+        const otpData = {
+            otp,
+            email,
+            expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
+        };
+        signupOTPStore.set(email, otpData);
+
+        // Send OTP via email using new template
+        await sendSignupVerificationEmail(email, otp);
+
+        res.json({
+            success: true,
+            message: 'Verification code has been sent to your email'
+        });
+
+    } catch (error) {
+        console.error('Email verification error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error sending verification email'
+        });
+    }
+};
+
+exports.verifySignupOTP = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        
+        const storedOTPData = signupOTPStore.get(email);
+        
+        if (!storedOTPData || 
+            storedOTPData.otp !== otp || 
+            Date.now() > storedOTPData.expiresAt) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid or expired OTP'
+            });
+        }
+
+        // Clear OTP after successful verification
+        signupOTPStore.delete(email);
+
+        // Mark email as verified
+        signupOTPStore.set('verified_' + email, true);
+
+        res.json({
+            success: true,
+            message: 'Email verified successfully'
+        });
+
+    } catch (error) {
+        console.error('OTP verification error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error verifying OTP'
+        });
+    }
+};
+
 exports.signup = async (req, res) => {
     try {
         const { name, email, password, phoneNumber, countryCode, cochingName, address, role } = req.body;
+
+        // Check if email was verified
+        const wasVerified = signupOTPStore.has('verified_' + email);
+        if (!wasVerified) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email not verified. Please verify your email first.'
+            });
+        }
+
+        // Remove verification flag
+        signupOTPStore.delete('verified_' + email);
 
         // Check if user already exists
         const existingUser = await User.findOne({ email });
@@ -106,33 +199,33 @@ exports.login = async (req, res) => {
             { expiresIn: '1d' }
         );
 
-        // Create user info object
+        // Create user info object with status
         const userInfo = {
             id: user._id,
             name: user.name,
             email: user.email,
             role: user.role,
             username: user.username,
-            cochingName: user.cochingName, // Include cochingName instead of subject
-            address: user.address
+            cochingName: user.cochingName,
+            address: user.address,
+            status: user.status // Include status in response
         };
 
-        // Set token cookie
+        // Set cookies
         res.cookie('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
-            maxAge: 24 * 60 * 60 * 1000 // 1 day
+            maxAge: 24 * 60 * 60 * 1000
         });
 
-        // Set user info cookie
         res.cookie('userInfo', JSON.stringify(userInfo), {
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
-            maxAge: 24 * 60 * 60 * 1000 // 1 day
+            maxAge: 24 * 60 * 60 * 1000
         });
 
-        // Send response
+        // Send response with user info including status
         res.json({
             success: true,
             user: userInfo,

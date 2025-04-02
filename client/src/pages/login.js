@@ -21,7 +21,6 @@ import {
 import { Book, Eye, EyeOff, Check, ArrowLeft } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { login } from "../services/api"
-import { getUserFromCookie } from '../utils/cookies'
 
 const theme = createTheme({
   palette: {
@@ -104,28 +103,37 @@ export default function Login() {
       const response = await login(
         formData.identifier, 
         formData.password,
-        userType || 'teacher' // Default to 'teacher' if userType is not provided
+        userType || 'teacher'
       );
       
       if (response.success) {
-        const user = getUserFromCookie();
+        const userData = response.user; // Get user data from response
         setProcessingDialog(false);
         setSuccessDialog({
           open: true,
           message: 'Login successful!',
-          userName: user.user.name || 'User'
+          userName: userData.name || 'User'
         });
 
         // Delay navigation to show the success message
         setTimeout(() => {
-          const paths = {
-            teacher: '/teacher-dashboard',
-            student: '/student-dashboard',
-            admin: '/admin-dashboard',
-            default: '/login'
-          };
-          const redirectPath = paths[user.user.role] || paths.default;
-          navigate(redirectPath);
+          // Handle different user roles and status
+          if (userData.role === 'teacher') {
+            // Check teacher's status from response data
+            const redirectPath = userData.status === 'locked' 
+              ? '/teacher/subscription'
+              : '/teacher-dashboard';
+            navigate(redirectPath);
+          } else {
+            // Handle other roles as before
+            const paths = {
+              student: '/student-dashboard',
+              admin: '/admin-dashboard',
+              default: '/login'
+            };
+            const redirectPath = paths[userData.role] || paths.default;
+            navigate(redirectPath);
+          }
         }, 1500);
       }
     } catch (error) {

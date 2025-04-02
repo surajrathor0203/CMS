@@ -10,7 +10,9 @@ const {
   login,
   getTeacherProfile,
   updateTeacherProfile,
-  updateTeacherPassword 
+  updateTeacherPassword,
+  verifyEmail,
+  verifySignupOTP
 } = require('../controllers/authController');
 
 // Configure multer for memory storage
@@ -27,6 +29,10 @@ const upload = multer({
     }
   }
 });
+
+// Add these new routes before other auth routes
+router.post('/verify-email', verifyEmail);
+router.post('/verify-signup-otp', verifySignupOTP);
 
 // Auth routes
 router.post('/login', login);

@@ -23,7 +23,7 @@ import {
   useMediaQuery
 } from "@mui/material"
 import { Book, Eye, EyeOff, Check, ArrowLeft } from "lucide-react"
-import { signup } from '../services/api';
+import { signup, verifyEmail, verifySignupOTP } from '../services/api';
 
 const countryCodes = [
   { code: '+91', country: 'India' },
@@ -109,6 +109,8 @@ export default function SignUp() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [processingDialog, setProcessingDialog] = useState(false);
+  const [step, setStep] = useState('email-verification');
+  const [verificationOTP, setVerificationOTP] = useState('');
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -157,9 +159,53 @@ export default function SignUp() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleVerifyEmail = async () => {
+    try {
+      setIsLoading(true);
+      const response = await verifyEmail(formData.email);
+      if (response.success) {
+        setStep('otp-verification');
+      }
+    } catch (error) {
+      setErrorDialog({
+        open: true,
+        message: error.message || 'Failed to send verification email'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    try {
+      setIsLoading(true);
+      const response = await verifySignupOTP(formData.email, verificationOTP);
+      if (response.success) {
+        setStep('registration');
+      }
+    } catch (error) {
+      setErrorDialog({
+        open: true,
+        message: error.message || 'Invalid OTP'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     
+    if (step === 'email-verification') {
+      await handleVerifyEmail();
+      return;
+    }
+    
+    if (step === 'otp-verification') {
+      await handleVerifyOTP();
+      return;
+    }
+
     if (!validateForm()) {
       setErrorDialog({
         open: true,
@@ -208,6 +254,150 @@ export default function SignUp() {
       open: false,
       message: ''
     });
+  };
+
+  const renderStepContent = () => {
+    switch (step) {
+      case 'email-verification':
+        return (
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            name="email"
+            label="Email"
+            value={formData.email}
+            onChange={handleChange}
+            error={!!errors.email}
+            helperText={errors.email}
+          />
+        );
+      case 'otp-verification':
+        return (
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            name="otp"
+            label="Enter OTP"
+            value={verificationOTP}
+            onChange={(e) => setVerificationOTP(e.target.value)}
+            helperText="Please enter the OTP sent to your email"
+          />
+        );
+      case 'registration':
+        return (
+          <>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="name"
+              label="Full Name"
+              value={formData.name}
+              onChange={handleChange}
+              error={!!errors.name}
+              helperText={errors.name}
+              sx={{ mb: 1.5 }}
+              inputProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
+              InputLabelProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
+            />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Password"
+              type={showPassword ? "text" : "password"}
+              value={formData.password}
+              onChange={handleChange}
+              error={!!errors.password}
+              helperText={errors.password}
+              sx={{ mb: 1.5 }}
+              inputProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
+              InputLabelProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                      size={isMobile ? "small" : "medium"}
+                    >
+                      {showPassword ? <EyeOff size={isMobile ? 16 : 20} /> : <Eye size={isMobile ? 16 : 20} />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              name="cochingName"
+              label="Coaching Name"
+              value={formData.cochingName}
+              onChange={handleChange}
+              error={!!errors.cochingName}
+              helperText={errors.cochingName}
+              sx={{ mb: 1.5 }}
+              inputProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
+              InputLabelProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
+            />
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: 1, 
+              mb: 1.5 
+            }}>
+              <FormControl sx={{ 
+                width: isMobile ? '100%' : '40%',
+                mb: isMobile ? 1.5 : 0
+              }}>
+                <InputLabel style={{ fontSize: isMobile ? 14 : 16 }}>Code</InputLabel>
+                <Select
+                  name="countryCode"
+                  value={formData.countryCode}
+                  label="Code"
+                  onChange={handleChange}
+                  inputProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
+                >
+                  {countryCodes.map((country) => (
+                    <MenuItem key={country.code} value={country.code} style={{ fontSize: isMobile ? 14 : 16 }}>
+                      {country.country} ({country.code})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <TextField
+                required
+                name="phoneNumber"
+                label="Phone Number"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                error={!!errors.phoneNumber}
+                helperText={errors.phoneNumber}
+                sx={{ width: isMobile ? '100%' : '60%' }}
+                inputProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
+                InputLabelProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
+              />
+            </Box>
+            <TextField
+              required
+              fullWidth
+              name="address"
+              label="Address"
+              value={formData.address}
+              onChange={handleChange}
+              error={!!errors.address}
+              helperText={errors.address}
+              sx={{ mb: 1.5 }}
+              inputProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
+              InputLabelProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
+            />
+          </>
+        );
+    }
   };
 
   return (
@@ -281,130 +471,7 @@ export default function SignUp() {
               Create your teacher account
             </Typography>
             <Box component="form" onSubmit={handleSubmit} sx={{ width: "100%", mt: 1 }}>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="name"
-                label="Full Name"
-                value={formData.name}
-                onChange={handleChange}
-                error={!!errors.name}
-                helperText={errors.name}
-                sx={{ mb: 1.5 }} // Reduced margin for mobile
-                inputProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
-                InputLabelProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
-              />
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="email"
-                label="Email"
-                value={formData.email}
-                onChange={handleChange}
-                error={!!errors.email}
-                helperText={errors.email}
-                sx={{ mb: 1.5 }}
-                inputProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
-                InputLabelProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
-              />
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="password"
-                label="Password"
-                type={showPassword ? "text" : "password"}
-                value={formData.password}
-                onChange={handleChange}
-                error={!!errors.password}
-                helperText={errors.password}
-                sx={{ mb: 1.5 }}
-                inputProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
-                InputLabelProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                        size={isMobile ? "small" : "medium"}
-                      >
-                        {showPassword ? <EyeOff size={isMobile ? 16 : 20} /> : <Eye size={isMobile ? 16 : 20} />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="cochingName"
-                label="Coaching Name"
-                value={formData.cochingName}
-                onChange={handleChange}
-                error={!!errors.cochingName}
-                helperText={errors.cochingName}
-                sx={{ mb: 1.5 }}
-                inputProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
-                InputLabelProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
-              />
-              
-              <Box sx={{ 
-                display: 'flex', 
-                flexDirection: isMobile ? 'column' : 'row',
-                gap: 1, 
-                mb: 1.5 
-              }}>
-                <FormControl sx={{ 
-                  width: isMobile ? '100%' : '40%',
-                  mb: isMobile ? 1.5 : 0
-                }}>
-                  <InputLabel style={{ fontSize: isMobile ? 14 : 16 }}>Code</InputLabel>
-                  <Select
-                    name="countryCode"
-                    value={formData.countryCode}
-                    label="Code"
-                    onChange={handleChange}
-                    inputProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
-                  >
-                    {countryCodes.map((country) => (
-                      <MenuItem key={country.code} value={country.code} style={{ fontSize: isMobile ? 14 : 16 }}>
-                        {country.country} ({country.code})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <TextField
-                  required
-                  name="phoneNumber"
-                  label="Phone Number"
-                  value={formData.phoneNumber}
-                  onChange={handleChange}
-                  error={!!errors.phoneNumber}
-                  helperText={errors.phoneNumber}
-                  sx={{ width: isMobile ? '100%' : '60%' }}
-                  inputProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
-                  InputLabelProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
-                />
-              </Box>
-
-              <TextField
-                required
-                fullWidth
-                name="address"
-                label="Address"
-                value={formData.address}
-                onChange={handleChange}
-                error={!!errors.address}
-                helperText={errors.address}
-                sx={{ mb: 1.5 }}
-                inputProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
-                InputLabelProps={{ style: { fontSize: isMobile ? 14 : 16 } }}
-              />
-              
+              {renderStepContent()}
               <Button
                 type="submit"
                 fullWidth
@@ -420,6 +487,10 @@ export default function SignUp() {
               >
                 {isLoading ? (
                   <CircularProgress size={isMobile ? 20 : 24} sx={{ color: 'white' }} />
+                ) : step === 'email-verification' ? (
+                  'Verify Email'
+                ) : step === 'otp-verification' ? (
+                  'Verify OTP'
                 ) : (
                   'Sign Up'
                 )}
@@ -444,7 +515,6 @@ export default function SignUp() {
                     Log in
                   </Link>
                 </Typography>
-                {/* Remove or comment out the old "Go to Home" button inside the form */}
               </Box>
             </Box>
           </Box>
