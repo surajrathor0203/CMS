@@ -54,10 +54,7 @@ app.use('/api/subscription', subscriptionRoutes); // Add this line
 // MongoDB connection
 const connectDB = async () => {
     try {
-        const conn = await mongoose.connect(process.env.MONGO_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true
-        });
+        const conn = await mongoose.connect(process.env.MONGO_URI);
         
         // Drop the name index if it exists
         try {
