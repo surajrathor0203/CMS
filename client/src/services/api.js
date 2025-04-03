@@ -875,6 +875,24 @@ export const getPendingPaymentsCount = async () => {
   }
 };
 
+export const getRejectedPaymentsCount = async () => {
+  try {
+    const response = await api.get('/subscription/rejected-payments/count');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getRejectedPayments = async () => {
+  try {
+    const response = await api.get('/subscription/rejected-payments');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
 export const generateTest = async (formData) => {
   try {
     const response = await api.post('/ai/generate-test', { formData });

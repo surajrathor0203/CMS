@@ -51,6 +51,29 @@ router.get('/pending-payments/count', isAdmin, async (req, res) => {
   }
 });
 
+// Get rejected payments count
+router.get('/rejected-payments/count', isAdmin, async (req, res) => {
+  try {
+    const count = await User.countDocuments({
+      $or: [
+        { 'subscription.subscriptionStatus': 'rejected' },
+        { status: 'locked' }
+      ],
+      role: 'teacher'
+    });
+    
+    res.json({
+      success: true,
+      data: count
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching rejected payments count'
+    });
+  }
+});
+
 // Get all pending payments
 router.get('/pending-payments', isAdmin, async (req, res) => {
   try {
@@ -85,6 +108,49 @@ router.get('/pending-payments', isAdmin, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Error fetching pending payments',
+      error: error.message 
+    });
+  }
+});
+
+// Get rejected payments
+router.get('/rejected-payments', isAdmin, async (req, res) => {
+  try {
+    const rejectedPayments = await User.find({
+      $or: [
+        { 'subscription.subscriptionStatus': 'rejected' },
+        { status: 'locked' }
+      ],
+      role: 'teacher'
+    })
+    .select('name email subscription profilePicture status')
+    .populate('subscription.planId');
+
+    const formattedPayments = rejectedPayments.map(user => ({
+      _id: user._id,
+      teacher: {
+        name: user.name,
+        email: user.email,
+        profilePicture: user.profilePicture,
+        status: user.status
+      },
+      plan: user.subscription?.planId || {},
+      amount: user.subscription?.paymentDetails?.amount,
+      paymentDate: user.subscription?.paymentDetails?.paymentDate,
+      receipt: user.subscription?.paymentDetails?.receipt,
+      transactionId: user.subscription?.paymentDetails?.transactionId,
+      subscriptionStatus: user.subscription?.subscriptionStatus
+    }));
+    
+    res.json({ 
+      success: true, 
+      data: formattedPayments 
+    });
+  } catch (error) {
+    console.error('Error fetching rejected payments:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching rejected payments',
       error: error.message 
     });
   }
@@ -212,19 +278,17 @@ router.put('/verify-payment/:userId', isAdmin, async (req, res) => {
       });
     }
 
-    // Update subscription status and user status
+    // Only update user status when activating, not when rejecting
     user.subscription.subscriptionStatus = status;
     if (status === 'active') {
       user.status = 'active';
-    } else if (status === 'rejected') {
-      user.status = 'locked';
     }
     
     await user.save();
 
     res.json({
       success: true,
-      message: `Subscription ${status}`,
+      message: `Payment ${status}`,
       data: {
         subscriptionStatus: user.subscription.subscriptionStatus,
         userStatus: user.status

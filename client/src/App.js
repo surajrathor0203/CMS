@@ -29,6 +29,7 @@ import TeacherSubscription from './pages/TeacherSubscription';
 import AdminSubscriptionPlans from './pages/AdminSubscriptionPlans';
 import TeacherSubscriptionPayment from './pages/TeacherSubscriptionPayment';
 import AdminSubscriptionVerifications from './pages/AdminSubscriptionVerifications';
+import RejectedVerifications from './pages/RejectedVerifications';
 import './App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -91,6 +92,15 @@ function App() {
             element={
               <ProtectedRoute 
                 element={<AdminSubscriptionVerifications />} 
+                allowedRoles={['admin']} 
+              />
+            } 
+          />
+          <Route 
+            path="/admin/rejected-verifications" 
+            element={
+              <ProtectedRoute 
+                element={<RejectedVerifications />} 
                 allowedRoles={['admin']} 
               />
             } 

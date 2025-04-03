@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
-import { getTeachers, getPendingPaymentsCount } from '../services/api';
+import { getTeachers, getPendingPaymentsCount, getRejectedPaymentsCount } from '../services/api';
 import {
     Box,
     Grid,
@@ -14,7 +14,7 @@ import {
     Avatar,
     Button
 } from '@mui/material';
-import { Users, School, BookOpen, CreditCard, BanknoteIcon } from 'lucide-react';
+import { Users, School, BookOpen, CreditCard, BanknoteIcon, XCircle } from 'lucide-react';
 
 const StatsCard = ({ title, value, icon, link, onNavigate }) => (
     <Paper 
@@ -57,6 +57,7 @@ const AdminDashboard = () => {
         batchCount: 0
     });
     const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
+    const [rejectedPaymentsCount, setRejectedPaymentsCount] = useState(0);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -65,9 +66,10 @@ const AdminDashboard = () => {
 
     const fetchStats = async () => {
         try {
-            const [teacherResponse, pendingPaymentsResponse] = await Promise.all([
+            const [teacherResponse, pendingPaymentsResponse, rejectedPaymentsResponse] = await Promise.all([
                 getTeachers(),
-                getPendingPaymentsCount()
+                getPendingPaymentsCount(),
+                getRejectedPaymentsCount()
             ]);
 
             if (teacherResponse.success) {
@@ -79,6 +81,10 @@ const AdminDashboard = () => {
 
             if (pendingPaymentsResponse.success) {
                 setPendingPaymentsCount(pendingPaymentsResponse.data);
+            }
+
+            if (rejectedPaymentsResponse.success) {
+                setRejectedPaymentsCount(rejectedPaymentsResponse.data);
             }
         } catch (error) {
             console.error('Error fetching stats:', error);
@@ -112,13 +118,6 @@ const AdminDashboard = () => {
             icon: <BookOpen size={24} />,
             link: '/admin/batches',
             color: '#1976d2'
-        },
-        {
-            title: 'Subscription Plans',
-            description: 'Manage subscription plans for teachers',
-            icon: <CreditCard size={24} />,
-            link: '/admin/subscription-plans',
-            color: '#2e7d32'
         }
     ];
 
@@ -164,6 +163,81 @@ const AdminDashboard = () => {
                                     }}
                                 >
                                     View Payments
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+
+                    {/* Rejected Verifications Card */}
+                    <Grid item xs={12} md={4}>
+                        <Card 
+                            sx={{ 
+                                cursor: 'pointer',
+                                '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.04)' }
+                            }}
+                            onClick={() => navigate('/admin/rejected-verifications')}
+                        >
+                            <CardContent>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                                    <Avatar sx={{ bgcolor: '#d32f2f', mr: 2 }}>
+                                        <XCircle size={24} />
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="h6">Rejected Verifications</Typography>
+                                        <Box display="flex" alignItems="baseline" gap={1}>
+                                            <Typography variant="h4" color="error">
+                                                {rejectedPaymentsCount}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                total rejected/locked
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                </Box>
+                                <Button 
+                                    variant="contained" 
+                                    fullWidth
+                                    sx={{ 
+                                        bgcolor: '#d32f2f',
+                                        '&:hover': { bgcolor: '#9a0007' }
+                                    }}
+                                >
+                                    View Rejected
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+
+                    {/* Subscription Plans Card */}
+                    <Grid item xs={12} md={4}>
+                        <Card 
+                            sx={{ 
+                                cursor: 'pointer',
+                                '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.04)' }
+                            }}
+                            onClick={() => navigate('/admin/subscription-plans')}
+                        >
+                            <CardContent>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                                    <Avatar sx={{ bgcolor: '#2e7d32', mr: 2 }}>
+                                        <CreditCard size={24} />
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="h6">Subscription Plans</Typography>
+                                        <Typography variant="body1" color="text.secondary">
+                                            Manage subscription plans
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                                <Button 
+                                    variant="contained" 
+                                    fullWidth
+                                    sx={{ 
+                                        bgcolor: '#2e7d32',
+                                        '&:hover': { bgcolor: '#1b5e20' }
+                                    }}
+                                >
+                                    Manage Plans
                                 </Button>
                             </CardContent>
                         </Card>
