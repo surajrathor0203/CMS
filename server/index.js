@@ -135,15 +135,6 @@ const scheduleSubscriptionCheck = () => {
   }, msToScheduledTime);
 };
 
-// Connect to database and start the schedulers
-connectDB().then(() => {
-  scheduleInstallmentCheck();
-  scheduleSubscriptionCheck();
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-  });
-});
-
 // Basic route
 app.get('/', (req, res) => {
     res.json({ message: 'Welcome to CMS API' });
@@ -157,3 +148,17 @@ app.use((err, req, res, next) => {
 
 // Start server
 const PORT = process.env.PORT || 8080;
+
+// Connect to database and start the schedulers if not in production
+if (process.env.NODE_ENV !== 'production') {
+    connectDB().then(() => {
+        scheduleInstallmentCheck();
+        scheduleSubscriptionCheck();
+        app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+        });
+    });
+}
+
+// Export the Express app for Vercel
+module.exports = app;
