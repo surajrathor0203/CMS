@@ -93,6 +93,19 @@ const userSchema = new mongoose.Schema({
         url: String,
         key: String
       }
+    },
+    newPayment: {
+      planId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'SubscriptionPlan'
+      },
+      receipt: {
+        url: String,
+        key: String
+      },
+      amount: Number,
+      transactionId: String,
+      paymentDate: Date
     }
   }
 });

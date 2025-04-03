@@ -13,9 +13,10 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  CircularProgress
+  CircularProgress,
+  Chip
 } from '@mui/material';
-import { Check } from 'lucide-react';
+import { Check, Lock as LockIcon, LockOpen as UnlockIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../components/TeacherLayout';
 import { getSubscriptionPlans, getTeacherProfile } from '../services/api';
@@ -97,6 +98,7 @@ const TeacherSubscription = () => {
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState([]);
   const [subscription, setSubscription] = useState(null);
+  const [userStatus, setUserStatus] = useState('active'); // Add this state
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -114,6 +116,7 @@ const TeacherSubscription = () => {
         const response = await getTeacherProfile(userData.user.id);
         if (response.success) {
           setSubscription(response.data.subscription);
+          setUserStatus(response.data.status); // Set the user's status
         }
       }
     } catch (error) {
@@ -160,6 +163,21 @@ const TeacherSubscription = () => {
     >
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        {userStatus !== 'active' && (
+                <Box sx={{ 
+                  mt: 2, 
+                  p: 2, 
+                  bgcolor: '#ffebee', 
+                  borderRadius: 1,
+                  border: '1px solid #ef5350'
+                }}>
+                  <Typography color="error" align="center">
+                    Your subscription has expired. Please renew your subscription or contact our helpline at 
+                    <Typography component="span" fontWeight="bold"> rathor.suraj0203@gmail.com </Typography>
+                    for assistance.
+                  </Typography>
+                </Box>
+              )}
           {/* Subscription Status Card */}
           {subscription && (
             <Paper 
@@ -169,17 +187,57 @@ const TeacherSubscription = () => {
                 mb: 4, 
                 bgcolor: '#f5f5f5',
                 border: '1px solid',
-                borderColor: subscription.subscriptionStatus === 'active' ? '#2e7d32' : 
-                           subscription.subscriptionStatus === 'pending' ? '#ed6c02' : '#d32f2f'
+                borderColor: userStatus === 'active' ? '#2e7d32' : '#d32f2f'
               }}
             >
-              <Typography variant="h5" gutterBottom sx={{ color: '#2e7d32' }}>
-                Current Subscription
-              </Typography>
+              
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                mb: 2,
+                position: 'relative' 
+              }}>
+                <Typography variant="h5" gutterBottom sx={{ 
+                  color: '#2e7d32', 
+                  mb: 0,
+                  textAlign: 'center' 
+                }}>
+                  Current Subscription
+                </Typography>
+                <Chip
+                  icon={userStatus === 'active' ? <UnlockIcon size={16} /> : <LockIcon size={16} />}
+                  label={userStatus === 'active' ? 'Account Active' : 'Account Locked'}
+                  color={userStatus === 'active' ? 'success' : 'error'}
+                  variant="outlined"
+                  sx={{
+                    position: 'absolute',
+                    right: 0,
+                    '& .MuiChip-icon': {
+                      color: 'inherit'
+                    }
+                  }}
+                />
+              </Box>
+              {/* {userStatus !== 'active' && (
+                <Box sx={{ 
+                  mt: 2, 
+                  p: 2, 
+                  bgcolor: '#ffebee', 
+                  borderRadius: 1,
+                  border: '1px solid #ef5350'
+                }}>
+                  <Typography color="error" align="center">
+                    Your subscription has expired. Please renew your subscription or contact our helpline at 
+                    <Typography component="span" fontWeight="bold"> 1800-XXX-XXXX </Typography>
+                    for assistance.
+                  </Typography>
+                </Box>
+              )} */}
               <Grid container spacing={2}>
                 <Grid item xs={12} md={4}>
                   <Typography variant="subtitle2" color="text.secondary">
-                    Status
+                    Last Payment Status
                   </Typography>
                   <Typography variant="body1" sx={{ 
                     color: subscription.subscriptionStatus === 'active' ? '#2e7d32' : 

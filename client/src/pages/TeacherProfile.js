@@ -603,8 +603,38 @@ export default function TeacherProfile() {
                         </Button>
                       </DialogActions>
                     </Dialog>
+
+                    {/* Help Line Section */}
+                    <Paper 
+                      elevation={0}
+                      sx={{ 
+                        p: 3,
+                        mt: 3,
+                        borderRadius: 2,
+                        backgroundColor: '#fff',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.08)'
+                      }}
+                    >
+                      <Typography variant="h6" color="primary" gutterBottom>
+                        Need Help?
+                      </Typography>
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          Email: <Typography component="span" sx={{ ml: 1, color: 'primary.main' }}>
+                            rathor.suraj0203@gmail.com
+                          </Typography>
+                        </Typography>
+                        <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
+                          Phone: <Typography component="span" sx={{ ml: 1, color: 'primary.main' }}>
+                            +91 9977964260
+                          </Typography>
+                        </Typography>
+                      </Box>
+                    </Paper>
                   </Box>
+                  
                 </Grid>
+                
               </Grid>
             </CardContent>
           </Card>

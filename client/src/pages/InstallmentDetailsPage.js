@@ -159,7 +159,7 @@ export default function InstallmentDetailsPage() {
   };
 
   return (
-    <TeacherLayout>
+    <TeacherLayout title={`Installment Details`}>
       <Box sx={{ p: 3 }}>
         <Card elevation={2}>
           <CardContent>

@@ -80,7 +80,7 @@ export default function TotalAccountingPage() {
   }
 
   return (
-    <TeacherLayout>
+    <TeacherLayout title={"Total Accounting"}>
       <Box sx={{ p: 3 }}>
         <Typography variant="h4" gutterBottom color={theme.primary}>
           Total Accounting Overview

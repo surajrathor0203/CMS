@@ -270,7 +270,7 @@ router.put('/verify-payment/:userId', isAdmin, async (req, res) => {
       });
     }
 
-    const user = await User.findById(req.params.userId);
+    const user = await User.findById(req.params.userId).populate('subscription.newPayment.planId');
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -278,12 +278,35 @@ router.put('/verify-payment/:userId', isAdmin, async (req, res) => {
       });
     }
 
-    // Only update user status when activating, not when rejecting
-    user.subscription.subscriptionStatus = status;
-    if (status === 'active') {
+    if (status === 'active' && user.subscription.newPayment) {
+      const plan = user.subscription.newPayment.planId;
+      const endDate = new Date();
+      endDate.setMonth(endDate.getMonth() + plan.duration);
+
+      // Keep the existing subscription data and update only necessary fields
+      user.subscription = {
+        ...user.subscription,
+        planId: plan._id,
+        startDate: new Date(),
+        endDate: endDate,
+        subscriptionStatus: 'active',
+        paymentDetails: {
+          amount: user.subscription.newPayment.amount || 0,
+          transactionId: user.subscription.newPayment.transactionId || '',
+          paymentDate: user.subscription.newPayment.paymentDate || new Date(),
+          receipt: {
+            url: user.subscription.newPayment.receipt?.url || '',
+            key: user.subscription.newPayment.receipt?.key || ''
+          }
+        },
+        newPayment: undefined
+      };
+      
       user.status = 'active';
+    } else if (status === 'rejected') {
+      user.subscription.subscriptionStatus = 'rejected';
     }
-    
+
     await user.save();
 
     res.json({
@@ -320,28 +343,28 @@ router.post('/:planId/submit-payment', protect, upload.single('receipt'), async 
     }
 
     const user = await User.findById(req.user.id);
-    const endDate = new Date();
-    endDate.setMonth(endDate.getMonth() + plan.duration);
-
-    user.subscription = {
+    
+    // Store new payment details and update subscription status
+    user.subscription.newPayment = {
       planId: plan._id,
-      startDate: new Date(),
-      endDate: endDate,
-      subscriptionStatus: 'pending',
-      paymentDetails: {
-        amount: plan.price,
-        transactionId: crypto.randomBytes(8).toString('hex'),
-        paymentDate: new Date(),
-        receipt: receiptData
-      }
+      receipt: receiptData,
+      amount: plan.price,
+      transactionId: crypto.randomBytes(8).toString('hex'),
+      paymentDate: new Date()
     };
+    
+    // Update main subscription status to pending
+    user.subscription.subscriptionStatus = 'pending';
 
     await user.save();
 
     res.json({
       success: true,
       message: 'Payment submitted successfully',
-      data: user.subscription
+      data: {
+        newPayment: user.subscription.newPayment,
+        subscriptionStatus: user.subscription.subscriptionStatus
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

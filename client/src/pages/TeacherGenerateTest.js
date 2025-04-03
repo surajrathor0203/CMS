@@ -409,7 +409,7 @@ export default function TeacherGenerateTest() {
   }
 
   return (
-    <TeacherLayout>
+    <TeacherLayout title={"Generate Test"}>
       <Box sx={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column', p: 3 }}>
         {!showChat ? (
           <Paper elevation={3} sx={{ p: 3 }}>
