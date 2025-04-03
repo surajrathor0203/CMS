@@ -57,7 +57,7 @@ const userSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['active', 'locked'],
-    default: 'locked'
+    default: 'active'
   },
   createdAt: {
     type: Date,
@@ -68,12 +68,22 @@ const userSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'SubscriptionPlan'
     },
-    startDate: Date,
-    endDate: Date,
-    status: {
+    startDate: {
+      type: Date,
+      default: Date.now
+    },
+    endDate: {
+      type: Date,
+      default: () => {
+        const date = new Date();
+        date.setMonth(date.getMonth() + 3); // Add 3 months
+        return date;
+      }
+    },
+    subscriptionStatus: {
       type: String,
-      enum: ['active', 'pending', 'expired'],
-      default: 'pending'
+      enum: ['active', 'Free trial', 'pending', 'expired', 'rejected'],
+      default: 'Free trial'
     },
     paymentDetails: {
       amount: Number,
@@ -82,11 +92,6 @@ const userSchema = new mongoose.Schema({
       receipt: {
         url: String,
         key: String
-      },
-      verificationStatus: {
-        type: String,
-        enum: ['pending', 'verified', 'rejected'],
-        default: 'pending'
       }
     }
   }

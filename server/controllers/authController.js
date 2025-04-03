@@ -125,6 +125,11 @@ exports.signup = async (req, res) => {
         // Generate unique username
         const username = await generateUsername(name);
 
+        // Set subscription dates
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setMonth(endDate.getMonth() + 3);
+
         // Create new user
         const user = new User({
             name,
@@ -132,10 +137,15 @@ exports.signup = async (req, res) => {
             password,
             phoneNumber,
             countryCode,
-            cochingName,  // Store cochingName instead of subject
+            cochingName,
             address,
             role,
-            username
+            username,
+            subscription: {
+                startDate,
+                endDate,
+                subscriptionStatus: 'Free trial'  // Set initial status as Free trial
+            }
         });
 
         // Save plain password temporarily for email

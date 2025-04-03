@@ -64,7 +64,7 @@ const TeacherSubscriptionPayment = () => {
       const response = await submitSubscriptionPayment(planId, paymentFile);
       if (response.success) {
         toast.success('Payment submitted successfully. Awaiting verification.');
-        navigate('/teacher-dashboard');
+        navigate('/teacher/subscription');
       } else {
         throw new Error(response.message || 'Failed to submit payment');
       }

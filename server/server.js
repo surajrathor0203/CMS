@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const checkInstallments = require('./utils/installmentChecker');
+const checkSubscriptions = require('./utils/subscriptionChecker'); // Add this line
 
 // Load environment variables
 dotenv.config();
@@ -73,15 +74,15 @@ const connectDB = async () => {
     }
 };
 
-// Schedule installment check to run daily at 3:57 PM
+// Schedule installment check to run daily at 12:00 AM
 const scheduleInstallmentCheck = () => {
   const now = new Date();
   const scheduledTime = new Date(
     now.getFullYear(),
     now.getMonth(),
     now.getDate(),
-    18, // 24-hour format: 15 = 3 PM
-    16, // Minutes
+    0, // 24-hour 
+    0, // Minutes
     0  // Seconds
   );
 
@@ -105,9 +106,42 @@ const scheduleInstallmentCheck = () => {
   }, msToScheduledTime);
 };
 
-// Connect to database and start the scheduler
+// Schedule subscription check to run daily at 12:00 PM (noon)
+const scheduleSubscriptionCheck = () => {
+  const now = new Date();
+  const scheduledTime = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    11, // 12 AM (noon)
+    37,  // 0 minutes
+    0   // 0 seconds
+  );
+
+  // If today's noon has passed, schedule for tomorrow
+  if (now > scheduledTime) {
+    scheduledTime.setDate(scheduledTime.getDate() + 1);
+  }
+
+  const msToScheduledTime = scheduledTime.getTime() - now.getTime();
+  console.log(`Next subscription check scheduled for: ${scheduledTime.toLocaleString()}`);
+
+  // First run at next noon
+  setTimeout(() => {
+    console.log('Running subscription check...');
+    checkSubscriptions();
+    // Then run every 24 hours
+    setInterval(() => {
+      console.log('Running daily subscription check...');
+      checkSubscriptions();
+    }, 24 * 60 * 60 * 1000);
+  }, msToScheduledTime);
+};
+
+// Connect to database and start the schedulers
 connectDB().then(() => {
   scheduleInstallmentCheck();
+  scheduleSubscriptionCheck();
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
   });

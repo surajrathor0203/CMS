@@ -857,7 +857,9 @@ export const getPendingSubscriptionPayments = async () => {
 
 export const verifySubscriptionPayment = async (userId, status) => {
   try {
-    const response = await api.put(`/subscription/verify-payment/${userId}`, { status });
+    const response = await api.put(`/subscription/verify-payment/${userId}`, { 
+      status: status === 'verified' ? 'active' : 'rejected' 
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
@@ -867,6 +869,15 @@ export const verifySubscriptionPayment = async (userId, status) => {
 export const getPendingPaymentsCount = async () => {
   try {
     const response = await api.get('/subscription/pending-payments/count');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const generateTest = async (formData) => {
+  try {
+    const response = await api.post('/ai/generate-test', { formData });
     return response.data;
   } catch (error) {
     throw error.response?.data || error;

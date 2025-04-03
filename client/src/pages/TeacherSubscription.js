@@ -18,8 +18,9 @@ import {
 import { Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import TeacherLayout from '../components/TeacherLayout';
-import { getSubscriptionPlans } from '../services/api';
+import { getSubscriptionPlans, getTeacherProfile } from '../services/api';
 import { toast } from 'react-toastify';
+import { getUserFromCookie } from '../utils/cookies';
 
 const SubscriptionCard = ({ title, price, duration, features, planId, accountHolderName, upiId, upiNumber, qrCode }) => {
   const navigate = useNavigate();
@@ -95,6 +96,7 @@ const TeacherSubscription = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState([]);
+  const [subscription, setSubscription] = useState(null);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -102,7 +104,22 @@ const TeacherSubscription = () => {
 
   useEffect(() => {
     fetchSubscriptionPlans();
+    fetchTeacherSubscription();
   }, []);
+
+  const fetchTeacherSubscription = async () => {
+    try {
+      const userData = getUserFromCookie();
+      if (userData && userData.user.id) {
+        const response = await getTeacherProfile(userData.user.id);
+        if (response.success) {
+          setSubscription(response.data.subscription);
+        }
+      }
+    } catch (error) {
+      toast.error('Failed to fetch subscription details');
+    }
+  };
 
   const fetchSubscriptionPlans = async () => {
     try {
@@ -143,9 +160,59 @@ const TeacherSubscription = () => {
     >
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+          {/* Subscription Status Card */}
+          {subscription && (
+            <Paper 
+              elevation={3} 
+              sx={{ 
+                p: 3, 
+                mb: 4, 
+                bgcolor: '#f5f5f5',
+                border: '1px solid',
+                borderColor: subscription.subscriptionStatus === 'active' ? '#2e7d32' : 
+                           subscription.subscriptionStatus === 'pending' ? '#ed6c02' : '#d32f2f'
+              }}
+            >
+              <Typography variant="h5" gutterBottom sx={{ color: '#2e7d32' }}>
+                Current Subscription
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Status
+                  </Typography>
+                  <Typography variant="body1" sx={{ 
+                    color: subscription.subscriptionStatus === 'active' ? '#2e7d32' : 
+                           subscription.subscriptionStatus === 'pending' ? '#ed6c02' : '#d32f2f',
+                    fontWeight: 'bold'
+                  }}>
+                    {subscription.subscriptionStatus.charAt(0).toUpperCase() + subscription.subscriptionStatus.slice(1)}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Start Date
+                  </Typography>
+                  <Typography variant="body1">
+                    {new Date(subscription.startDate).toLocaleDateString()}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    End Date
+                  </Typography>
+                  <Typography variant="body1">
+                    {new Date(subscription.endDate).toLocaleDateString()}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </Paper>
+          )}
+
           <Typography variant="h4" gutterBottom sx={{ textAlign: 'center', mb: 4 }}>
             Choose Your Subscription Plan
           </Typography>
+
           {loading ? (
             <Box display="flex" justifyContent="center" p={3}>
               <CircularProgress />

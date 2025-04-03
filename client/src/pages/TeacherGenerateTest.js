@@ -7,10 +7,12 @@ import {
   Typography,
   MenuItem,
   Grid,
+  CircularProgress,
+  Backdrop
 } from '@mui/material';
-import { Copy, Download, Edit } from 'lucide-react';
+import { Copy, Download, Edit, Save, RotateCcw } from 'lucide-react';
 import TeacherLayout from '../components/TeacherLayout';
-import { sendChatMessage } from '../services/api';
+import { sendChatMessage, generateTest } from '../services/api';
 import html2pdf from 'html2pdf.js';
 
 export default function TeacherGenerateTest() {
@@ -19,14 +21,20 @@ export default function TeacherGenerateTest() {
     subject: '',
     topic: '',
     difficultyLevel: '',
-    duration: '',  // Add duration field
+    duration: '',
     sections: [{ questions: '', marksPerQuestion: '' }],
     note: ''
   });
 
   const [showChat, setShowChat] = useState(false);
-  const [editableContent, setEditableContent] = useState('');
+  const [testData, setTestData] = useState(null);
+  const [activeTab, setActiveTab] = useState('questions');
   const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState({
+    questions: null,
+    answers: null
+  });
+  const [isLoading, setIsLoading] = useState(false);
 
   const difficultyLevels = ['Easy', 'Medium', 'Hard'];
 
@@ -66,26 +74,6 @@ export default function TeacherGenerateTest() {
     }
   };
 
-  const generatePrompt = () => {
-    const sectionsInfo = formData.sections
-      .map((section, index) => 
-        `Section ${index + 1}: ${section.questions} questions of ${section.marksPerQuestion} marks each`
-      )
-      .join(', ');
-
-    const prompt = `Generate a ${formData.difficultyLevel} level test paper for Class ${formData.class} 
-      on the topic "${formData.topic}" in ${formData.subject}. The test should have ${formData.sections.length} sections: 
-      ${sectionsInfo}. ${formData.note ? `Additional note: ${formData.note}` : ''}
-      Please include detailed solutions for each question. i dont want start in new line.`;
-
-    setShowChat(true);
-    return prompt;
-  };
-
-  const handleAIResponse = (response) => {
-    setEditableContent(response.trim());
-  };
-
   const calculateTotalMarks = () => {
     return formData.sections.reduce((total, section) => {
       return total + (Number(section.questions) * Number(section.marksPerQuestion));
@@ -94,79 +82,331 @@ export default function TeacherGenerateTest() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
 
     try {
-      const prompt = generatePrompt();
-      const response = await sendChatMessage(prompt);
-      if (response.success) {
-        handleAIResponse(response.message);
+      const response = await generateTest(formData);
+      
+      if (response.success && response.data) {
+        const data = response.data;
+        if (!data.questions || !data.answers) {
+          throw new Error('Invalid response format from server');
+        }
+        setTestData(data);
         setShowChat(true);
+      } else {
+        throw new Error(response.message || 'Failed to generate test');
       }
     } catch (error) {
-      console.error('Chat error:', error);
-      alert('Sorry, I encountered an error. Please try again.');
+      console.error('Test generation error:', error);
+      alert(error.message || 'Failed to generate test. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleCopyContent = () => {
-    navigator.clipboard.writeText(editableContent);
+  const formatQuestionPaper = () => {
+    if (!testData || !testData.questions) return '';
+
+    let content = `${formData.subject.toUpperCase()}\n`;
+    content += `Class: ${formData.class}\n`;
+    content += `Topic: ${formData.topic}\n`;
+    content += `Time: ${formData.duration} Hours\n`;
+    content += `Maximum Marks: ${calculateTotalMarks()}\n\n`;
+
+    const sections = testData.questions || {};
+    Object.entries(sections).forEach(([sectionKey, questions]) => {
+      if (!Array.isArray(questions)) return;
+
+      content += `${sectionKey.toUpperCase()}\n\n`;
+      questions.forEach(q => {
+        if (!q) return;
+        content += `${q.questionNumber || ''}. ${q.text || ''} [${q.marks || 0} marks]\n`;
+        if (Array.isArray(q.options)) {
+          q.options.forEach((opt, index) => {
+            content += `   ${String.fromCharCode(97 + index)}) ${opt}\n`;
+          });
+        }
+        content += '\n';
+      });
+    });
+
+    return content;
+  };
+
+  const formatAnswerKey = () => {
+    if (!testData || !testData.answers) return '';
+
+    let content = `ANSWER KEY\n\n`;
+    content += `${formData.subject} - ${formData.topic}\n\n`;
+
+    const sections = testData.answers || {};
+    Object.entries(sections).forEach(([sectionKey, answers]) => {
+      if (!Array.isArray(answers)) return;
+
+      content += `${sectionKey.toUpperCase()}\n\n`;
+      answers.forEach(a => {
+        if (!a) return;
+        content += `${a.questionNumber || ''}. Answer: ${a.answer || ''}\n`;
+        if (a.solution) {
+          content += `   Solution: ${a.solution}\n`;
+        }
+        content += '\n';
+      });
+    });
+
+    return content;
   };
 
   const handleDownload = () => {
-    const questions = editableContent.trim();
-
+    if (!testData) {
+      alert('No test data available to download');
+      return;
+    }
+    
+    const content = activeTab === 'questions' ? formatQuestionPaper() : formatAnswerKey();
+    const fileName = `${formData.subject}_${formData.topic}_${activeTab}.pdf`;
+    const currentDate = new Date().toLocaleDateString();
+    
     const element = document.createElement('div');
     element.innerHTML = `
       <div style="padding: 20px; font-family: 'Times New Roman', serif; line-height: 1.6;">
-        <!-- Header Section -->
-        <div style="text-align: center; margin-bottom: 30px;">
-          <h2 style="margin: 0; text-transform: uppercase;">${formData.subject}</h2>
-          <p style="margin: 5px 0; font-size: 16px;"><strong>Class:</strong> ${formData.class}</p>
-          <p style="margin: 5px 0; font-size: 16px;"><strong>Topic:</strong> ${formData.topic}</p>
-          <div style="margin: 15px 0; display: flex; justify-content: space-between; font-size: 16px;">
-            <strong>Time: ${formData.duration} Hours</strong>
-            <strong>Maximum Marks: ${calculateTotalMarks()}</strong>
-          </div>
-          <div style="border-bottom: 2px solid black; margin: 20px 0;"></div>
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h2 style="margin: 0; font-size: 24px;">${formData.subject.toUpperCase()}</h2>
+          <p style="margin: 5px 0; font-size: 16px;">${activeTab === 'questions' ? 'Question Paper' : 'Answer Key'}</p>
         </div>
-
-        <!-- Questions Section -->
-        <div style="margin-bottom: 30px;">
-          ${questions.split('\n').map(line => {
-            // Section headers
-            if (line.trim().startsWith('Section')) {
-              return `<h3 style="margin: 25px 0 10px 0; text-decoration: underline;">${line}</h3>`;
-            }
-            // MCQ options (starting with a, b, c, d, etc.)
-            if (line.trim().match(/^[a-z]\)/i)) {
-              return `<p style="margin: 8px 0 8px 20px;">${line}</p>`;
-            }
-            // Numbered questions
-            if (line.trim().match(/^\d+\./)) {
-              return `<p style="margin: 16px 0 12px 0; page-break-inside: avoid;">${line}</p>`;
-            }
-            return `<p style="margin: 10px 0;">${line}</p>`;
-          }).join('')}
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+          <tr>
+            <td style="padding: 8px; border: 1px solid #000; width: 50%;">
+              <strong>Class:</strong> ${formData.class}
+            </td>
+            <td style="padding: 8px; border: 1px solid #000;">
+              <strong>Date:</strong> ${currentDate}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border: 1px solid #000;">
+              <strong>Subject:</strong> ${formData.subject}
+            </td>
+            <td style="padding: 8px; border: 1px solid #000;">
+              <strong>Duration:</strong> ${formData.duration} Hours
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 8px; border: 1px solid #000;">
+              <strong>Topic:</strong> ${formData.topic}
+            </td>
+            <td style="padding: 8px; border: 1px solid #000;">
+              <strong>Maximum Marks:</strong> ${calculateTotalMarks()}
+            </td>
+          </tr>
+        </table>
+        ${activeTab === 'questions' ? `
+          <div style="margin-bottom: 20px; padding: 10px; border: 1px solid #000;">
+            <strong>General Instructions:</strong>
+            <ol style="margin: 5px 0 0 20px; padding-left: 0;">
+              <li>All questions are compulsory.</li>
+              <li>Write your answers in clear and legible handwriting.</li>
+              <li>Read each question carefully before answering.</li>
+              <li>Marks for each question are indicated against it.</li>
+            </ol>
+          </div>
+        ` : ''}
+        <div style="font-size: 14px; text-align: justify;">
+          ${activeTab === 'questions' ? 
+            Object.entries(testData.questions).map(([sectionKey, questions]) => `
+              <div style="margin-bottom: 20px;">
+                <h3 style="margin: 15px 0; text-decoration: underline;">${sectionKey.toUpperCase()}</h3>
+                ${questions.map(q => `
+                  <div style="margin-bottom: 15px;">
+                    <p style="margin: 5px 0;">
+                      <strong>${q.questionNumber}.</strong> ${q.text} 
+                      <span style="float: right;">[${q.marks} marks]</span>
+                    </p>
+                    ${q.options ? `
+                      <div style="margin-left: 20px;">
+                        ${q.options.map((opt, index) => `
+                          <p style="margin: 5px 0;">
+                            ${String.fromCharCode(97 + index)}) ${opt}
+                          </p>
+                        `).join('')}
+                      </div>
+                    ` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            `).join('') 
+            : 
+            Object.entries(testData.answers).map(([sectionKey, answers]) => `
+              <div style="margin-bottom: 20px;">
+                <h3 style="margin: 15px 0; text-decoration: underline;">${sectionKey.toUpperCase()} - ANSWERS</h3>
+                ${answers.map(a => `
+                  <div style="margin-bottom: 15px;">
+                    <p style="margin: 5px 0;">
+                      <strong>${a.questionNumber}.</strong> Answer: ${a.answer}
+                    </p>
+                    ${a.solution ? `
+                      <p style="margin: 5px 0 5px 20px;">
+                        <strong>Solution:</strong> ${a.solution}
+                      </p>
+                    ` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            `).join('')}
+        </div>
+        <div style="margin-top: 30px; text-align: center; font-size: 12px;">
+          <p style="margin: 0;">End of ${activeTab === 'questions' ? 'Question Paper' : 'Answer Key'}</p>
+          <p style="margin: 5px 0;">Generated on ${currentDate}</p>
         </div>
       </div>
     `;
 
     const opt = {
       margin: 0.5,
-      filename: `${formData.subject}_${formData.topic}_test.pdf`,
+      filename: fileName,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { 
         unit: 'in', 
         format: 'a4', 
         orientation: 'portrait',
-        putOnlyUsedFonts: true
+        fontSize: 12,
+        lineHeight: 1.6
       },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
     html2pdf().from(element).set(opt).save();
   };
+
+  const handleEditContent = () => {
+    if (!isEditing) {
+      setEditedContent({
+        questions: JSON.parse(JSON.stringify(testData.questions)),
+        answers: JSON.parse(JSON.stringify(testData.answers))
+      });
+    } else {
+      setTestData({
+        questions: editedContent.questions,
+        answers: editedContent.answers
+      });
+    }
+    setIsEditing(!isEditing);
+  };
+
+  const handleQuestionEdit = (sectionKey, questionIndex, field, value) => {
+    setEditedContent(prev => {
+      const newQuestions = { ...prev.questions };
+      newQuestions[sectionKey][questionIndex][field] = value;
+      return { ...prev, questions: newQuestions };
+    });
+  };
+
+  const handleAnswerEdit = (sectionKey, answerIndex, field, value) => {
+    setEditedContent(prev => {
+      const newAnswers = { ...prev.answers };
+      newAnswers[sectionKey][answerIndex][field] = value;
+      return { ...prev, answers: newAnswers };
+    });
+  };
+
+  const renderEditableContent = () => {
+    const content = activeTab === 'questions' ? editedContent.questions : editedContent.answers;
+    
+    return Object.entries(content).map(([sectionKey, items]) => (
+      <div key={sectionKey} style={{ marginBottom: '20px' }}>
+        <Typography variant="h6" gutterBottom>
+          {sectionKey.toUpperCase()}
+        </Typography>
+        
+        {items.map((item, index) => (
+          <Box key={index} sx={{ mb: 3, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
+            {activeTab === 'questions' ? (
+              <>
+                <TextField
+                  fullWidth
+                  label="Question"
+                  value={item.text}
+                  onChange={(e) => handleQuestionEdit(sectionKey, index, 'text', e.target.value)}
+                  multiline
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  label="Marks"
+                  type="number"
+                  value={item.marks}
+                  onChange={(e) => handleQuestionEdit(sectionKey, index, 'marks', e.target.value)}
+                  sx={{ width: '100px', mr: 2 }}
+                />
+                {item.type === 'mcq' && (
+                  <Box sx={{ mt: 2 }}>
+                    {item.options.map((option, optIndex) => (
+                      <TextField
+                        key={optIndex}
+                        fullWidth
+                        label={`Option ${String.fromCharCode(97 + optIndex)}`}
+                        value={option}
+                        onChange={(e) => {
+                          const newOptions = [...item.options];
+                          newOptions[optIndex] = e.target.value;
+                          handleQuestionEdit(sectionKey, index, 'options', newOptions);
+                        }}
+                        size="small"
+                        sx={{ mb: 1 }}
+                      />
+                    ))}
+                  </Box>
+                )}
+              </>
+            ) : (
+              <>
+                <TextField
+                  fullWidth
+                  label="Answer"
+                  value={item.answer}
+                  onChange={(e) => handleAnswerEdit(sectionKey, index, 'answer', e.target.value)}
+                  multiline
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  fullWidth
+                  label="Solution"
+                  value={item.solution}
+                  onChange={(e) => handleAnswerEdit(sectionKey, index, 'solution', e.target.value)}
+                  multiline
+                />
+              </>
+            )}
+          </Box>
+        ))}
+      </div>
+    ));
+  };
+
+  if (isLoading) {
+    return (
+      <TeacherLayout>
+        <Backdrop
+          sx={{ 
+            color: '#fff', 
+            zIndex: (theme) => theme.zIndex.drawer + 1,
+            flexDirection: 'column',
+            gap: 2
+          }}
+          open={true}
+        >
+          <CircularProgress color="inherit" size={60} />
+          <Typography variant="h6" component="div">
+            Generating Test Paper...
+          </Typography>
+          <Typography variant="body1" color="inherit">
+            This may take a few moments
+          </Typography>
+        </Backdrop>
+      </TeacherLayout>
+    );
+  }
 
   return (
     <TeacherLayout>
@@ -334,77 +574,72 @@ export default function TeacherGenerateTest() {
           <Paper elevation={3} sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
               <Button
-                variant="outlined"
-                startIcon={<Edit />}
-                onClick={() => setIsEditing(!isEditing)}
+                variant={activeTab === 'questions' ? 'contained' : 'outlined'}
+                onClick={() => setActiveTab('questions')}
               >
-                {isEditing ? 'Save' : 'Edit'}
+                Question Paper
+              </Button>
+              <Button
+                variant={activeTab === 'answers' ? 'contained' : 'outlined'}
+                onClick={() => setActiveTab('answers')}
+              >
+                Answer Key
               </Button>
               <Button
                 variant="outlined"
-                startIcon={<Copy />}
-                onClick={handleCopyContent}
+                startIcon={isEditing ? <Save /> : <Edit />}
+                onClick={handleEditContent}
               >
-                Copy
+                {isEditing ? 'Save Changes' : 'Edit'}
               </Button>
+              {isEditing && (
+                <Button
+                  variant="outlined"
+                  startIcon={<RotateCcw />}
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditedContent(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
               <Button
                 variant="outlined"
                 startIcon={<Download />}
                 onClick={handleDownload}
+                disabled={isEditing}
               >
                 Download PDF
               </Button>
               <Button
                 variant="outlined"
                 onClick={() => setShowChat(false)}
+                disabled={isEditing}
               >
                 Generate Another Test
               </Button>
             </Box>
 
-            {isEditing ? (
-              <TextField
-                multiline
-                fullWidth
-                value={editableContent}
-                onChange={(e) => setEditableContent(e.target.value)}
-                variant="outlined"
-                sx={{
-                  flex: 1,
-                  '& .MuiInputBase-root': {
-                    height: '100%',
-                    fontFamily: 'monospace',
-                    fontSize: '14px',
-                    display: 'flex',
-                  },
-                  '& .MuiInputBase-input': {
-                    flex: 1,
-                    overflow: 'auto !important',
-                    maxHeight: 'none !important',
-                    height: '100% !important',
-                  }
-                }}
-              />
-            ) : (
-              <Paper 
-                elevation={1}
-                sx={{
-                  p: 3,
-                  flex: 1,
-                  backgroundColor: '#fff',
-                  fontFamily: 'serif',
-                  whiteSpace: 'pre-wrap',
-                  overflow: 'auto',
-                  fontSize: '14px',
-                  lineHeight: 1.6,
-                  '& h1, h2, h3': {
-                    marginBottom: '16px',
-                  }
-                }}
-              >
-                {editableContent}
-              </Paper>
-            )}
+            <Paper 
+              elevation={1}
+              sx={{
+                p: 3,
+                flex: 1,
+                backgroundColor: '#fff',
+                fontFamily: 'serif',
+                whiteSpace: 'pre-wrap',
+                overflow: 'auto',
+                fontSize: '14px',
+                lineHeight: 1.6
+              }}
+            >
+              {isEditing ? (
+                renderEditableContent()
+              ) : (
+                activeTab === 'questions' ? formatQuestionPaper() : formatAnswerKey()
+              )}
+            </Paper>
           </Paper>
         )}
       </Box>

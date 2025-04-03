@@ -41,7 +41,7 @@ const uploadToS3 = async (file, key) => {
 router.get('/pending-payments/count', isAdmin, async (req, res) => {
   try {
     const count = await User.countDocuments({
-      'subscription.paymentDetails.verificationStatus': 'pending',
+      'subscription.subscriptionStatus': 'pending',
       role: 'teacher'
     });
     
@@ -55,13 +55,11 @@ router.get('/pending-payments/count', isAdmin, async (req, res) => {
 router.get('/pending-payments', isAdmin, async (req, res) => {
   try {
     const pendingPayments = await User.find({
-      'subscription.paymentDetails.verificationStatus': 'pending',
+      'subscription.subscriptionStatus': 'pending',
       role: 'teacher'
     })
     .select('name email subscription profilePicture')
     .populate('subscription.planId');
-
-    console.log('Pending payments found:', pendingPayments); // Debug log
 
     const formattedPayments = pendingPayments.map(user => ({
       _id: user._id,
@@ -74,7 +72,8 @@ router.get('/pending-payments', isAdmin, async (req, res) => {
       amount: user.subscription?.paymentDetails?.amount,
       paymentDate: user.subscription?.paymentDetails?.paymentDate,
       receipt: user.subscription?.paymentDetails?.receipt,
-      transactionId: user.subscription?.paymentDetails?.transactionId
+      transactionId: user.subscription?.paymentDetails?.transactionId,
+      subscriptionStatus: user.subscription?.subscriptionStatus
     }));
     
     res.json({ 
@@ -194,11 +193,11 @@ router.delete('/:id', isAdmin, async (req, res) => {
   }
 });
 
-// Add verification endpoint
+// Verify payment endpoint
 router.put('/verify-payment/:userId', isAdmin, async (req, res) => {
   try {
     const { status } = req.body;
-    if (!['verified', 'rejected'].includes(status)) {
+    if (!['active', 'pending', 'rejected'].includes(status)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid status'
@@ -213,18 +212,22 @@ router.put('/verify-payment/:userId', isAdmin, async (req, res) => {
       });
     }
 
-    // Update subscription status
-    user.subscription.paymentDetails.verificationStatus = status;
-    user.subscription.status = status === 'verified' ? 'active' : 'pending';
+    // Update subscription status and user status
+    user.subscription.subscriptionStatus = status;
+    if (status === 'active') {
+      user.status = 'active';
+    } else if (status === 'rejected') {
+      user.status = 'locked';
+    }
     
     await user.save();
 
     res.json({
       success: true,
-      message: `Payment ${status}`,
+      message: `Subscription ${status}`,
       data: {
-        subscriptionStatus: user.subscription.status,
-        verificationStatus: user.subscription.paymentDetails.verificationStatus
+        subscriptionStatus: user.subscription.subscriptionStatus,
+        userStatus: user.status
       }
     });
   } catch (error) {
@@ -260,13 +263,12 @@ router.post('/:planId/submit-payment', protect, upload.single('receipt'), async 
       planId: plan._id,
       startDate: new Date(),
       endDate: endDate,
-      status: 'pending',
+      subscriptionStatus: 'pending',
       paymentDetails: {
         amount: plan.price,
         transactionId: crypto.randomBytes(8).toString('hex'),
         paymentDate: new Date(),
-        receipt: receiptData,
-        verificationStatus: 'pending'
+        receipt: receiptData
       }
     };
 
@@ -279,6 +281,23 @@ router.post('/:planId/submit-payment', protect, upload.single('receipt'), async 
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Manual trigger for checking subscriptions (admin only)
+router.post('/check-expirations', isAdmin, async (req, res) => {
+  try {
+    await checkSubscriptions();
+    res.json({
+      success: true,
+      message: 'Subscription check completed'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error checking subscriptions',
+      error: error.message
+    });
   }
 });
 

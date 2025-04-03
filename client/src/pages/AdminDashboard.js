@@ -65,7 +65,11 @@ const AdminDashboard = () => {
 
     const fetchStats = async () => {
         try {
-            const teacherResponse = await getTeachers();
+            const [teacherResponse, pendingPaymentsResponse] = await Promise.all([
+                getTeachers(),
+                getPendingPaymentsCount()
+            ]);
+
             if (teacherResponse.success) {
                 setStats(prev => ({
                     ...prev,
@@ -73,9 +77,8 @@ const AdminDashboard = () => {
                 }));
             }
 
-            const paymentResponse = await getPendingPaymentsCount();
-            if (paymentResponse.success) {
-                setPendingPaymentsCount(paymentResponse.data);
+            if (pendingPaymentsResponse.success) {
+                setPendingPaymentsCount(pendingPaymentsResponse.data);
             }
         } catch (error) {
             console.error('Error fetching stats:', error);
@@ -133,7 +136,13 @@ const AdminDashboard = () => {
                 <Grid container spacing={3}>
                     {/* Subscription Payment Verification Card */}
                     <Grid item xs={12} md={4}>
-                        <Card>
+                        <Card 
+                            sx={{ 
+                                cursor: 'pointer',
+                                '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.04)' }
+                            }}
+                            onClick={() => navigate('/admin/subscription-verifications')}
+                        >
                             <CardContent>
                                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                                     <Avatar sx={{ bgcolor: '#2e7d32', mr: 2 }}>
@@ -149,7 +158,6 @@ const AdminDashboard = () => {
                                 <Button 
                                     variant="contained" 
                                     fullWidth
-                                    onClick={() => navigate('/admin/subscription-verifications')}
                                     sx={{ 
                                         bgcolor: '#2e7d32',
                                         '&:hover': { bgcolor: '#1b5e20' }

@@ -37,7 +37,11 @@ const AdminSubscriptionVerifications = () => {
     try {
       const response = await getPendingSubscriptionPayments();
       if (response.success) {
-        setPayments(response.data);
+        // Filter payments to only show those with pending subscription status
+        const pendingSubscriptions = response.data.filter(
+          payment => payment.subscriptionStatus === 'pending'
+        );
+        setPayments(pendingSubscriptions);
       }
     } catch (error) {
       toast.error('Failed to fetch pending payments');
@@ -50,7 +54,11 @@ const AdminSubscriptionVerifications = () => {
     try {
       const response = await verifySubscriptionPayment(userId, status);
       if (response.success) {
-        toast.success(`Payment ${status === 'verified' ? 'approved' : 'rejected'}`);
+        toast.success(
+          status === 'verified' 
+            ? 'Payment approved and user account activated' 
+            : 'Payment rejected'
+        );
         fetchPendingPayments();
       }
     } catch (error) {
