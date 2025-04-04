@@ -38,6 +38,7 @@ const libraryRoutes = require('./routes/libraryRoutes');  // Add this line
 const aiRoutes = require('./routes/aiRoutes');  // Add this line
 const adminRoutes = require('./routes/adminRoutes');  // Add this line
 const subscriptionRoutes = require('./routes/subscriptionRoutes'); // Add this line
+const aiQuizRoutes = require('./routes/aiQuizRoutes');  // Add this line
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -50,6 +51,7 @@ app.use('/api/library', libraryRoutes);  // Add this line
 app.use('/api/ai', aiRoutes);  // Add this line
 app.use('/api/admin', adminRoutes);  // Add this line
 app.use('/api/subscription', subscriptionRoutes); // Add this line
+app.use('/api/ai-quiz', aiQuizRoutes);  // Add this line
 
 // MongoDB connection
 const connectDB = async () => {

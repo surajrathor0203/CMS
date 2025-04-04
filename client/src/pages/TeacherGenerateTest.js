@@ -274,7 +274,7 @@ export default function TeacherGenerateTest() {
         fontSize: 12,
         lineHeight: 1.6
       },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      pagebreak: { mode: 'css' }
     };
 
     html2pdf().from(element).set(opt).save();

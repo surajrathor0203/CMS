@@ -19,7 +19,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import TeacherLayout from '../components/TeacherLayout';
-import { createQuiz, generateTest } from '../services/api';
+import { createQuiz, generateQuizQuestions } from '../services/api';
 import { toast } from 'react-toastify';
 
 const theme = {
@@ -89,25 +89,19 @@ export default function QuizCreatePage() {
   const generateQuestions = async () => {
     try {
       setLoading(true);
-      const result = await generateTest({ ...aiFormData });
+      const result = await generateQuizQuestions(aiFormData);
       
       if (result.success && result.data?.questions) {
-        const formattedQuestions = result.data.questions.map(q => ({
-          question: q.text,
-          options: q.options || ['Option 1', 'Option 2', 'Option 3', 'Option 4'],
-          correctAnswer: q.correctAnswer || 0
-        }));
-
         setQuizData({
           ...quizData,
-          questions: formattedQuestions
+          questions: result.data.questions
         });
         
         setActiveTab(0);
         toast.success('Questions generated successfully!');
       }
     } catch (error) {
-      toast.error('Failed to generate questions');
+      toast.error(error.message || 'Failed to generate questions');
     } finally {
       setLoading(false);
     }

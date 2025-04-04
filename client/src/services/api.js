@@ -596,6 +596,15 @@ export const deleteQuizStudents = async (quizId, studentIds) => {
   }
 };
 
+export const generateQuizQuestions = async (formData) => {
+  try {
+    const response = await api.post('/ai-quiz/generate', formData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
 export const getBatchDetails = (batchId) => {
   return axios.get(`${API_URL}/batches/${batchId}`);
 };
