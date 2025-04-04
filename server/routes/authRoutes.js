@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const auth = require('../middleware/auth');
+const timeout = require('connect-timeout');
 const { 
   signup, 
   forgotPassword, 
@@ -12,7 +13,8 @@ const {
   updateTeacherProfile,
   updateTeacherPassword,
   verifyEmail,
-  verifySignupOTP
+  verifySignupOTP,
+  verifyEmailLimiter
 } = require('../controllers/authController');
 
 // Configure multer for memory storage
@@ -30,9 +32,15 @@ const upload = multer({
   }
 });
 
-// Add these new routes before other auth routes
-router.post('/verify-email', verifyEmail);
-router.post('/verify-signup-otp', verifySignupOTP);
+// Add timeout middleware
+const requestTimeout = timeout('15s');
+const haltOnTimedout = (req, res, next) => {
+  if (!req.timedout) next();
+};
+
+// Apply rate limiting and timeout to verification routes
+router.post('/verify-email', requestTimeout, verifyEmailLimiter, verifyEmail, haltOnTimedout);
+router.post('/verify-signup-otp', requestTimeout, verifyEmailLimiter, verifySignupOTP, haltOnTimedout);
 
 // Auth routes
 router.post('/login', login);

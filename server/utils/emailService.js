@@ -1,12 +1,30 @@
 const nodemailer = require('nodemailer');
+const { promisify } = require('util');
+const sleep = promisify(setTimeout);
 
+// Create transporter with timeout
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.gmail_id,
     pass: process.env.gmail_app_password
-  }
+  },
+  pool: true,
+  maxConnections: 5,
+  maxMessages: 100,
+  socketTimeout: 10000 // 10 second timeout
 });
+
+const sendMailWithRetry = async (mailOptions, retries = 3) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await transporter.sendMail(mailOptions);
+    } catch (error) {
+      if (attempt === retries) throw error;
+      await sleep(1000 * attempt); // Exponential backoff
+    }
+  }
+};
 
 exports.sendWelcomeEmail = async (user, plainPassword) => {
   const mailOptions = {
@@ -36,7 +54,7 @@ exports.sendWelcomeEmail = async (user, plainPassword) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    await sendMailWithRetry(mailOptions);
     console.log('Welcome email sent successfully');
   } catch (error) {
     console.error('Error sending welcome email:', error);
@@ -75,7 +93,7 @@ exports.sendStudentWelcomeEmail = async (student, plainPassword, batchDetails, i
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    await sendMailWithRetry(mailOptions);
     console.log('Student email sent successfully');
   } catch (error) {
     console.error('Error sending student email:', error);
@@ -138,7 +156,7 @@ exports.sendSignupVerificationEmail = async (email, otp) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    await sendMailWithRetry(mailOptions);
     console.log('Signup verification email sent successfully');
   } catch (error) {
     console.error('Error sending signup verification email:', error);
@@ -201,7 +219,7 @@ exports.sendOTPEmail = async (email, otp) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
+    await sendMailWithRetry(mailOptions);
     console.log('OTP email sent successfully');
   } catch (error) {
     console.error('Error sending OTP email:', error);

@@ -110,6 +110,15 @@ const userSchema = new mongoose.Schema({
   }
 });
 
+// Add compound index for email and status
+userSchema.index({ email: 1, status: 1 });
+
+// Add index for subscription status and end date
+userSchema.index({ 'subscription.subscriptionStatus': 1, 'subscription.endDate': 1 });
+
+// Add index for role and status
+userSchema.index({ role: 1, status: 1 });
+
 // Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
