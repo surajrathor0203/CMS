@@ -199,7 +199,7 @@ export default function QuizCreatePage() {
               <Divider sx={{ mb: 2 }} />
 
               <Tabs value={activeTab} onChange={handleTabChange} sx={{ mb: 2 }}>
-                <Tab label="Add Questions Manually" />
+                <Tab label="Questions" />
                 <Tab label="Generate from AI" />
               </Tabs>
 
