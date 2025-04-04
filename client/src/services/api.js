@@ -4,11 +4,8 @@ import { setUserCookie, getUserFromCookie } from '../utils/cookies';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8080/api',
+  baseURL: API_URL,
   withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json'
-  }
 });
 
 export const login = async (identifier, password, userType) => {

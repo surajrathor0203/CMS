@@ -13,43 +13,35 @@ router.post('/generate-test', async (req, res) => {
       throw new Error('No form data provided');
     }
 
+    // Create a prompt without sections
     const prompt = `Generate a test paper with the following specifications:
     - Class: ${formData.class}
     - Subject: ${formData.subject}
     - Topic: ${formData.topic}
     - Difficulty: ${formData.difficultyLevel}
-    - Duration: ${formData.duration} hours
-    
-    For each section:
-    ${formData.sections.map((section, index) => 
-      `Section ${index + 1}: ${section.questions} questions, ${section.marksPerQuestion} marks each`
-    ).join('\n')}
+    - Number of Questions: ${formData.numberOfQuestions}
     
     ${formData.note ? `Additional notes: ${formData.note}` : ''}
     
-    Provide the response in valid JSON format with this exact structure:
+    Generate MCQ questions with the following format:
     {
-      "questions": {
-        "section1": [
-          {
-            "questionNumber": 1,
-            "text": "Write the question here",
-            "marks": 5,
-            "type": "descriptive/mcq",
-            "options": ["option1", "option2"] // only for MCQs
-          }
-        ]
-      },
-      "answers": {
-        "section1": [
-          {
-            "questionNumber": 1,
-            "answer": "The answer",
-            "solution": "Step by step solution"
-          }
-        ]
-      }
-    }`;
+      "questions": [
+        {
+          "text": "Question text here",
+          "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+          "correctAnswer": 0  // Index of correct option
+        }
+      ]
+    }
+    
+    Make sure each question:
+    1. Is clear and concise
+    2. Has exactly 4 options
+    3. Has one correct answer
+    4. Is appropriate for the specified class level and difficulty
+    5. Matches the given topic
+    
+    Return the response in valid JSON format only.`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -62,9 +54,17 @@ router.post('/generate-test', async (req, res) => {
       jsonResponse = JSON.parse(cleanedText);
       
       // Validate the structure
-      if (!jsonResponse.questions || !jsonResponse.answers) {
+      if (!jsonResponse.questions || !Array.isArray(jsonResponse.questions)) {
         throw new Error('Invalid response structure from AI');
       }
+      
+      // Ensure each question has the required format
+      jsonResponse.questions = jsonResponse.questions.map(q => ({
+        text: q.text || q.question || '',
+        options: Array.isArray(q.options) ? q.options.slice(0, 4) : ['', '', '', ''],
+        correctAnswer: typeof q.correctAnswer === 'number' ? q.correctAnswer : 0
+      }));
+
     } catch (error) {
       console.error('JSON parsing error:', error);
       throw new Error('Failed to parse AI response into valid JSON');
@@ -72,7 +72,9 @@ router.post('/generate-test', async (req, res) => {
     
     res.json({ 
       success: true, 
-      data: jsonResponse
+      data: {
+        questions: jsonResponse.questions
+      }
     });
   } catch (error) {
     console.error('AI Test Generation Error:', error);
