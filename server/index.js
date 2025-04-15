@@ -63,22 +63,24 @@ app.use('/api/ai-quiz', aiQuizRoutes);  // Add this line
 // MongoDB connection
 const connectDB = async () => {
     try {
+        if (mongoose.connections[0].readyState) {
+            return mongoose.connections[0];
+        }
+        
         const conn = await mongoose.connect(process.env.MONGO_URI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
-            serverSelectionTimeoutMS: 5000, // Timeout after 5s
-            socketTimeoutMS: 45000, // Close sockets after 45s
-            maxPoolSize: 10 // Maintain up to 10 socket connections
+            serverSelectionTimeoutMS: 10000,
+            socketTimeoutMS: 45000,
+            maxPoolSize: 10,
+            retryWrites: true,
+            w: 'majority'
         });
         
         console.log(`MongoDB Connected: ${conn.connection.host}`);
         return conn;
     } catch (error) {
-        console.error(`Error connecting to MongoDB: ${error.message}`);
-        // Don't exit process in production
-        if (process.env.NODE_ENV !== 'production') {
-            process.exit(1);
-        }
+        console.error(`MongoDB connection error: ${error.message}`);
         throw error;
     }
 };
@@ -200,13 +202,17 @@ if (process.env.NODE_ENV !== 'production') {
 // Export for Vercel
 module.exports = async (req, res) => {
     try {
-        const server = await startServer();
-        return server(req, res);
+        if (!isConnected) {
+            await connectDB();
+            isConnected = true;
+        }
+        return app(req, res);
     } catch (error) {
-        console.error('Server error:', error);
+        console.error('Server error:', error.message);
         return res.status(500).json({
             success: false,
-            message: 'Internal server error'
+            message: 'Database connection failed',
+            error: error.message
         });
     }
 };
