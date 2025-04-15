@@ -21,13 +21,6 @@ app.use(cors({
     credentials: true
 }));
 
-// Add after middleware setup but before routes
-app.use((req, res, next) => {
-    req.setTimeout(30000); // 30 second timeout for requests
-    res.setTimeout(30000);
-    next();
-});
-
 // Import and register models before routes
 require('./models/User');
 require('./models/Assignment');
@@ -63,25 +56,20 @@ app.use('/api/ai-quiz', aiQuizRoutes);  // Add this line
 // MongoDB connection
 const connectDB = async () => {
     try {
-        if (mongoose.connections[0].readyState) {
-            return mongoose.connections[0];
+        const conn = await mongoose.connect(process.env.MONGO_URI);
+        
+        // Drop the name index if it exists
+        try {
+            await conn.connection.collection('batches').dropIndex('name_1');
+        } catch (err) {
+            // Index might not exist, ignore error
+            console.log('No name index to drop or already dropped');
         }
         
-        const conn = await mongoose.connect(process.env.MONGO_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            serverSelectionTimeoutMS: 10000,
-            socketTimeoutMS: 45000,
-            maxPoolSize: 10,
-            retryWrites: true,
-            w: 'majority'
-        });
-        
         console.log(`MongoDB Connected: ${conn.connection.host}`);
-        return conn;
     } catch (error) {
-        console.error(`MongoDB connection error: ${error.message}`);
-        throw error;
+        console.error(`Error: ${error.message}`);
+        process.exit(1);
     }
 };
 
@@ -160,37 +148,12 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Something went wrong!' });
 });
 
-// Error handling middleware (add before routes)
-app.use((err, req, res, next) => {
-    console.error('Unhandled error:', err);
-    res.status(500).json({
-        success: false,
-        message: process.env.NODE_ENV === 'production' 
-            ? 'Internal server error' 
-            : err.message
-    });
-});
+// Start server
+const PORT = process.env.PORT || 8080;
 
-// Remove the conditional startup
-let isConnected = false;
-
-const startServer = async () => {
-    if (!isConnected) {
-        try {
-            await connectDB();
-            isConnected = true;
-        } catch (error) {
-            console.error('Failed to connect to MongoDB:', error);
-            throw error;
-        }
-    }
-    return app;
-};
-
-// For local development
+// Connect to database and start the schedulers if not in production
 if (process.env.NODE_ENV !== 'production') {
-    const PORT = process.env.PORT || 8080;
-    startServer().then(() => {
+    connectDB().then(() => {
         scheduleInstallmentCheck();
         scheduleSubscriptionCheck();
         app.listen(PORT, () => {
@@ -199,20 +162,5 @@ if (process.env.NODE_ENV !== 'production') {
     });
 }
 
-// Export for Vercel
-module.exports = async (req, res) => {
-    try {
-        if (!isConnected) {
-            await connectDB();
-            isConnected = true;
-        }
-        return app(req, res);
-    } catch (error) {
-        console.error('Server error:', error.message);
-        return res.status(500).json({
-            success: false,
-            message: 'Database connection failed',
-            error: error.message
-        });
-    }
-};
+// Export the Express app for Vercel
+module.exports = app;
