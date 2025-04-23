@@ -18,11 +18,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-      ? ['https://cms-two-murex.vercel.app'] // Add your frontend domain here
+      ? ['https://cms-rgum.vercel.app', 'https://cms-two-murex.vercel.app'] // Allow both domains
       : 'http://localhost:3000',
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
-
 
 // Import and register models before routes
 require('./models/User');
