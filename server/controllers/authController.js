@@ -184,74 +184,81 @@ exports.signup = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-    const loginTimeout = setTimeout(() => {
-        res.status(504).json({
-            success: false,
-            message: 'Request timed out. Please try again.'
-        });
-    }, 30000); // 30 second timeout
-
     try {
         const { identifier, password, userType } = req.body;
-        let user;
 
-        if (userType === 'student') {
-            user = await Student.findOne({
-                $or: [{ email: identifier }, { username: identifier }]
-            });
-        } else {
-            user = await User.findOne({
-                $or: [{ email: identifier }, { username: identifier }]
-            });
-        }
+        let user;
+        let Model = userType === 'student' ? Student : User;
+
+        // Find user by email or username
+        user = await Model.findOne({
+            $or: [
+                { email: identifier.toLowerCase() },
+                { username: identifier.toLowerCase() }
+            ]
+        });
 
         if (!user) {
-            clearTimeout(loginTimeout);
             return res.status(401).json({
                 success: false,
                 message: 'Invalid credentials'
             });
         }
 
+        // Check password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            clearTimeout(loginTimeout);
             return res.status(401).json({
                 success: false,
                 message: 'Invalid credentials'
             });
         }
 
+        // Create token
         const token = jwt.sign(
-            { id: user._id, role: user.role || 'student' },
+            { id: user._id, role: user.role },
             process.env.JWT_SECRET,
-            { expiresIn: '30d' }
+            { expiresIn: '1d' }
         );
 
-        const cookieOptions = {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            maxAge: 30 * 24 * 60 * 60 * 1000
+        // Create user info object with status
+        const userInfo = {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            username: user.username,
+            cochingName: user.cochingName,
+            address: user.address,
+            status: user.status // Include status in response
         };
 
-        clearTimeout(loginTimeout);
-        res.cookie('token', token, cookieOptions);
-        return res.json({
-            success: true,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role || 'student'
-            }
+        // Set cookies
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 24 * 60 * 60 * 1000
         });
+
+        res.cookie('userInfo', JSON.stringify(userInfo), {
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 24 * 60 * 60 * 1000
+        });
+
+        // Send response with user info including status
+        res.json({
+            success: true,
+            user: userInfo,
+            token
+        });
+
     } catch (error) {
-        clearTimeout(loginTimeout);
         console.error('Login error:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Error during login'
+            message: 'An error occurred during login'
         });
     }
 };

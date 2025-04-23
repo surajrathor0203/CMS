@@ -5,6 +5,13 @@ const s3 = new AWS.S3({
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   region: process.env.AWS_REGION,
   signatureVersion: 'v4',
+  // Add cors configuration
+  cors: {
+    allowedHeaders: ['*'],
+    allowedMethods: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD'],
+    allowedOrigins: ['*'],
+    exposeHeaders: ['ETag']
+  }
 });
 
 const corsParams = {
@@ -14,11 +21,7 @@ const corsParams = {
       {
         AllowedHeaders: ['*'],
         AllowedMethods: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD'],
-        AllowedOrigins: [
-          'http://localhost:3000',
-          'https://cms-rgum.vercel.app',
-          'https://cms-two-murex.vercel.app'
-        ],
+        AllowedOrigins: ['*'],
         ExposeHeaders: ['ETag', 'Content-Length', 'Content-Type'],
         MaxAgeSeconds: 3000
       }

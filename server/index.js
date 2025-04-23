@@ -13,38 +13,16 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Origin', req.headers.origin);
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,UPDATE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept');
-  next();
-});
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(process.env.COOKIE_SECRET));
-
 app.use(cors({
-  origin: (origin, callback) => {
-    const allowedOrigins = ['https://cms-rgum.vercel.app', 'https://cms-two-murex.vercel.app', 'http://localhost:3000'];
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  exposedHeaders: ['set-cookie']
+  origin: process.env.NODE_ENV === 'production'
+      ? ['https://cms-two-murex.vercel.app'] // Add your frontend domain here
+      : 'http://localhost:3000',
+  credentials: true
 }));
 
-// Increase timeout for long-running requests
-app.use((req, res, next) => {
-  res.setTimeout(120000); // 2 minutes
-  next();
-});
 
 // Import and register models before routes
 require('./models/User');

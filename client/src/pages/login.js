@@ -138,17 +138,10 @@ export default function Login() {
       }
     } catch (error) {
       setProcessingDialog(false);
-      if (error.message === 'Request timed out. Please try again.') {
-        setErrorDialog({
-          open: true,
-          message: 'Server is taking too long to respond. Please try again in a moment.'
-        });
-      } else {
-        setErrorDialog({
-          open: true,
-          message: error.message || 'Invalid credentials'
-        });
-      }
+      setErrorDialog({
+        open: true,
+        message: error.message || 'Invalid credentials'
+      });
     } finally {
       setIsLoading(false);
     }

@@ -1,51 +1,12 @@
 import axios from 'axios';
 import { setUserCookie, getUserFromCookie } from '../utils/cookies';
 
-const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://cms-rgum.vercel.app/api'
-  : 'http://localhost:8080/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
-// Create axios instance with configuration
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
-  timeout: 30000, // 30 second timeout
-  headers: {
-    'Content-Type': 'application/json'
-  }
 });
-
-// Add a request interceptor
-api.interceptors.request.use(
-  config => {
-    // Add any request processing here
-    return config;
-  },
-  error => {
-    return Promise.reject(error);
-  }
-);
-
-// Add a response interceptor with retry logic
-api.interceptors.response.use(
-  response => response,
-  async error => {
-    const { config, response } = error;
-    
-    // If the error is a timeout or 504, retry up to 2 times
-    if ((error.code === 'ECONNABORTED' || (response && response.status === 504)) && config && !config._retry) {
-      config._retry = (config._retry || 0) + 1;
-      
-      if (config._retry <= 2) {
-        // Wait for 1 second before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return api(config);
-      }
-    }
-    
-    return Promise.reject(error);
-  }
-);
 
 export const login = async (identifier, password, userType) => {
   try {
@@ -54,16 +15,12 @@ export const login = async (identifier, password, userType) => {
       password,
       userType
     });
-    
     if (response.data.success && response.data.user) {
+      // Store the complete user data
       setUserCookie(response.data);
     }
     return response.data;
   } catch (error) {
-    // Handle specific error types
-    if (error.code === 'ECONNABORTED' || (error.response && error.response.status === 504)) {
-      throw new Error('Request timed out. Please try again.');
-    }
     throw error.response ? error.response.data : error;
   }
 };
