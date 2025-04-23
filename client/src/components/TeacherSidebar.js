@@ -94,12 +94,12 @@ export default function TeacherSidebar({ mobileOpen, handleDrawerToggle }) {
       path: '/teacher/accounting',
       requiresActive: true
     },
-    // { 
-    //   text: 'Subscription', 
-    //   icon: <CreditCard size={24} />, 
-    //   path: '/teacher/subscription',
-    //   requiresActive: false  // Always enabled
-    // },
+    { 
+      text: 'Subscription', 
+      icon: <CreditCard size={24} />, 
+      path: '/teacher/subscription',
+      requiresActive: false  // Always enabled
+    },
     { 
       text: 'Settings', 
       icon: <Settings size={24} />, 

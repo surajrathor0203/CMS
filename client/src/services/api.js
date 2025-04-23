@@ -16,8 +16,24 @@ export const login = async (identifier, password, userType) => {
       userType
     });
     if (response.data.success && response.data.user) {
-      // Store the complete user data
       setUserCookie(response.data);
+      
+      // Store current URL before login
+      const currentPath = window.location.pathname;
+      
+      // Replace only the login page entry in history
+      if (currentPath.includes('login')) {
+        window.history.replaceState(null, '', window.location.pathname);
+        
+        // Add listener only for login page
+        const handlePopState = (e) => {
+          if (window.location.pathname.includes('login')) {
+            window.history.forward();
+          }
+        };
+        
+        window.addEventListener('popstate', handlePopState);
+      }
     }
     return response.data;
   } catch (error) {
