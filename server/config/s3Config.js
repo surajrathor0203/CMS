@@ -37,17 +37,17 @@ const setBucketPolicy = async () => {
     
     // Make bucket public
     const publicReadPolicy = {
-      Version: '2012-10-17',
-      Statement: [
-        {
-          Sid: 'PublicReadGetObject',
-          Effect: 'Allow',
-          Principal: '*',
-          Action: ['s3:GetObject'],
-          Resource: [`arn:aws:s3:::${process.env.AWS_BUCKET_NAME}/*`]
-        }
+      "Version": "2012-10-17",
+      "Statement": [
+          {
+              "Sid": "PublicReadGetObject",
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": "s3:GetObject",
+              "Resource": "arn:aws:s3:::cms-pdf-image1/*"
+          }
       ]
-    };
+  };
 
     await s3.putBucketPolicy({
       Bucket: process.env.AWS_BUCKET_NAME,

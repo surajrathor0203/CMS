@@ -346,7 +346,23 @@ export const getTeacherProfile = async (teacherId) => {
 
 export const updateTeacherProfile = async (teacherId, profileData) => {
   try {
-    const response = await api.put(`/auth/teacher/profile/${teacherId}`, profileData);
+    // Create FormData object if it's not already FormData
+    const formData = profileData instanceof FormData ? profileData : new FormData();
+    
+    // If profileData is a regular object, append its properties to FormData
+    if (!(profileData instanceof FormData)) {
+      Object.keys(profileData).forEach(key => {
+        if (profileData[key] !== undefined) {
+          formData.append(key, profileData[key]);
+        }
+      });
+    }
+
+    const response = await api.put(`/auth/teacher/profile/${teacherId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || error;

@@ -418,17 +418,15 @@ exports.updateTeacherProfile = async (req, res) => {
     const profilePicture = req.file;
     const removeProfilePicture = req.body.removeProfilePicture === 'true';
     
-    // Use findOneAndUpdate instead of findById to avoid validation
     const teacher = await User.findById(req.params.id);
     
     if (!teacher) {
       return res.status(404).json({ success: false, message: 'Teacher not found' });
     }
 
-    // Only update the fields that are provided
     if (name) teacher.name = name;
     if (phoneNumber) teacher.phoneNumber = phoneNumber;
-    if (cochingName) teacher.cochingName = cochingName; // Update cochingName instead of subject
+    if (cochingName) teacher.cochingName = cochingName;
     if (address) teacher.address = address;
 
     // Handle profile picture removal
@@ -447,6 +445,7 @@ exports.updateTeacherProfile = async (req, res) => {
     }
     // Handle profile picture upload
     else if (profilePicture) {
+      // Delete old profile picture if exists
       if (teacher.profilePicture?.s3Key) {
         try {
           await s3.deleteObject({
@@ -458,19 +457,20 @@ exports.updateTeacherProfile = async (req, res) => {
         }
       }
 
-      const fileName = `profiles/teacher-${teacher._id}-${Date.now()}-${profilePicture.originalname}`;
-      const params = {
-        Bucket: process.env.AWS_BUCKET_NAME,
-        Key: fileName,
-        Body: profilePicture.buffer,
-        ContentType: profilePicture.mimetype,
-        ACL: 'public-read'
-      };
-
       try {
-        const s3Upload = await s3.upload(params).promise();
+        const fileName = `profiles/teacher-${teacher._id}-${Date.now()}-${profilePicture.originalname}`;
+        const params = {
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: fileName,
+          Body: profilePicture.buffer,
+          ContentType: profilePicture.mimetype,
+          ACL: 'public-read'
+        };
+
+        const uploadResult = await s3.upload(params).promise();
+        
         teacher.profilePicture = {
-          url: s3Upload.Location,
+          url: uploadResult.Location,
           s3Key: fileName
         };
       } catch (error) {
@@ -482,14 +482,17 @@ exports.updateTeacherProfile = async (req, res) => {
       }
     }
 
-    // Save with validation disabled for this update
-    const updatedTeacher = await teacher.save({ validateBeforeSave: false });
+    const updatedTeacher = await teacher.save();
 
     res.json({
       success: true,
-      data: updatedTeacher,
+      data: {
+        ...updatedTeacher.toObject(),
+        profilePictureUrl: updatedTeacher.profilePicture?.url || ''
+      },
       message: 'Profile updated successfully'
     });
+
   } catch (error) {
     console.error('Profile update error:', error);
     res.status(500).json({ 
