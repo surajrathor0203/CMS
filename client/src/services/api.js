@@ -947,3 +947,21 @@ export const generateTest = async (formData) => {
     throw error.response?.data || error;
   }
 };
+
+export const sendMessage = async (batchId, content) => {
+  try {
+    const response = await api.post(`/messages/${batchId}`, { content });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getMessages = async (batchId) => {
+  try {
+    const response = await api.get(`/messages/${batchId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

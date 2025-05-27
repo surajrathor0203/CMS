@@ -226,3 +226,39 @@ exports.sendOTPEmail = async (email, otp) => {
     throw new Error('Failed to send OTP email');
   }
 };
+
+exports.sendMessageNotificationEmail = async (studentEmail, studentName, teacherName, batchName, messageContent) => {
+  const mailOptions = {
+    from: process.env.gmail_id,
+    to: studentEmail,
+    subject: `New Message from ${teacherName} - ${batchName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2E7D32;">New Message in ${batchName}</h2>
+        <p>Dear ${studentName},</p>
+        <p>You have received a new message from your teacher ${teacherName}:</p>
+        
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p style="margin: 0; white-space: pre-wrap;">${messageContent}</p>
+        </div>
+
+        <p>Login to your account to view all messages and updates.</p>
+        <p>You can login at: <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login">CMS Login</a></p>
+        
+        <p style="color: #666; font-size: 14px;">Note: This is an automated email. Please do not reply.</p>
+        
+        <p style="margin-top: 20px;">Best regards,</p>
+        <p>The CMS Team</p>
+      </div>
+    `
+  };
+
+  try {
+    await sendMailWithRetry(mailOptions);
+    console.log(`Message notification email sent to ${studentEmail}`);
+    return true;
+  } catch (error) {
+    console.error(`Failed to send message notification to ${studentEmail}:`, error);
+    return false;
+  }
+};

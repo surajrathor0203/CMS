@@ -6,7 +6,8 @@ import {
   getQuizzesByBatch, 
   getAssignmentsByBatch, 
   getPayments, 
-  submitPayment 
+  submitPayment,
+  getMessages 
 } from '../services/api';
 import StudentLayout from '../components/StudentLayout';
 import {
@@ -246,6 +247,8 @@ export default function StudentBatchDetails() {
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [isLocked, setIsLocked] = useState(false);
 
+  const [messages, setMessages] = useState([]);
+
   useEffect(() => {
     // Get student ID from cookies when component mounts
     const userData = getUserFromCookie();
@@ -286,6 +289,25 @@ export default function StudentBatchDetails() {
       fetchBatchDetails();
     }
   }, [batchId, studentId]); // Added studentId as dependency
+
+  useEffect(() => {
+    if (activeTab === 'message') {
+      const fetchMessages = async () => {
+        try {
+          const response = await getMessages(batchId);
+          setMessages(response.messages || []);
+        } catch (error) {
+          console.error('Error fetching messages:', error);
+          toast.error('Failed to load messages');
+        }
+      };
+      fetchMessages();
+
+      // Set up polling every 30 seconds
+      const interval = setInterval(fetchMessages, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [batchId, activeTab]);
 
   const formatDate = (dateString) => {
     if (!dateString) return 'No date specified';
@@ -1469,25 +1491,60 @@ const AssignmentProgressSection = ({ assignments }) => {
   );
 };
 
-  if (batchLoading) {
-    return (
-      <StudentLayout title="Loading...">
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-          <CircularProgress />
-        </Box>
-      </StudentLayout>
-    );
-  }
+const MessageHistorySection = () => {
+  const recentMessages = messages.filter(message => {
+    return (new Date() - new Date(message.timestamp)) < (48 * 60 * 60 * 1000);
+  });
 
-  if (batchError) {
-    return (
-      <StudentLayout title="Error">
-        <Box sx={{ p: 3 }}>
-          <Typography color="error">{batchError}</Typography>
+  return (
+    <StyledCard>
+      <CardContent>
+        <Typography variant="h6" color={theme.primary} gutterBottom>
+          Messages History
+        </Typography>
+        <Divider sx={{ mb: 2 }} />
+        <Box sx={{ height: '400px', overflowY: 'auto' }}>
+          {messages.length > 0 ? (
+            [...messages].reverse().map((message, index) => {
+              const isRecent = (new Date() - new Date(message.timestamp)) < (48 * 60 * 60 * 1000);
+              
+              return (
+                <Box
+                  key={message._id || `msg-${message.timestamp}`}
+                  sx={{
+                    mb: 2,
+                    p: 2,
+                    backgroundColor: isRecent ? '#e8f5e9' : '#f5f5f5',
+                    borderRadius: 2,
+                    '&:hover': {
+                      backgroundColor: isRecent ? '#c8e6c9' : '#f0f0f0'
+                    }
+                  }}
+                >
+                  <Typography variant="subtitle2" color={isRecent ? "success.main" : "primary"} gutterBottom>
+                    {message.senderName}
+                  </Typography>
+                  <Typography variant="body1" sx={{ mb: 1 }}>
+                    {message.content}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(message.timestamp).toLocaleString()}
+                  </Typography>
+                </Box>
+              );
+            })
+          ) : (
+            <Typography variant="body1" color="text.secondary" textAlign="center">
+              No messages yet
+            </Typography>
+          )}
         </Box>
-      </StudentLayout>
-    );
-  }
+      </CardContent>
+    </StyledCard>
+  );
+};
+
+// ...existing code...
 
   return (
     <StudentLayout title={batchDetails?.name || 'Batch Details'}>
@@ -1574,6 +1631,11 @@ const AssignmentProgressSection = ({ assignments }) => {
               <Tab 
                 label="Fee Payment" 
                 value="payment"
+              />
+              <Tab 
+                label="Messages" 
+                value="message"
+                disabled={isLocked}
               />
             </StyledTabs>
           </Grid>
@@ -1722,6 +1784,12 @@ const AssignmentProgressSection = ({ assignments }) => {
           )}
 
           {activeTab === 'payment' && <PaymentSection />}
+
+          {activeTab === 'message' && (
+            <Grid item xs={12}>
+              <MessageHistorySection />
+            </Grid>
+          )}
         </Grid>
       </Box>
       <QuizResultDialog />

@@ -53,7 +53,9 @@ import {
   getPendingPayments,
   verifyPayment,
   deleteMultipleStudents,
-  toggleStudentLock
+  toggleStudentLock,
+  sendMessage,
+  getMessages
 } from '../services/api';
 import PersonIcon from '@mui/icons-material/Person';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
@@ -177,6 +179,9 @@ export default function BatchPage() {
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [deleteMultipleDialogOpen, setDeleteMultipleDialogOpen] = useState(false);
   const [studentFilter, setStudentFilter] = useState('all'); // Add this line
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false); // Add this to the state declarations
 
   const fetchData = useCallback(async () => {
     try {
@@ -266,6 +271,21 @@ export default function BatchPage() {
 
     fetchPendingPayments();
   }, [batchId]);
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (activeTab === 'message') {
+        try {
+          const response = await getMessages(batchId);
+          setMessages(response.messages || []);
+        } catch (error) {
+          console.error('Error fetching messages:', error);
+          toast.error('Failed to load messages');
+        }
+      }
+    };
+    fetchMessages();
+  }, [batchId, activeTab]);
 
   const formatTime = (isoString) => {
     const date = new Date(isoString);
@@ -901,6 +921,7 @@ export default function BatchPage() {
               <Tab label="Batch Activity" value="activity" />
               <Tab label="Students" value="students" />
               <Tab label="Accounting" value="accounting" />
+              <Tab label="Message" value="message" />
             </StyledTabs>
           </Grid>
 
@@ -1256,6 +1277,117 @@ export default function BatchPage() {
                   <BatchAccountingSection />
                 </CardContent>
               </StyledCard>
+            </Grid>
+          )}
+
+          {activeTab === 'message' && (
+            <Grid item xs={12}>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <StyledCard>
+                    <CardContent>
+                      <Typography variant="h6" color={theme.primary} gutterBottom>
+                        Write Message
+                      </Typography>
+                      <Divider sx={{ mb: 2 }} />
+                      <TextField
+                        fullWidth
+                        multiline
+                        rows={4}
+                        variant="outlined"
+                        placeholder="Type your message here..."
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        sx={{ mb: 2 }}
+                        disabled={sendingMessage}
+                      />
+                      <GradientButton
+                        onClick={async () => {
+                          if (newMessage.trim()) {
+                            try {
+                              setSendingMessage(true);
+                              const response = await sendMessage(batchId, newMessage.trim());
+                              
+                              if (response.success) {
+                                setMessages(prev => [...prev, response.data]);
+                                setNewMessage('');
+                                toast.success('Message sent successfully');
+                              }
+                            } catch (error) {
+                              console.error('Error sending message:', error);
+                              toast.error('Failed to send message');
+                            } finally {
+                              setSendingMessage(false);
+                            }
+                          }
+                        }}
+                        disabled={!newMessage.trim() || sendingMessage}
+                        fullWidth
+                      >
+                        {sendingMessage ? (
+                          <>
+                            <CircularProgress size={20} color="inherit" sx={{ mr: 1 }} />
+                            Sending...
+                          </>
+                        ) : (
+                          'Send Message'
+                        )}
+                      </GradientButton>
+                    </CardContent>
+                  </StyledCard>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <StyledCard>
+                    <CardContent>
+                      <Typography variant="h6" color={theme.primary} gutterBottom>
+                        Messages History
+                      </Typography>
+                      <Divider sx={{ mb: 2 }} />
+                      <Box sx={{ height: '400px', overflowY: 'auto' }}>
+                        {messages.length > 0 ? (
+                          [...messages].reverse().map((message) => {
+                            const isRecent = (new Date() - new Date(message.timestamp)) < (48 * 60 * 60 * 1000);
+                            
+                            return (
+                              <Box
+                                key={message._id || `msg-${message.timestamp}`}
+                                sx={{
+                                  mb: 2,
+                                  p: 2,
+                                  backgroundColor: isRecent ? '#e8f5e9' : '#f5f5f5',
+                                  borderRadius: 2,
+                                  '&:hover': {
+                                    backgroundColor: isRecent ? '#c8e6c9' : '#f0f0f0'
+                                  }
+                                }}
+                              >
+                                <Typography 
+                                  variant="subtitle2" 
+                                  color={isRecent ? "success.main" : "primary"}
+                                  gutterBottom
+                                >
+                                  {message.senderName}
+                                </Typography>
+                                <Typography variant="body1" sx={{ mb: 1 }}>
+                                  {message.content}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {new Date(message.timestamp).toLocaleString()}
+                                </Typography>
+                              </Box>
+                            );
+                          })
+                        ) : (
+                          <Typography variant="body1" color="text.secondary" textAlign="center">
+                            No messages yet
+                          </Typography>
+                        )}
+                      </Box>
+                    </CardContent>
+                  </StyledCard>
+                </Grid>
+              </Grid>
             </Grid>
           )}
         </Grid>

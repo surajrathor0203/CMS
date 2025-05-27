@@ -624,11 +624,11 @@ export default function TeacherProfile() {
                             rathor.suraj0203@gmail.com
                           </Typography>
                         </Typography>
-                        <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
+                        {/* <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
                           Phone: <Typography component="span" sx={{ ml: 1, color: 'primary.main' }}>
                             +91 9977964260
                           </Typography>
-                        </Typography>
+                        </Typography> */}
                       </Box>
                     </Paper>
                   </Box>
