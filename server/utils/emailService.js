@@ -15,15 +15,54 @@ const transporter = nodemailer.createTransport({
   socketTimeout: 10000 // 10 second timeout
 });
 
-const sendMailWithRetry = async (mailOptions, retries = 3) => {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      return await transporter.sendMail(mailOptions);
-    } catch (error) {
-      if (attempt === retries) throw error;
-      await sleep(1000 * attempt); // Exponential backoff
+// Add rate limiting with exponential backoff
+const rateLimiter = {
+    lastSent: Date.now(),
+    minDelay: 200,  // Minimum delay between emails (ms)
+    maxDelay: 2000, // Maximum delay when rate limited
+    backoffFactor: 1.5,
+    currentDelay: 200
+};
+
+const updateRateLimiter = () => {
+    const now = Date.now();
+    const timeSinceLastSend = now - rateLimiter.lastSent;
+    
+    if (timeSinceLastSend < rateLimiter.minDelay) {
+        rateLimiter.currentDelay = Math.min(
+            rateLimiter.currentDelay * rateLimiter.backoffFactor,
+            rateLimiter.maxDelay
+        );
+    } else {
+        rateLimiter.currentDelay = rateLimiter.minDelay;
     }
-  }
+    
+    rateLimiter.lastSent = now;
+    return rateLimiter.currentDelay;
+};
+
+const sendMailWithRetry = async (mailOptions, retries = 3) => {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const delay = updateRateLimiter();
+            if (delay > rateLimiter.minDelay) {
+                await sleep(delay);
+            }
+            
+            return await transporter.sendMail(mailOptions);
+        } catch (error) {
+            lastError = error;
+            
+            // Don't wait on last attempt
+            if (attempt < retries) {
+                await sleep(1000 * attempt); // Exponential backoff
+            }
+        }
+    }
+    
+    throw lastError;
 };
 
 exports.sendWelcomeEmail = async (user, plainPassword) => {
@@ -228,37 +267,27 @@ exports.sendOTPEmail = async (email, otp) => {
 };
 
 exports.sendMessageNotificationEmail = async (studentEmail, studentName, teacherName, batchName, messageContent) => {
-  const mailOptions = {
-    from: process.env.gmail_id,
-    to: studentEmail,
-    subject: `New Message from ${teacherName} - ${batchName}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #2E7D32;">New Message in ${batchName}</h2>
-        <p>Dear ${studentName},</p>
-        <p>You have received a new message from your teacher ${teacherName}:</p>
-        
-        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <p style="margin: 0; white-space: pre-wrap;">${messageContent}</p>
-        </div>
+    const mailOptions = {
+        from: process.env.gmail_id,
+        to: studentEmail,
+        subject: `New Message from ${teacherName} - ${batchName}`,
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <p>Dear ${studentName},</p>
+                <p>New message from ${teacherName}:</p>
+                <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px;">
+                    ${messageContent}
+                </div>
+                <p>Login to view all messages: <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login">CMS Login</a></p>
+            </div>
+        `
+    };
 
-        <p>Login to your account to view all messages and updates.</p>
-        <p>You can login at: <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login">CMS Login</a></p>
-        
-        <p style="color: #666; font-size: 14px;">Note: This is an automated email. Please do not reply.</p>
-        
-        <p style="margin-top: 20px;">Best regards,</p>
-        <p>The CMS Team</p>
-      </div>
-    `
-  };
-
-  try {
-    await sendMailWithRetry(mailOptions);
-    console.log(`Message notification email sent to ${studentEmail}`);
-    return true;
-  } catch (error) {
-    console.error(`Failed to send message notification to ${studentEmail}:`, error);
-    return false;
-  }
+    try {
+        await sendMailWithRetry(mailOptions, 2); // Reduced retries for batch processing
+        return true;
+    } catch (error) {
+        console.error(`Failed to send message notification to ${studentEmail}:`, error);
+        return false;
+    }
 };

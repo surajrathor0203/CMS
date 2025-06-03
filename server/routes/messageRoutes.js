@@ -23,15 +23,6 @@ router.post('/:batchId', [protect, teacherOnly], async (req, res) => {
             return res.status(404).json({ message: 'Batch not found' });
         }
 
-        // Fetch active students directly from Student collection
-        const activeStudents = await Student.find({
-            _id: { $in: batch.students },
-            'teachersInfo.batchId': batchId,
-            _id: { $nin: batch.lockedStudents?.map(ls => ls.studentId) || [] }
-        }).select('name email');
-
-        console.log(`Found ${activeStudents.length} active students`);
-
         // Create new message
         const newMessage = {
             content,
@@ -44,30 +35,46 @@ router.post('/:batchId', [protect, teacherOnly], async (req, res) => {
         batch.messages.push(newMessage);
         await batch.save();
 
-        // Send emails to active students
-        for (const student of activeStudents) {
-            try {
-                console.log(`Sending email to: ${student.email}`);
-                await sendMessageNotificationEmail(
-                    student.email,
-                    student.name,
-                    teacher.name,
-                    batch.name,
-                    content
-                );
-            } catch (emailError) {
-                console.error(`Failed to send email to ${student.email}:`, emailError);
-            }
-        }
-
+        // Send response immediately
         res.status(201).json({
             success: true,
             message: 'Message sent successfully',
             data: newMessage
         });
+
+        // Process emails asynchronously after response
+        const activeStudents = await Student.find({
+            _id: { $in: batch.students },
+            'teachersInfo.batchId': batchId,
+            _id: { $nin: batch.lockedStudents?.map(ls => ls.studentId) || [] }
+        }).select('name email');
+
+        // Send emails in batches of 10
+        const batchSize = 10;
+        for (let i = 0; i < activeStudents.length; i += batchSize) {
+            const studentBatch = activeStudents.slice(i, i + batchSize);
+            await Promise.all(
+                studentBatch.map(student => 
+                    sendMessageNotificationEmail(
+                        student.email,
+                        student.name,
+                        teacher.name,
+                        batch.name,
+                        content
+                    ).catch(err => console.error(`Failed to send email to ${student.email}:`, err))
+                )
+            );
+            // Small delay between batches to prevent rate limiting
+            if (i + batchSize < activeStudents.length) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+
     } catch (error) {
         console.error('Error in message route:', error);
-        res.status(500).json({ message: 'Failed to send message' });
+        if (!res.headersSent) {
+            res.status(500).json({ message: 'Failed to send message' });
+        }
     }
 });
 
