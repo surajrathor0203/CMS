@@ -14,6 +14,7 @@ import { Copy, Download, Edit, Save, RotateCcw } from 'lucide-react';
 import TeacherLayout from '../components/TeacherLayout';
 import { sendChatMessage, generateTest } from '../services/api';
 import html2pdf from 'html2pdf.js';
+import { getUserFromCookie } from '../utils/cookies';  // Add this import
 
 export default function TeacherGenerateTest() {
   const [formData, setFormData] = useState({
@@ -22,6 +23,7 @@ export default function TeacherGenerateTest() {
     topic: '',
     difficultyLevel: '',
     duration: '',
+    examDate: '', // Add exam date field
     sections: [{ questions: '', marksPerQuestion: '' }],
     note: ''
   });
@@ -108,9 +110,13 @@ export default function TeacherGenerateTest() {
   const formatQuestionPaper = () => {
     if (!testData || !testData.questions) return '';
 
-    let content = `${formData.subject.toUpperCase()}\n`;
+    const userData = getUserFromCookie(); // Get user data from cookie
+    const cochingName = userData?.user?.cochingName || 'COACHING';
+
+    let content = `${cochingName.toUpperCase()}\n`;
+    content += `${formData.subject.toUpperCase()}\n`;
     content += `Class: ${formData.class}\n`;
-    content += `Topic: ${formData.topic}\n`;
+    content += `Date: ${new Date(formData.examDate).toLocaleDateString()}\n`; // Add exam date
     content += `Time: ${formData.duration} Hours\n`;
     content += `Maximum Marks: ${calculateTotalMarks()}\n\n`;
 
@@ -168,11 +174,15 @@ export default function TeacherGenerateTest() {
     const fileName = `${formData.subject}_${formData.topic}_${activeTab}.pdf`;
     const currentDate = new Date().toLocaleDateString();
     
+    const userData = getUserFromCookie(); // Get user data from cookie
+    const coachingName = userData?.user?.cochingName || 'COACHING';
+    
     const element = document.createElement('div');
     element.innerHTML = `
       <div style="padding: 20px; font-family: 'Times New Roman', serif; line-height: 1.6;">
         <div style="text-align: center; margin-bottom: 20px;">
-          <h2 style="margin: 0; font-size: 24px;">${formData.subject.toUpperCase()}</h2>
+          <h2 style="margin: 0; font-size: 24px;">${coachingName.toUpperCase()}</h2>
+          <h3 style="margin: 5px 0; font-size: 20px;">${formData.subject.toUpperCase()}</h3>
           <p style="margin: 5px 0; font-size: 16px;">${activeTab === 'questions' ? 'Question Paper' : 'Answer Key'}</p>
         </div>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
@@ -181,7 +191,7 @@ export default function TeacherGenerateTest() {
               <strong>Class:</strong> ${formData.class}
             </td>
             <td style="padding: 8px; border: 1px solid #000;">
-              <strong>Date:</strong> ${currentDate}
+              <strong>Date:</strong> ${new Date(formData.examDate).toLocaleDateString()}
             </td>
           </tr>
           <tr>
@@ -480,6 +490,21 @@ export default function TeacherGenerateTest() {
                         max: 24,
                         step: 0.5
                       } 
+                    }}
+                  />
+                </Grid>
+                {/* Add exam date field after class/subject/topic */}
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    fullWidth
+                    label="Exam Date"
+                    name="examDate"
+                    type="date"
+                    value={formData.examDate}
+                    onChange={handleFormChange}
+                    required
+                    InputLabelProps={{
+                      shrink: true,
                     }}
                   />
                 </Grid>

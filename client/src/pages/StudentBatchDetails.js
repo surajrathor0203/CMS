@@ -669,14 +669,15 @@ const QuizResultDialog = () => {
                                 : 'transparent',
                         }}
                       >
-                        <Typography variant="body2">
-                          {option}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2">
+                            {option}
+                          </Typography>
                           {selectedQuizResult.answers[index] === optIndex && (
                             <Chip 
                               label="Your Answer" 
                               size="small" 
                               color={question.correctAnswer === optIndex ? "success" : "error"}
-                              sx={{ ml: 1 }}
                             />
                           )}
                           {question.correctAnswer === optIndex && (
@@ -684,10 +685,9 @@ const QuizResultDialog = () => {
                               label="Correct Answer" 
                               size="small" 
                               color="success"
-                              sx={{ ml: 1 }}
                             />
                           )}
-                        </Typography>
+                        </Box>
                       </Box>
                     ))}
                   </Box>
@@ -816,7 +816,7 @@ const PaymentDetailsCard = ({ batchDetails, paymentHistory }) => (
               <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                 Installment Due Dates
               </Typography>
-              {console.log('Installment Dates:', batchDetails.installmentDates)} {/* Debug log */}
+              {/* {console.log('Installment Dates:', batchDetails.installmentDates)} Debug log */}
               {Array.isArray(batchDetails.installmentDates) && batchDetails.installmentDates.map((date, index) => (
                 <Box key={index} sx={{ mb: 2 }}>
                   <Typography variant="body2" color="text.secondary">

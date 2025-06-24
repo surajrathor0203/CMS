@@ -51,13 +51,13 @@ router.post('/create-multiple', async (req, res) => {
     }
 
     // Log the incoming request data
-    console.log('Creating students with:', {
-      studentsCount: students.length,
-      batchDetails: {
-        batchId: batchDetails.batchId,
-        teacherId: batchDetails.teacherId
-      }
-    });
+    // console.log('Creating students with:', {
+    //   studentsCount: students.length,
+    //   batchDetails: {
+    //     batchId: batchDetails.batchId,
+    //     teacherId: batchDetails.teacherId
+    //   }
+    // });
 
     const result = await createStudents(students, batchDetails);
     res.status(200).json(result);

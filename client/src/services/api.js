@@ -227,7 +227,7 @@ export const createMultipleStudents = async (students, batchDetails) => {
       }
     };
 
-    console.log('Sending to server:', payload); // Debug log
+    // console.log('Sending to server:', payload); // Debug log
 
     const response = await api.post('/students/create-multiple', payload);
     
@@ -654,7 +654,7 @@ export const getStudentBatchDetails = async (batchId) => {
   try {
     const response = await api.get(`/batch/student/${batchId}`);
     // Add some logging to debug
-    console.log('Batch details response:', response.data);
+    // console.log('Batch details response:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error fetching batch details:', error);

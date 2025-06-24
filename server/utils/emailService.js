@@ -94,7 +94,7 @@ exports.sendWelcomeEmail = async (user, plainPassword) => {
 
   try {
     await sendMailWithRetry(mailOptions);
-    console.log('Welcome email sent successfully');
+    // console.log('Welcome email sent successfully');
   } catch (error) {
     console.error('Error sending welcome email:', error);
     throw new Error('Failed to send welcome email');
@@ -133,7 +133,7 @@ exports.sendStudentWelcomeEmail = async (student, plainPassword, batchDetails, i
 
   try {
     await sendMailWithRetry(mailOptions);
-    console.log('Student email sent successfully');
+    // console.log('Student email sent successfully');
   } catch (error) {
     console.error('Error sending student email:', error);
     throw new Error('Failed to send email');
@@ -196,7 +196,7 @@ exports.sendSignupVerificationEmail = async (email, otp) => {
 
   try {
     await sendMailWithRetry(mailOptions);
-    console.log('Signup verification email sent successfully');
+    // console.log('Signup verification email sent successfully');
   } catch (error) {
     console.error('Error sending signup verification email:', error);
     throw new Error('Failed to send verification email');
@@ -259,7 +259,7 @@ exports.sendOTPEmail = async (email, otp) => {
 
   try {
     await sendMailWithRetry(mailOptions);
-    console.log('OTP email sent successfully');
+    // console.log('OTP email sent successfully');
   } catch (error) {
     console.error('Error sending OTP email:', error);
     throw new Error('Failed to send OTP email');

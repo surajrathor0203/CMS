@@ -57,7 +57,7 @@ const checkInstallments = async () => {
         // Save batch if changes were made
         if (batch.isModified('lockedStudents')) {
           await batch.save();
-          console.log(`Batch ${batch.name} updated with locked students`);
+          // console.log(`Batch ${batch.name} updated with locked students`);
         }
       }
     }

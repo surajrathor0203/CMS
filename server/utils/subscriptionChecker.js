@@ -16,10 +16,10 @@ const checkSubscriptions = async () => {
       user.subscription.subscriptionStatus = 'expired';
       user.status = 'locked';
       await user.save();
-      console.log(`Updated status for user: ${user.email}`);
+      // console.log(`Updated status for user: ${user.email}`);
     }
 
-    console.log(`Checked ${usersToUpdate.length} subscriptions`);
+    // console.log(`Checked ${usersToUpdate.length} subscriptions`);
   } catch (error) {
     console.error('Error checking subscriptions:', error);
   }

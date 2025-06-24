@@ -68,10 +68,10 @@ const connectDB = async () => {
             await conn.connection.collection('batches').dropIndex('name_1');
         } catch (err) {
             // Index might not exist, ignore error
-            console.log('No name index to drop or already dropped');
+            // console.log('No name index to drop or already dropped');
         }
         
-        console.log(`MongoDB Connected: ${conn.connection.host}`);
+        // console.log(`MongoDB Connected: ${conn.connection.host}`);
     } catch (error) {
         console.error(`Error: ${error.message}`);
         process.exit(1);
@@ -96,15 +96,15 @@ const scheduleInstallmentCheck = () => {
   }
 
   const msToScheduledTime = scheduledTime.getTime() - now.getTime();
-  console.log(`Installment check scheduled for: ${scheduledTime.toLocaleString()}`);
+  // console.log(`Installment check scheduled for: ${scheduledTime.toLocaleString()}`);
 
   // First run at next 3:57 PM
   setTimeout(() => {
-    console.log('Running installment check...');
+    // console.log('Running installment check...');
     checkInstallments();
     // Then run every 24 hours
     setInterval(() => {
-      console.log('Running daily installment check...');
+      // console.log('Running daily installment check...');
       checkInstallments();
     }, 24 * 60 * 60 * 1000);
   }, msToScheduledTime);
@@ -128,15 +128,15 @@ const scheduleSubscriptionCheck = () => {
   }
 
   const msToScheduledTime = scheduledTime.getTime() - now.getTime();
-  console.log(`Next subscription check scheduled for: ${scheduledTime.toLocaleString()}`);
+  // console.log(`Next subscription check scheduled for: ${scheduledTime.toLocaleString()}`);
 
   // First run at next noon
   setTimeout(() => {
-    console.log('Running subscription check...');
+    // console.log('Running subscription check...');
     checkSubscriptions();
     // Then run every 24 hours
     setInterval(() => {
-      console.log('Running daily subscription check...');
+      // console.log('Running daily subscription check...');
       checkSubscriptions();
     }, 24 * 60 * 60 * 1000);
   }, msToScheduledTime);
@@ -162,7 +162,7 @@ if (process.env.NODE_ENV !== 'production') {
         scheduleInstallmentCheck();
         scheduleSubscriptionCheck();
         app.listen(PORT, () => {
-            console.log(`Server is running on port ${PORT}`);
+            // console.log(`Server is running on port ${PORT}`);
         });
     });
 }

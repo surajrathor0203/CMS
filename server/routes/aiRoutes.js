@@ -19,6 +19,7 @@ router.post('/generate-test', async (req, res) => {
     - Topic: ${formData.topic}
     - Difficulty: ${formData.difficultyLevel}
     - Duration: ${formData.duration} hours
+    - Exam Date: ${formData.examDate}
     
     For each section:
     ${formData.sections.map((section, index) => 

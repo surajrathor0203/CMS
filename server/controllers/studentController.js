@@ -15,7 +15,7 @@ const createStudents = async (students, batchDetails) => {
   const batchSize = 5;
 
   try {
-    console.log('Received batchDetails:', batchDetails); // Debug log
+    // console.log('Received batchDetails:', batchDetails); // Debug log
 
     if (!batchDetails.batchId || !batchDetails.teacherId) {
       throw new Error('Missing required batchId or teacherId');

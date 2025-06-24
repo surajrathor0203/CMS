@@ -54,7 +54,7 @@ const setBucketPolicy = async () => {
       Policy: JSON.stringify(publicReadPolicy)
     }).promise();
 
-    console.log('Successfully set bucket policies');
+    // console.log('Successfully set bucket policies');
   } catch (err) {
     console.error('Error setting bucket policies:', err);
   }

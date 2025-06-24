@@ -30,6 +30,7 @@ import AdminSubscriptionPlans from './pages/AdminSubscriptionPlans';
 import TeacherSubscriptionPayment from './pages/TeacherSubscriptionPayment';
 import AdminSubscriptionVerifications from './pages/AdminSubscriptionVerifications';
 import RejectedVerifications from './pages/RejectedVerifications';
+import NotFound from './pages/NotFound';
 import './App.css';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -295,7 +296,7 @@ function App() {
             } 
           />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
         <ToastContainer />
       </div>
