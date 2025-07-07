@@ -72,6 +72,9 @@ exports.sendWelcomeEmail = async (user, plainPassword) => {
     subject: 'Welcome to CMS - Teacher Account Created',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="https://cms2222025.s3.eu-north-1.amazonaws.com/logo/cms-favicon1.png" alt="CMS Logo" style="max-width: 150px;">
+        </div>
         <h2 style="color: #2E7D32;">Welcome to CMS!</h2>
         <p>Dear ${user.name},</p>
         <p>Your teacher account has been successfully created. Here are your account details:</p>
@@ -108,6 +111,9 @@ exports.sendStudentWelcomeEmail = async (student, plainPassword, batchDetails, i
     subject: batchDetails.cochingName,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="https://cms2222025.s3.eu-north-1.amazonaws.com/logo/cms-favicon1.png" alt="CMS Logo" style="max-width: 150px;">
+        </div>
         <h2 style="color: #2E7D32;">Welcome to CMS!</h2>
         <p>Dear ${student.name},</p>
         <p>${isNewAccount ? 'Your student account has been successfully created.' : 'You have been enrolled in a new batch.'} Here are your account details:</p>
@@ -149,7 +155,7 @@ exports.sendSignupVerificationEmail = async (email, otp) => {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
         <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
           <div style="text-align: center; margin-bottom: 20px;">
-            <img src="https://your-logo-url.com" alt="CMS Logo" style="max-width: 150px;">
+            <img src="https://cms2222025.s3.eu-north-1.amazonaws.com/logo/cms-favicon1.png" alt="CMS Logo" style="max-width: 150px;">
           </div>
           
           <h2 style="color: #2E7D32; text-align: center; margin-bottom: 20px;">Verify Your Email Address</h2>
@@ -212,7 +218,7 @@ exports.sendOTPEmail = async (email, otp) => {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
         <div style="background-color: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
           <div style="text-align: center; margin-bottom: 20px;">
-            <img src="https://your-logo-url.com" alt="CMS Logo" style="max-width: 150px;">
+            <img src="https://cms2222025.s3.eu-north-1.amazonaws.com/logo/cms-favicon1.png" alt="CMS Logo" style="max-width: 150px;">
           </div>
           
           <h2 style="color: #2E7D32; text-align: center; margin-bottom: 20px;">Password Reset Code</h2>
@@ -290,4 +296,43 @@ exports.sendMessageNotificationEmail = async (studentEmail, studentName, teacher
         console.error(`Failed to send message notification to ${studentEmail}:`, error);
         return false;
     }
+};
+
+exports.sendTeacherPaymentNotificationEmail = async ({
+  teacherEmail,
+  teacherName,
+  studentName,
+  studentEmail,
+  batchName,
+  amount,
+  installmentNumber,
+  paymentDate,
+}) => {
+  const mailOptions = {
+    from: process.env.gmail_id,
+    to: teacherEmail,
+    subject: `New Payment Submitted by ${studentName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2E7D32;">Payment Notification</h2>
+        <p>Dear ${teacherName},</p>
+        <p>
+          Student <strong>${studentName}</strong> (${studentEmail}) has submitted a payment for batch <strong>${batchName}</strong>.
+        </p>
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p><strong>Amount:</strong> ₹${amount}</p>
+          <p><strong>Installment Number:</strong> ${installmentNumber}</p>
+          <p><strong>Date:</strong> ${new Date(paymentDate).toLocaleString()}</p>
+        </div>
+        <p>Please review and verify the payment in your dashboard.</p>
+        <p style="margin-top: 20px;">Best regards,<br/>The CMS Team</p>
+      </div>
+    `
+  };
+
+  try {
+    await sendMailWithRetry(mailOptions);
+  } catch (error) {
+    console.error('Error sending teacher payment notification email:', error);
+  }
 };

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const crypto = require('crypto');
 const SubscriptionPlan = require('../models/SubscriptionPlan');
 const { isAdmin, protect } = require('../middleware/authMiddleware');
@@ -213,9 +213,25 @@ router.post('/', isAdmin, upload.single('qrCode'), async (req, res) => {
 router.put('/:id', isAdmin, upload.single('qrCode'), async (req, res) => {
   try {
     const updateData = { ...req.body };
-    
+
+    // Find the existing plan to get the old QR code key
+    const existingPlan = await SubscriptionPlan.findById(req.params.id);
+
     // Handle QR code update if new file is provided
     if (req.file) {
+      // Delete old QR code from S3 if it exists
+      if (existingPlan && existingPlan.qrCode && existingPlan.qrCode.key) {
+        try {
+          const deleteCommand = new DeleteObjectCommand({
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: existingPlan.qrCode.key
+          });
+          await s3Client.send(deleteCommand);
+        } catch (err) {
+          // Log error but continue with update
+          console.error('Error deleting old QR code from S3:', err);
+        }
+      }
       const key = `subscription-plans/qr-codes/${crypto.randomBytes(16).toString('hex')}`;
       const url = await uploadToS3(req.file, key);
       updateData.qrCode = { url, key };
@@ -245,14 +261,29 @@ router.put('/:id', isAdmin, upload.single('qrCode'), async (req, res) => {
 // Delete subscription plan (admin only)
 router.delete('/:id', isAdmin, async (req, res) => {
   try {
-    const plan = await SubscriptionPlan.findByIdAndUpdate(
-      req.params.id, 
-      { isActive: false },
-      { new: true }
-    );
+    const plan = await SubscriptionPlan.findById(req.params.id);
     if (!plan) {
       return res.status(404).json({ success: false, message: 'Plan not found' });
     }
+
+    // Delete QR code from S3 if exists
+    if (plan.qrCode && plan.qrCode.key) {
+      try {
+        const deleteCommand = new DeleteObjectCommand({
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: plan.qrCode.key
+        });
+        await s3Client.send(deleteCommand);
+      } catch (err) {
+        // Log error but continue with plan deletion
+        console.error('Error deleting QR code from S3:', err);
+      }
+    }
+
+    // Mark plan as inactive
+    plan.isActive = false;
+    await plan.save();
+
     res.json({ success: true, message: 'Plan deleted successfully' });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });

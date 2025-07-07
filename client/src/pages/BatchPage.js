@@ -1024,7 +1024,7 @@ export default function BatchPage() {
                                   onChange={handleSelectAll}
                                 />
                               </TableCell>
-                              <TableCell>Name</TableCell>
+                              <TableCell>UserName</TableCell>
                               <TableCell>Email</TableCell>
                               <TableCell>Phone</TableCell>
                               <TableCell>Status</TableCell>
@@ -1065,9 +1065,9 @@ export default function BatchPage() {
                                             }
                                           }}
                                         >
-                                          {(!student.profilePicture?.url) && (student.name?.[0]?.toUpperCase() || 'S')}
+                                          {(!student.profilePicture?.url) && (student.username?.[0]?.toUpperCase() || 'S')}
                                         </Avatar>
-                                        {student.name}
+                                        {student.username}
                                       </Box>
                                     </TableCell>
                                     <TableCell>{student.email}</TableCell>

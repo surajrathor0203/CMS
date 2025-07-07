@@ -44,7 +44,7 @@ const setBucketPolicy = async () => {
               "Effect": "Allow",
               "Principal": "*",
               "Action": "s3:GetObject",
-              "Resource": "arn:aws:s3:::cms-pdf-image1/*"
+              "Resource": "arn:aws:s3:::cms2222025/*"
           }
       ]
   };

@@ -3,7 +3,7 @@ const Batch = require('../models/Batch');
 const User = require('../models/User'); // Add this import
 const bcrypt = require('bcryptjs');  // Add this import
 const { generatePassword } = require('../utils/passwordGenerator');
-const { sendStudentWelcomeEmail } = require('../utils/emailService');
+const { sendStudentWelcomeEmail, sendTeacherPaymentNotificationEmail } = require('../utils/emailService');
 const { generateUsername } = require('../utils/usernameGenerator');
 const s3 = require('../config/s3Config');
 const Quiz = require('../models/Quiz');
@@ -585,6 +585,33 @@ const updateStudentPassword = async (req, res) => {
     }
 };
 
+// Example: Add this logic to your payment submission controller after payment is saved
+const submitPayment = async (req, res) => {
+  try {
+    // ...existing payment logic...
+    // After payment is saved:
+    const batch = await Batch.findById(req.params.batchId).populate('teacher');
+    const student = await Student.findById(req.body.studentId);
+
+    if (batch && batch.teacher && student) {
+      await sendTeacherPaymentNotificationEmail({
+        teacherEmail: batch.teacher.email,
+        teacherName: batch.teacher.name,
+        studentName: student.name,
+        studentEmail: student.email,
+        batchName: batch.name,
+        amount: req.body.amount,
+        installmentNumber: req.body.installmentNumber,
+        paymentDate: new Date(),
+      });
+    }
+
+    // ...existing response...
+  } catch (error) {
+    // ...existing error handling...
+  }
+};
+
 // Export all functions together
 module.exports = {
     createStudents,
@@ -595,5 +622,6 @@ module.exports = {
     getStudentBatches,
     getStudentProfile,
     updateStudentProfile,
-    updateStudentPassword
+    updateStudentPassword,
+    submitPayment
 };

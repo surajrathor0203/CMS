@@ -12,7 +12,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import AdminLayout from '../components/AdminLayout';
@@ -40,6 +41,9 @@ const AdminSubscriptionPlans = () => {
   const [qrFileName, setQrFileName] = useState('');
   const [editingPlan, setEditingPlan] = useState(null);
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState(null);
 
   useEffect(() => {
     fetchPlans();
@@ -85,6 +89,7 @@ const AdminSubscriptionPlans = () => {
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
+    setLoading(true);
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('title', formData.title);
@@ -112,6 +117,8 @@ const AdminSubscriptionPlans = () => {
       fetchPlans();
     } catch (error) {
       toast.error(error.message || 'Operation failed');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -146,15 +153,22 @@ const AdminSubscriptionPlans = () => {
     setOpenDialog(true);
   };
 
-  const handleDelete = async (planId) => {
-    if (window.confirm('Are you sure you want to delete this plan?')) {
-      try {
-        await deleteSubscriptionPlan(planId);
-        toast.success('Plan deleted successfully');
-        fetchPlans();
-      } catch (error) {
-        toast.error(error.message || 'Failed to delete plan');
-      }
+  const handleDelete = (planId) => {
+    setPlanToDelete(planId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!planToDelete) return;
+    try {
+      await deleteSubscriptionPlan(planToDelete);
+      toast.success('Plan deleted successfully');
+      fetchPlans();
+    } catch (error) {
+      toast.error(error.message || 'Failed to delete plan');
+    } finally {
+      setDeleteDialogOpen(false);
+      setPlanToDelete(null);
     }
   };
 
@@ -340,8 +354,30 @@ const AdminSubscriptionPlans = () => {
           }}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} variant="contained" sx={{ bgcolor: '#2e7d32' }}>
-            {editingPlan ? 'Update Plan' : 'Save Plan'}
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            sx={{ bgcolor: '#2e7d32' }}
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+          >
+            {editingPlan ? (loading ? 'Updating...' : 'Update Plan') : (loading ? 'Saving...' : 'Save Plan')}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete this subscription plan?
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={confirmDelete} color="error" variant="contained">
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
