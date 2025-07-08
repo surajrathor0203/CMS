@@ -213,7 +213,7 @@ const TeacherSubscription = () => {
                 <Typography 
                   component="span" 
                   fontWeight="bold"
-                > rathor.suraj0203@gmail.com </Typography>
+                > cms.portal2@gmail.com </Typography>
                 for assistance.
               </Typography>
             </Box>

@@ -621,7 +621,7 @@ export default function TeacherProfile() {
                       <Box sx={{ mt: 2 }}>
                         <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                           Email: <Typography component="span" sx={{ ml: 1, color: 'primary.main' }}>
-                            rathor.suraj0203@gmail.com
+                            cms.portal2@gmail.com
                           </Typography>
                         </Typography>
                         {/* <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
