@@ -2,7 +2,7 @@ import axios from 'axios';
 import { setUserCookie, getUserFromCookie } from '../utils/cookies';
 
 const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'http://13.48.10.97/'  // Production URL
+  ? process.env.REACT_APP_API_URL  // Production URL
   : 'http://localhost:8080/api';    // Development URL
 
 const api = axios.create({
