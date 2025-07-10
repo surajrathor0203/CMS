@@ -275,14 +275,12 @@ router.delete('/:id', isAdmin, async (req, res) => {
         });
         await s3Client.send(deleteCommand);
       } catch (err) {
-        // Log error but continue with plan deletion
         console.error('Error deleting QR code from S3:', err);
       }
     }
 
-    // Mark plan as inactive
-    plan.isActive = false;
-    await plan.save();
+    // Delete plan from database
+    await SubscriptionPlan.findByIdAndDelete(req.params.id);
 
     res.json({ success: true, message: 'Plan deleted successfully' });
   } catch (error) {

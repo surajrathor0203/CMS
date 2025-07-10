@@ -20,10 +20,6 @@ const subscriptionPlanSchema = new mongoose.Schema({
   features: [{
     type: String
   }],
-  isActive: {
-    type: Boolean,
-    default: true
-  },
   accountHolderName: {
     type: String,
     required: true

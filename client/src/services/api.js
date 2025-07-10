@@ -986,6 +986,6 @@ export const deleteTeacher = async (teacherId) => {
     const response = await api.delete(`/admin/teachers/${teacherId}`);
     return response.data;
   } catch (error) {
-    throw error.response?.data || { success: false, message: 'Failed to delete teacher' };
+    throw error.response?.data || error;
   }
 };
