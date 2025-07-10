@@ -965,3 +965,27 @@ export const getMessages = async (batchId) => {
     throw error.response?.data || error;
   }
 };
+
+export const updateTeacher = async (teacherId, updateData) => {
+  try {
+    // Convert dayjs to ISO string for the API
+    const payload = {
+      ...updateData,
+      subscriptionEndDate: updateData.subscriptionEndDate.toISOString()
+    };
+    
+    const response = await api.put(`/admin/teachers/${teacherId}`, payload);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const deleteTeacher = async (teacherId) => {
+  try {
+    const response = await api.delete(`/admin/teachers/${teacherId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { success: false, message: 'Failed to delete teacher' };
+  }
+};

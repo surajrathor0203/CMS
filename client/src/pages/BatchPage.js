@@ -182,6 +182,9 @@ export default function BatchPage() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false); // Add this to the state declarations
+  const [lockDialogOpen, setLockDialogOpen] = useState(false);
+  const [studentToLock, setStudentToLock] = useState(null);
+  const [lockActionLoading, setLockActionLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -594,17 +597,27 @@ export default function BatchPage() {
   };
 
   const handleToggleLock = async (studentId) => {
+    setStudentToLock(students.find(s => s._id === studentId));
+    setLockDialogOpen(true);
+  };
+
+  const handleLockConfirm = async () => {
     try {
-      await toggleStudentLock(batchId, studentId);
+      setLockActionLoading(true);
+      await toggleStudentLock(batchId, studentToLock._id);
       // Refresh batch data to get updated locked students
       const batchResponse = await getBatchById(batchId);
       if (batchResponse.data) {
         setBatch(batchResponse.data);
       }
       toast.success('Student status updated successfully');
+      setLockDialogOpen(false);
     } catch (error) {
       console.error('Error toggling student lock:', error);
       toast.error('Failed to update student status');
+    } finally {
+      setLockActionLoading(false);
+      setStudentToLock(null);
     }
   };
 
@@ -1631,6 +1644,39 @@ export default function BatchPage() {
             startIcon={actionLoading ? <CircularProgress size={20} /> : <DeleteIcon />}
           >
             {actionLoading ? 'Deleting...' : 'Delete Selected'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={lockDialogOpen}
+        onClose={() => !lockActionLoading && setLockDialogOpen(false)}
+      >
+        <DialogTitle>Confirm Action</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {studentToLock && batch.lockedStudents?.some(ls => ls.studentId === studentToLock._id)
+              ? `Are you sure you want to unlock ${studentToLock.username}? They will regain access to the batch.`
+              : `Are you sure you want to lock ${studentToLock?.username}? They will lose access to the batch until unlocked.`
+            }
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => {
+              setLockDialogOpen(false);
+              setStudentToLock(null);
+            }}
+            disabled={lockActionLoading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleLockConfirm}
+            color={batch.lockedStudents?.some(ls => ls.studentId === studentToLock?._id) ? "success" : "error"}
+            disabled={lockActionLoading}
+            startIcon={lockActionLoading ? <CircularProgress size={20} /> : null}
+          >
+            {lockActionLoading ? 'Processing...' : batch.lockedStudents?.some(ls => ls.studentId === studentToLock?._id) ? 'Unlock' : 'Lock'}
           </Button>
         </DialogActions>
       </Dialog>

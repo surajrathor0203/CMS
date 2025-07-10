@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import AdminLayout from '../components/AdminLayout';
-import { getTeachers, toggleTeacherStatus } from '../services/api';
+import { getTeachers, toggleTeacherStatus, updateTeacher, deleteTeacher } from '../services/api';
 import {
   Table,
   TableBody,
@@ -23,8 +23,13 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  MenuItem, // Add this import
+  DialogContentText, // Add this import
 } from '@mui/material';
 import { Search, Edit, Trash2, Lock, Unlock } from 'lucide-react';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'; // Change to dayjs adapter
+import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers'; // Change this line
+import dayjs from 'dayjs'; // Add this import
 
 const TeachersManagement = () => {
     const [teachers, setTeachers] = useState([]);
@@ -35,6 +40,17 @@ const TeachersManagement = () => {
         teacherId: null,
         teacherName: '',
         currentStatus: ''
+    });
+    const [editDialog, setEditDialog] = useState({
+        open: false,
+        teacher: null,
+        status: '',
+        subscriptionEndDate: dayjs() // Use dayjs instead of new Date()
+    });
+    const [deleteDialog, setDeleteDialog] = useState({
+        open: false,
+        teacher: null,
+        loading: false
     });
 
     useEffect(() => {
@@ -78,11 +94,77 @@ const TeachersManagement = () => {
         }
     };
 
-    const filteredTeachers = teachers.filter(teacher => 
-        teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        teacher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        teacher.cochingName?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleEditClick = (teacher) => {
+        setEditDialog({
+            open: true,
+            teacher,
+            status: teacher.status,
+            subscriptionEndDate: dayjs(teacher.subscription?.endDate || new Date())
+        });
+    };
+
+    const handleUpdateTeacher = async () => {
+        try {
+            const response = await updateTeacher(editDialog.teacher._id, {
+                status: editDialog.status,
+                subscriptionEndDate: editDialog.subscriptionEndDate
+            });
+
+            if (response.success) {
+                toast.success('Teacher updated successfully');
+                fetchTeachers(); // Refresh the list
+                setEditDialog(prev => ({ ...prev, open: false }));
+            }
+        } catch (error) {
+            toast.error(error.message || 'Failed to update teacher');
+        }
+    };
+
+    const handleDeleteClick = (teacher) => {
+        setDeleteDialog({
+            open: true,
+            teacher,
+            loading: false
+        });
+    };
+
+    const handleDeleteTeacher = async () => {
+        try {
+            setDeleteDialog(prev => ({ ...prev, loading: true }));
+            const response = await deleteTeacher(deleteDialog.teacher._id);
+            
+            if (response.success) {
+                toast.success('Teacher deleted successfully');
+                fetchTeachers(); // Refresh the list
+                setDeleteDialog({ open: false, teacher: null, loading: false });
+            }
+        } catch (error) {
+            toast.error(error.message || 'Failed to delete teacher');
+            setDeleteDialog(prev => ({ ...prev, loading: false }));
+        }
+    };
+
+    const filteredTeachers = teachers.filter(teacher => {
+        const searchTermLower = searchTerm.toLowerCase().trim();
+        
+        // If search is empty, return all teachers
+        if (!searchTermLower) return true;
+
+        // Create an array of searchable fields, handling potential undefined values
+        const searchableFields = [
+            teacher.name,
+            teacher.email,
+            teacher.phoneNumber,
+            teacher.cochingName,
+            teacher.countryCode,
+            teacher.username
+        ].filter(Boolean); // Remove any undefined/null values
+        
+        // Check if any field includes the search term
+        return searchableFields.some(field => 
+            field.toString().toLowerCase().includes(searchTermLower)
+        );
+    });
 
     if (loading) {
         return (
@@ -127,6 +209,7 @@ const TeachersManagement = () => {
                             <TableCell>Phone</TableCell>
                             <TableCell>Coaching Name</TableCell>
                             <TableCell>Status</TableCell>
+                            <TableCell>Subscription End</TableCell>
                             <TableCell align="right">Actions</TableCell>
                         </TableRow>
                     </TableHead>
@@ -158,6 +241,25 @@ const TeachersManagement = () => {
                                         sx={{ borderRadius: '16px', fontSize: '0.75rem' }}
                                     />
                                 </TableCell>
+                                <TableCell>
+                                    {teacher.subscription?.endDate ? (
+                                        <Chip
+                                            label={new Date(teacher.subscription.endDate).toLocaleDateString()}
+                                            color={new Date(teacher.subscription.endDate) > new Date() ? 'primary' : 'error'}
+                                            size="small"
+                                            sx={{ 
+                                                borderRadius: '16px', 
+                                                fontSize: '0.75rem',
+                                                bgcolor: new Date(teacher.subscription.endDate) > new Date() ? '#e8f5e9' : '#ffebee',
+                                                color: new Date(teacher.subscription.endDate) > new Date() ? '#2e7d32' : '#d32f2f'
+                                            }}
+                                        />
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary">
+                                            Not subscribed
+                                        </Typography>
+                                    )}
+                                </TableCell>
                                 <TableCell align="right">
                                     <IconButton 
                                         color={teacher.status === 'locked' ? 'success' : 'error'}
@@ -174,13 +276,13 @@ const TeachersManagement = () => {
                                     </IconButton>
                                     <IconButton 
                                         color="primary"
-                                        onClick={() => toast.info('Edit functionality coming soon!')}
+                                        onClick={() => handleEditClick(teacher)}
                                     >
                                         <Edit size={20} />
                                     </IconButton>
                                     <IconButton 
                                         color="error"
-                                        onClick={() => toast.info('Delete functionality coming soon!')}
+                                        onClick={() => handleDeleteClick(teacher)}
                                     >
                                         <Trash2 size={20} />
                                     </IconButton>
@@ -215,8 +317,101 @@ const TeachersManagement = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            <Dialog
+                open={editDialog.open}
+                onClose={() => setEditDialog(prev => ({ ...prev, open: false }))}
+            >
+                <DialogTitle>Edit Teacher</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <TextField
+                            select
+                            label="Status"
+                            value={editDialog.status}
+                            onChange={(e) => setEditDialog(prev => ({ 
+                                ...prev, 
+                                status: e.target.value 
+                            }))}
+                            fullWidth
+                        >
+                            <MenuItem value="active">Active</MenuItem>
+                            <MenuItem value="locked">Locked</MenuItem>
+                        </TextField>
+
+                        <LocalizationProvider dateAdapter={AdapterDayjs}>
+                            <DatePicker
+                                label="Subscription End Date"
+                                value={editDialog.subscriptionEndDate}
+                                onChange={(newValue) => setEditDialog(prev => ({
+                                    ...prev,
+                                    subscriptionEndDate: newValue
+                                }))
+                                }
+                                slotProps={{ textField: { fullWidth: true } }}
+                                format="DD/MM/YYYY" // Add this line to set date format
+                            />
+                        </LocalizationProvider>
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setEditDialog(prev => ({ ...prev, open: false }))}>
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={handleUpdateTeacher}
+                        variant="contained" 
+                        color="primary"
+                    >
+                        Update
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Add Delete Confirmation Dialog */}
+            <Dialog
+                open={deleteDialog.open}
+                onClose={() => !deleteDialog.loading && setDeleteDialog({ open: false, teacher: null, loading: false })}
+            >
+                <DialogTitle>Confirm Delete</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1" gutterBottom>
+                        Are you sure you want to delete {deleteDialog.teacher?.name}? 
+                    </Typography>
+                    <Typography variant="body1" gutterBottom>
+                        This will also delete:
+                    </Typography>
+                    <Box component="ul" sx={{ mt: 1, mb: 2 }}>
+                        <li>All their batches</li>
+                        <li>All notes and assignments</li>
+                        <li>All quizzes and messages</li>
+                        <li>All uploaded files and images</li>
+                    </Box>
+                    <Typography variant="body1" color="error.main">
+                        This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button 
+                        onClick={() => setDeleteDialog({ open: false, teacher: null, loading: false })}
+                        disabled={deleteDialog.loading}
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={handleDeleteTeacher}
+                        color="error"
+                        variant="contained"
+                        disabled={deleteDialog.loading}
+                        startIcon={deleteDialog.loading ? <CircularProgress size={20} /> : null}
+                    >
+                        {deleteDialog.loading ? 'Deleting...' : 'Delete'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </AdminLayout>
     );
 };
 
 export default TeachersManagement;
+// export default TeachersManagement;

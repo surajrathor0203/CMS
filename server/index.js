@@ -28,7 +28,8 @@ app.use(cors({
 require('./models/User');
 require('./models/Assignment');
 require('./models/Batch');
-require('./models/Quiz'); // Add this line
+require('./models/Quiz');
+require('./models/Message'); // Add this line
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
