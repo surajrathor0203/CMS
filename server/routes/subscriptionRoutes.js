@@ -159,7 +159,7 @@ router.get('/rejected-payments', isAdmin, async (req, res) => {
 // Get all subscription plans (public route)
 router.get('/', async (req, res) => {
   try {
-    const plans = await SubscriptionPlan.find({ isActive: true });
+    const plans = await SubscriptionPlan.find();
     res.json({ success: true, data: plans });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

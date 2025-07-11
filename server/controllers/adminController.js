@@ -119,6 +119,31 @@ exports.deleteTeacher = async (req, res) => {
       }
     }
 
+    // Delete ALL subscription payment receipts for the teacher
+    // Main subscription payment receipt
+    if (teacher.subscription?.paymentDetails?.receipt?.key) {
+      try {
+        await s3.deleteObject({
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: teacher.subscription.paymentDetails.receipt.key
+        }).promise();
+      } catch (error) {
+        console.error('Error deleting subscription receipt:', error);
+      }
+    }
+
+    // New/pending subscription payment receipt
+    if (teacher.subscription?.newPayment?.receipt?.key) {
+      try {
+        await s3.deleteObject({
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: teacher.subscription.newPayment.receipt.key
+        }).promise();
+      } catch (error) {
+        console.error('Error deleting pending subscription receipt:', error);
+      }
+    }
+
     // Get all batches
     const batches = await Batch.find({ teacher: teacherId });
     
@@ -136,7 +161,7 @@ exports.deleteTeacher = async (req, res) => {
           if (!processedStudentIds.has(student._id.toString())) {
             processedStudentIds.add(student._id.toString());
 
-            // Delete student's profile picture if exists
+            // Delete student's profile picture
             if (student.profilePicture?.s3Key) {
               try {
                 await s3.deleteObject({
@@ -148,39 +173,57 @@ exports.deleteTeacher = async (req, res) => {
               }
             }
 
-            // Delete student's assignment submissions
-            const assignments = await Assignment.find({ batchId: batch._id });
-            for (const assignment of assignments) {
-              const submission = assignment.submissions?.find(
-                sub => sub.studentId.toString() === student._id.toString()
-              );
-              if (submission?.fileKey) {
-                try {
-                  await s3.deleteObject({
-                    Bucket: process.env.AWS_BUCKET_NAME,
-                    Key: submission.fileKey
-                  }).promise();
-                } catch (error) {
-                  console.error('Error deleting submission file:', error);
+            // Delete ALL fee payment receipts for each student
+            const teacherInfo = student.teachersInfo.find(
+              info => info.batchId.toString() === batch._id.toString()
+            );
+
+            if (teacherInfo?.payments) {
+              for (const payment of teacherInfo.payments) {
+                if (payment.receipt?.key) {
+                  try {
+                    await s3.deleteObject({
+                      Bucket: process.env.AWS_BUCKET_NAME,
+                      Key: payment.receipt.key
+                    }).promise();
+                  } catch (error) {
+                    console.error('Error deleting payment receipt:', error);
+                  }
                 }
               }
             }
 
-            // Remove teacher's batch from student's teachersInfo
-            student.teachersInfo = student.teachersInfo.filter(
-              info => info.batchId.toString() !== batch._id.toString()
-            );
+            // Delete student's assignment submissions
+            const assignments = await Assignment.find({ batchId: batch._id });
+            for (const assignment of assignments) {
+              // Delete all submissions for this assignment
+              for (const submission of (assignment.submissions || [])) {
+                if (submission?.fileKey) {
+                  try {
+                    await s3.deleteObject({
+                      Bucket: process.env.AWS_BUCKET_NAME,
+                      Key: submission.fileKey
+                    }).promise();
+                  } catch (error) {
+                    console.error('Error deleting submission file:', error);
+                  }
+                }
+              }
+            }
 
             // If student has no more batches, delete the student
-            if (student.teachersInfo.length === 0) {
+            if (student.teachersInfo.length === 1) {
               await Student.deleteOne({ _id: student._id });
             } else {
+              student.teachersInfo = student.teachersInfo.filter(
+                info => info.batchId.toString() !== batch._id.toString()
+              );
               await student.save();
             }
           }
         }
 
-        // Delete batch resources
+        // Delete batch QR code
         if (batch.qrCode?.s3Key) {
           try {
             await s3.deleteObject({
@@ -192,7 +235,7 @@ exports.deleteTeacher = async (req, res) => {
           }
         }
 
-        // Delete notes files
+        // Delete all notes files
         const notes = await Note.find({ batchId: batch._id });
         for (const note of notes) {
           if (note.s3Key) {

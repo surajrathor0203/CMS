@@ -162,6 +162,7 @@ const TeacherSubscription = () => {
       const response = await getSubscriptionPlans();
       if (response.success) {
         const formattedPlans = response.data
+          .filter(plan => plan.isActive) // Only include active plans
           .map(plan => ({
             title: plan.title,
             price: plan.price,

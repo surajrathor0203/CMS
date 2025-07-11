@@ -13,7 +13,9 @@ import {
   DialogContent,
   DialogActions,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Switch,
+  FormControlLabel
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import AdminLayout from '../components/AdminLayout';
@@ -23,6 +25,80 @@ import {
   updateSubscriptionPlan,
   deleteSubscriptionPlan
 } from '../services/api';
+
+const PlanCard = ({ plan, onEdit, onDelete, onToggleActive }) => (
+  <Card 
+    sx={{ 
+      opacity: plan.isActive ? 1 : 0.7,
+      position: 'relative'
+    }}
+  >
+    <CardContent>
+      {!plan.isActive && (
+        <Typography 
+          color="error" 
+          sx={{ 
+            position: 'absolute', 
+            top: 10, 
+            right: 10,
+            bgcolor: 'error.main',
+            color: 'white',
+            px: 1,
+            borderRadius: 1
+          }}
+        >
+          Inactive
+        </Typography>
+      )}
+      <Typography variant="h5" component="h2" sx={{ color: '#2e7d32' }}>
+        {plan.title}
+      </Typography>
+      <Typography variant="h4" color="primary" sx={{ my: 2 }}>
+        ₹{plan.price}
+      </Typography>
+      <Typography color="text.secondary">
+        Duration: {plan.duration} {plan.duration === 1 ? 'Month' : 'Months'}
+      </Typography>
+      <Typography color="text.secondary">
+        Max Batches: {plan.maxBatches === -1 ? 'Unlimited' : plan.maxBatches}
+      </Typography>
+      <Typography color="text.secondary" sx={{ mt: 1 }}>
+        Account: {plan.accountHolderName}
+      </Typography>
+      <Typography color="text.secondary">
+        UPI: {plan.upiId}
+      </Typography>
+      <Box sx={{ mt: 2 }}>
+        <Button 
+          variant="outlined" 
+          color="primary" 
+          sx={{ mr: 1 }}
+          onClick={() => onEdit(plan)}
+        >
+          Edit
+        </Button>
+        <Button 
+          variant="outlined" 
+          color="error"
+          onClick={() => onDelete(plan._id)}
+        >
+          Delete
+        </Button>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={plan.isActive}
+              onChange={(e) => onToggleActive(plan._id, e.target.checked)}
+              color="primary"
+            />
+          }
+          label={plan.isActive ? "Active" : "Inactive"}
+          sx={{ ml: 1 }}
+        />
+      </Box>
+    </CardContent>
+  </Card>
+);
 
 const AdminSubscriptionPlans = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -172,6 +248,19 @@ const AdminSubscriptionPlans = () => {
     }
   };
 
+  const handleToggleActive = async (planId, isActive) => {
+    setLoading(true);
+    try {
+      await updateSubscriptionPlan(planId, { isActive });
+      toast.success(`Plan ${isActive ? 'activated' : 'deactivated'} successfully`);
+      fetchPlans();
+    } catch (error) {
+      toast.error(error.message || 'Failed to update plan status');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AdminLayout
       mobileOpen={mobileOpen}
@@ -196,39 +285,12 @@ const AdminSubscriptionPlans = () => {
           <Grid container spacing={3}>
             {plans.map((plan) => (
               <Grid item xs={12} md={4} key={plan._id}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h5" component="h2" sx={{ color: '#2e7d32' }}>
-                      {plan.title}
-                    </Typography>
-                    <Typography variant="h4" color="primary" sx={{ my: 2 }}>
-                      ₹{plan.price}
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Duration: {plan.duration} {plan.duration === 1 ? 'Month' : 'Months'}
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Max Batches: {plan.maxBatches === -1 ? 'Unlimited' : plan.maxBatches}
-                    </Typography>
-                    <Box sx={{ mt: 2 }}>
-                      <Button 
-                        variant="outlined" 
-                        color="primary" 
-                        sx={{ mr: 1 }}
-                        onClick={() => handleEdit(plan)}
-                      >
-                        Edit
-                      </Button>
-                      <Button 
-                        variant="outlined" 
-                        color="error"
-                        onClick={() => handleDelete(plan._id)}
-                      >
-                        Delete
-                      </Button>
-                    </Box>
-                  </CardContent>
-                </Card>
+                <PlanCard 
+                  plan={plan} 
+                  onEdit={handleEdit} 
+                  onDelete={handleDelete}
+                  onToggleActive={handleToggleActive}
+                />
               </Grid>
             ))}
           </Grid>
